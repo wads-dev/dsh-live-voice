@@ -1,5 +1,5 @@
 [![npm version](https://img.shields.io/npm/v/dsh-live-voice?logo=npm&label=npm&color=brightgreen)](https://www.npmjs.com/package/dsh-live-voice)
-[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--alpha.3-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-alpha.3)
+[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--rc.2-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 # DSH Live Voice - You and Your Team / 实时语音 - 您和您的团队
@@ -22,7 +22,7 @@ DSH Live Voice 是 DeepSeek Harness（DSH）的本地优先语音插件，提供
 
 ## ⚡ 快速开始
 
-**已在 DeepSeek Harness v0.2.1-alpha.3 上测试。**
+**已在 DeepSeek Harness v0.2.1-rc.2 上测试。**
 
 从 npm 安装已构建的包到 DSH 的 web 配置中（无需编译源码）：
 

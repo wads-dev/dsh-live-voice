@@ -1,5 +1,5 @@
 [![npm version](https://img.shields.io/npm/v/dsh-live-voice?logo=npm&label=npm&color=brightgreen)](https://www.npmjs.com/package/dsh-live-voice)
-[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--alpha.3-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-alpha.3)
+[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--rc.2-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 # DSH Live Voice - Você e sua equipe
@@ -22,7 +22,7 @@ _Feito no Brasil 🇧🇷 e testado diariamente com português brasileiro no mac
 
 ## ⚡ Comece aqui
 
-**Testado com o DeepSeek Harness v0.2.1-alpha.3.**
+**Testado com o DeepSeek Harness v0.2.1-rc.2.**
 
 Instale o pacote já compilado do npm no perfil web do DSH (sem precisar compilar o código):
 
@@ -57,6 +57,7 @@ Interface traduzida: 🇺🇸 inglês · 🇧🇷 português brasileiro · 🇪�
 - ⚡ **Ritmo ajustável:** envio automático após 600 ms, 800 ms ou 1–6 segundos (4 segundos por padrão); resposta do assistente após 600 ms, 1,5, 2, 3, 4 ou 5 segundos (1,5 segundo por padrão). Reconhecimento e síntese ainda contribuem para a latência.
 - 🛠️ **Live Voice Debugger opcional:** instale `dsh-live-voice-debugger` separadamente para inspecionar estado e filas na aba Developer das configurações. O plugin principal funciona sem ele.
 - 💻 **Reconhecimento neste navegador:** baixe os modelos multilíngues Whisper Tiny, Base, Small q4 (302 MB), Medium (684 MB) ou Large v3 Turbo (762 MB), sem exigir f16 em Reconhecimento de voz, ou escolha Qwen3-ASR com WebGPU. Os modelos têm controles explícitos de download, cancelamento, progresso e remoção. Whisper também oferece a opção WebAssembly na CPU. Nessas opções o áudio fica no navegador; o download inicial dos modelos exige internet. Veja a [configuração dos modelos](docs/BROWSER-ASR.md) (em inglês).
+- 📝 **Contexto da transcrição:** descreva opcionalmente seu vocabulário ou perfil de fala em Reconhecimento de fala → Configurações de conexão para Whisper HTTP e Qwen HTTP. O campo começa vazio; o exemplo em inglês é apenas um placeholder. O suporte depende do servidor, e o contexto não restringe idiomas.
 - 🏠 **Opções de voz locais:** use mecanismos como Qwen ou Whisper quando houver suporte. Reconhecimento do navegador e serviços HTTP configurados têm seus próprios requisitos de processamento; nem toda configuração mantém o áudio na sua máquina.
 - 🌐 **Seu assistente de voz do DSH, até pelo celular:** acesse seu DSH pela rede de casa ou mesmo estando fora de casa e continue falando com ele (STT) e ouvindo as respostas (TTS) pelo navegador do celular. Com os mecanismos executados no host, o processamento de voz fica no computador do DSH, enquanto o celular captura sua fala e reproduz as respostas — sem precisar instalar modelos locais no telefone. _Eu uso Cloudflare Tunnel com autenticação para acessar meu DSH fora de casa._ Use HTTPS e acesso autenticado; a captura do microfone depende do suporte e da permissão do navegador, inclusive na rede de casa.
 

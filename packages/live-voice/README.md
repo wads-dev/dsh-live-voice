@@ -4,7 +4,7 @@ Local-first speech-to-text (STT), text-to-speech (TTS), and meeting audio transc
 
 ## Installation
 
-Tested with **DeepSeek Harness v0.2.1-alpha.3**. The package manifest's `dshTestedVersion` field records the tested version.
+Tested with **DeepSeek Harness v0.2.1-rc.2**. The package manifest's `dshTestedVersion` field records the tested version.
 
 Install the prebuilt package from npm; no source build is required. The Git repository contains source only.
 

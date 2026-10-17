@@ -4,15 +4,18 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 [Product overview](README.md) · [Visão geral em português](README.pt.md) · [简体中文概览](README.zh-CN.md)
 
-## [0.6.2] - Unreleased
+## [0.6.2] - 2026-10-17
 
 ### Features
+
+#### Live Voice
+
+- Add optional transcription context in Connection settings for Whisper HTTP and Qwen HTTP. The shared field starts empty, with an English example placeholder, and forwards background or vocabulary as `prompt` with each audio segment. Server support varies; context is not a language restriction.
 
 #### Live Voice Debugger
 
 - Name starred recordings in the debugger so important problem sessions can be recognized later; names remain in the saved session and self-contained JSON export.
 - Inspect assistant playback start, end, pause and resume alongside microphone speaker-gating requests and recording start/end events. Saved events retain wall-clock timestamps and captured-audio boundaries without recording assistant audio or inventing audio during capture gaps.
-
 - Zoom the speech/silence timeline with a single two-handle range selector: drag either edge to resize, or drag the selected band to move the whole window without changing its duration. Support keyboard navigation and restore the full session with a compact, accessible icon button.
 - Search segment transcripts with exact phrases and matching words ranked before approximate matches; an active search excludes segments without completed transcription.
 - Show total stored audio and per-session audio size in decimal MB, measured from encoded audio payload rather than browser-wide quota or estimated PCM size. Database overhead and unsaved capture buffers are excluded.

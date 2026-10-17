@@ -1,5 +1,5 @@
 [![npm version](https://img.shields.io/npm/v/dsh-live-voice?logo=npm&label=npm&color=brightgreen)](https://www.npmjs.com/package/dsh-live-voice)
-[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--alpha.3-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-alpha.3)
+[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--rc.2-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 # DSH Live Voice - You and Your Team / 实时语音 - 您和您的团队
@@ -20,7 +20,7 @@ _Built in Brazil 🇧🇷 and tested daily with Brazilian Portuguese on macOS._
 
 ## ⚡ Quick Start
 
-**Tested with DeepSeek Harness v0.2.1-alpha.3.**
+**Tested with DeepSeek Harness v0.2.1-rc.2.**
 
 Install the prebuilt package from npm with `npx dsh` into your DSH web profile (no source build required):
 
@@ -55,6 +55,7 @@ Interface translated into: 🇺🇸 English · 🇧🇷 Portuguese (Brazil) · �
 - ⚡ **Responsive Conversation Settings:** Automatic-send delays of 600 ms, 800 ms, or 1–6 seconds (4 seconds by default), plus an assistant response delay of 600 ms, 1.5, 2, 3, 4 or 5 seconds (1.5 seconds by default). Recognition and synthesis still contribute to overall latency.
 - 🛠️ **Optional Live Voice Debugger:** Install `dsh-live-voice-debugger` separately to inspect runtime state and queues from the Developer tab in Live Voice Settings. The main plugin works without it.
 - 💻 **Recognition on this browser:** download multilingual Whisper Tiny, Base, Small q4 (302 MB), Medium (684 MB), or Large v3 Turbo (762 MB), with non-f16 options in Speech recognition, or choose Qwen3-ASR with WebGPU. Models have explicit download, cancellation, progress, and removal controls. Whisper also offers an explicit WebAssembly CPU option. Audio stays in the browser for these engines; initial model downloads require network access. See [browser model setup](docs/BROWSER-ASR.md).
+- 📝 **Transcription context:** optionally describe your vocabulary or speaking background in Speech recognition → Connection settings for Whisper HTTP and Qwen HTTP. The field starts empty; its English example is only a placeholder. Server support varies, and context does not restrict languages.
 - 🏠 **Local-First Speech Options:** Use local engines such as Qwen or Whisper where supported. Browser recognition and configured HTTP services have their own processing requirements; do not assume every setup keeps audio on your machine.
 - 🌐 **Your DSH voice assistant, even on your phone:** access your DSH over your home network or while away from home, and keep speaking to it (STT) and listening to its answers (TTS) from your phone’s browser. With host-backed engines, speech processing stays on the DSH computer while your phone captures your voice and plays the answers—no local model installation on the phone is needed. _I use Cloudflare Tunnel with authentication to access my DSH away from home._ Use HTTPS and authenticated access; microphone capture requires browser support and permission, including on your home network.
 

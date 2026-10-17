@@ -116,8 +116,8 @@ test('mounted voice UI exposes controls, distinct states, and capability failure
     assert.equal(badgeImages[0].parentElement.textContent, `v${CURRENT_VERSION}`);
     assert.equal(badgeImages[1].src, 'https://cdn.simpleicons.org/deepseek/white');
     assert.equal(badgeImages[1].alt, '');
-    assert.equal(badgeImages[1].parentElement.title, 'Compatible with DSH v0.2.1-alpha.3');
-    assert.equal(badgeImages[1].parentElement.textContent, 'v0.2.1-alpha.3');
+    assert.equal(badgeImages[1].parentElement.title, 'Compatible with DSH v0.2.1-rc.2');
+    assert.equal(badgeImages[1].parentElement.textContent, 'v0.2.1-rc.2');
     assert.equal(
       versionBadges.querySelector(
         `[aria-label="DSH Live Voice v${CURRENT_VERSION}. Open releases"]`,
@@ -125,9 +125,9 @@ test('mounted voice UI exposes controls, distinct states, and capability failure
       'https://github.com/victorwads/dsh-live-voice/releases',
     );
     assert.equal(
-      versionBadges.querySelector('[aria-label="Compatible with DSH v0.2.1-alpha.3. Open release"]')
+      versionBadges.querySelector('[aria-label="Compatible with DSH v0.2.1-rc.2. Open release"]')
         .href,
-      'https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-alpha.3',
+      'https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2',
     );
     const starBadge = document.querySelector('[aria-label="Star DSH Live Voice on GitHub"]');
     assert.equal(starBadge.textContent, '★ Star Us on GitHub');
