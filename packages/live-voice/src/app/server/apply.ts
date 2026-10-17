@@ -9,6 +9,7 @@ import {
   createWhisperConfigStore,
   validateWhisperConfig,
 } from '../../modules/recognition/engines/whisper/whisperRecognitionHost.js';
+import { readTranscriptionContextHeader } from '../../modules/recognition/transcriptionContext.js';
 import { wavToM4aAac } from '../../modules/speak/engines/audio/M4aAacTranscoder.js';
 import { SayEngine } from '../../modules/speak/engines/say/SaySpeakingEngine.js';
 import { createSettingsStore } from '../../modules/settings/models/settingsHost.js';
@@ -308,7 +309,16 @@ export function apply(
             fail('audio-too-large', 'The recording exceeds the configured Whisper limit.'),
             { status: 413 },
           );
+        let context;
+        try {
+          context = readTranscriptionContextHeader(request.headers);
+        } catch {
+          return Response.json(fail('invalid-context', 'Invalid transcription context.'), {
+            status: 400,
+          });
+        }
         const value = await whisper.transcribe(await request.arrayBuffer(), {
+          context,
           lang: request.headers.get('x-dlv-language') || 'auto',
           signal: request.signal,
         });
@@ -403,9 +413,18 @@ export function apply(
             fail('audio-too-large', 'The recording exceeds the configured Qwen limit.'),
             { status: 413 },
           );
+        let context;
+        try {
+          context = readTranscriptionContextHeader(request.headers);
+        } catch {
+          return Response.json(fail('invalid-context', 'Invalid transcription context.'), {
+            status: 400,
+          });
+        }
         return Response.json(
           ok(
             await qwen.transcribe(await request.arrayBuffer(), {
+              context,
               lang: request.headers.get('x-dlv-language') || 'pt-BR',
               signal: request.signal,
             }),

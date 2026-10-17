@@ -135,6 +135,11 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.commands.send': '发送给运行中的智能体',
   'dsh-live-voice.recognition.commands.stopSpeech': '停止助手朗读',
   'dsh-live-voice.recognition.commands.title': '语音命令',
+  'dsh-live-voice.recognition.context.hint':
+    '可选的背景和词汇会随每段音频以 prompt 字段发送到所选 HTTP 语音服务。离开输入框时保存。支持情况取决于服务器；不会限制语言，也不保证遵循指令。留空则不发送上下文。',
+  'dsh-live-voice.recognition.context.label': '转写上下文',
+  'dsh-live-voice.recognition.context.placeholder':
+    'Native Brazilian Portuguese speaker who frequently uses technical terms in English.',
   'dsh-live-voice.recognition.dictation.cancel': '取消听写',
   'dsh-live-voice.recognition.engine.label': '识别引擎',
   'dsh-live-voice.recognition.headphoneMode.help':

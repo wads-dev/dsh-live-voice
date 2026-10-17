@@ -99,6 +99,7 @@ test('Whisper browser engine segments speech and sends authenticated complete ut
       recordings: mockRecordingRepository(),
       voiceDetectionEngine: 'energy',
       globals,
+      recognitionContext: 'Português técnico\nEnglish terms',
       meter: { context, source },
     });
   assert.equal((await engine.capability()).supported, true);
@@ -121,6 +122,10 @@ test('Whisper browser engine segments speech and sends authenticated complete ut
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(requests.at(-1).url, '/api/dsh-live-voice/whisper/transcribe');
   assert.equal(requests.at(-1).options.credentials, 'same-origin');
+  assert.equal(
+    decodeURIComponent(requests.at(-1).options.headers['x-dlv-transcription-context']),
+    'Português técnico\nEnglish terms',
+  );
   assert.doesNotThrow(() => validateMonoPcm16Wav(requests.at(-1).options.body));
   assert.deepEqual(
     results.map(({ startedAt, ...text }) => text),

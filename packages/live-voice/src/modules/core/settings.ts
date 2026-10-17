@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { TRANSCRIPTION_CONTEXT_MAX_LENGTH } from '../recognition/transcriptionContext.js';
 import { resolveCodeNotice } from './speechDefaults.js';
 import { normalizeShortcut } from '../../shared/design-system/forms/keyboardShortcut.js';
 export const voiceDetectionPresets = Object.freeze({
@@ -83,6 +84,7 @@ export const defaultSettings = Object.freeze({
   mode: 'speaker',
   lang: 'pt-BR',
   recognitionLang: 'pt-BR',
+  recognitionContext: '',
   voice: '',
   inputDeviceId: '',
   outputDeviceId: '',
@@ -185,6 +187,13 @@ export function normalizeSettings(value) {
       typeof source.recognitionProcessLocally === 'boolean'
         ? source.recognitionProcessLocally
         : defaultSettings.recognitionProcessLocally,
+    recognitionContext:
+      typeof source.recognitionContext === 'string'
+        ? source.recognitionContext
+            .replaceAll('\0', '')
+            .slice(0, TRANSCRIPTION_CONTEXT_MAX_LENGTH)
+            .trim()
+        : defaultSettings.recognitionContext,
     recognitionAutoInstall:
       typeof source.recognitionAutoInstall === 'boolean'
         ? source.recognitionAutoInstall

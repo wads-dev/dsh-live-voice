@@ -254,6 +254,7 @@ test('valid local options survive normalization', () => {
     agentVoiceContext: defaultSettings.agentVoiceContext,
     interruptSpeechOnUserMessage: true,
     recognitionLang: 'en-US',
+    recognitionContext: 'Native speaker; technical vocabulary.',
     sendingMode: 'steer',
     dshBusyEnterBehavior: 'steer',
     autoSendDelaySeconds: 5,

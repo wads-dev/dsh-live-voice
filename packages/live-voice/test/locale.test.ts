@@ -71,6 +71,8 @@ test('ships complete typed dictionaries for DSH built-ins and contributed langua
 test('catalogs preserve placeholders and contain no unreviewed English copies', () => {
   // Product names, interpolation-only templates, and genuine shared words may match English.
   const shared = new Set([
+    // The user-requested ASR context example stays in English in every UI locale.
+    'dsh-live-voice.recognition.context.placeholder',
     'dsh-live-voice.commons.device.numberedLabel',
     'dsh-live-voice.commons.engine.failure',
     'dsh-live-voice.commons.milliseconds',

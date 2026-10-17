@@ -149,6 +149,11 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.commands.send': 'Enviar ao agente em execução',
   'dsh-live-voice.recognition.commands.stopSpeech': 'Parar fala do assistente',
   'dsh-live-voice.recognition.commands.title': 'Comandos de voz',
+  'dsh-live-voice.recognition.context.hint':
+    'Contexto e vocabulário opcionais enviados como prompt ao serviço HTTP de voz selecionado, junto com cada trecho de áudio. Salvo ao sair do campo. O suporte depende do servidor; não restringe idiomas nem garante que instruções sejam seguidas. Deixe vazio para não enviar contexto.',
+  'dsh-live-voice.recognition.context.label': 'Contexto da transcrição',
+  'dsh-live-voice.recognition.context.placeholder':
+    'Native Brazilian Portuguese speaker who frequently uses technical terms in English.',
   'dsh-live-voice.recognition.dictation.cancel': 'Cancelar ditado',
   'dsh-live-voice.recognition.engine.label': 'Mecanismo de reconhecimento',
   'dsh-live-voice.recognition.headphoneMode.help':

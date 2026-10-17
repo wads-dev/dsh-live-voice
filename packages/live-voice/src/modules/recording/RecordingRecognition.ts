@@ -1,3 +1,4 @@
+import { transcriptionContextHeader } from '../recognition/transcriptionContext.js';
 import type {
   RecordingRepository,
   RecordingWriter,
@@ -31,6 +32,7 @@ interface RecordingEngine {
   g: { fetch: typeof fetch };
   recordings: RecordingRepository;
   route: string;
+  recognitionContext?: string;
   transcribePcm?(
     pcm: Float32Array,
     sampleRate: number,
@@ -355,6 +357,7 @@ export async function startRecordingRecognition(
                 'x-dlv-client-id': session.operation,
                 'x-dlv-operation-id': attempt.id,
                 'x-dlv-language': lang,
+                ...transcriptionContextHeader(engine.recognitionContext),
               },
               credentials: 'same-origin',
               body: capture.encode(pcm, rate),

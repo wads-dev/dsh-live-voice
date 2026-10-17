@@ -145,6 +145,11 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.commands.send': 'चल रहे एजेंट को भेजें',
   'dsh-live-voice.recognition.commands.stopSpeech': 'सहायक का वाचन बंद करें',
   'dsh-live-voice.recognition.commands.title': 'वॉइस कमांड',
+  'dsh-live-voice.recognition.context.hint':
+    'वैकल्पिक संदर्भ और शब्दावली हर ऑडियो खंड के साथ चुनी गई HTTP वाक् सेवा को prompt के रूप में भेजे जाते हैं। फ़ील्ड से बाहर आने पर सहेजा जाता है। समर्थन सर्वर पर निर्भर है; यह भाषाओं को सीमित नहीं करता और निर्देशों के पालन की गारंटी नहीं देता। संदर्भ न भेजने के लिए खाली छोड़ें।',
+  'dsh-live-voice.recognition.context.label': 'ट्रांसक्रिप्शन संदर्भ',
+  'dsh-live-voice.recognition.context.placeholder':
+    'Native Brazilian Portuguese speaker who frequently uses technical terms in English.',
   'dsh-live-voice.recognition.dictation.cancel': 'डिक्टेशन रद्द करें',
   'dsh-live-voice.recognition.engine.label': 'वाक् पहचान इंजन',
   'dsh-live-voice.recognition.headphoneMode.help':

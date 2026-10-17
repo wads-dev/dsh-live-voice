@@ -147,6 +147,11 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.commands.send': 'Send to running agent',
   'dsh-live-voice.recognition.commands.stopSpeech': 'Stop assistant speech',
   'dsh-live-voice.recognition.commands.title': 'Voice commands',
+  'dsh-live-voice.recognition.context.hint':
+    'Optional background and vocabulary sent as prompt to the selected HTTP speech service, together with each audio segment. Saved on blur. Support depends on the server; this does not restrict languages or guarantee instruction following. Leave empty to send no context.',
+  'dsh-live-voice.recognition.context.label': 'Transcription context',
+  'dsh-live-voice.recognition.context.placeholder':
+    'Native Brazilian Portuguese speaker who frequently uses technical terms in English.',
   'dsh-live-voice.recognition.dictation.cancel': 'Cancel dictation',
   'dsh-live-voice.recognition.engine.label': 'Recognition engine',
   'dsh-live-voice.recognition.headphoneMode.help':

@@ -3,6 +3,7 @@ import { readFile, mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { transcriptionContext } from '../../transcriptionContext.js';
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 export function validateWhisperConfig(value) {
@@ -188,12 +189,14 @@ export class WhisperHttpHost {
       };
     }
   }
-  async transcribe(input, { lang = 'auto', signal } = {}) {
+  async transcribe(input, { lang = 'auto', context = '', signal } = {}) {
     const bytes = validateMonoPcm16Wav(input, { maxBytes: this.maxBytes }),
       form = new FormData();
     form.append('file', new Blob([bytes], { type: 'audio/wav' }), 'utterance.wav');
     form.append('response_format', 'json');
     form.append('language', lang.startsWith('pt') ? 'pt' : lang.startsWith('en') ? 'en' : 'auto');
+    const prompt = transcriptionContext(context);
+    if (prompt) form.append('prompt', prompt);
     const config = await this.getConfig();
     return this.request(
       new URL(config.url),

@@ -275,6 +275,7 @@ export function apply(ctx) {
     'browserQwenModel',
     'browserAsrDevice',
     'recognitionLang',
+    'recognitionContext',
     'inputDeviceId',
     'recognitionProcessLocally',
     'recognitionAutoInstall',
@@ -295,6 +296,7 @@ export function apply(ctx) {
     Object.keys(next).some((key) => recognitionSettingKeys.has(key));
   const recordingOptions = (settings, inputSource) => ({
     recordings,
+    recognitionContext: settings.recognitionContext,
     inputSource,
     sourceId: inputSource,
     sourceLabel: inputSource === 'shared' ? settings.sharedSourceName : settings.micSourceName,

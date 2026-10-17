@@ -160,6 +160,17 @@ _Phrases are configurable in Settings → Live Voice → Commands, supporting co
 
 ## 6. External Host Engine Setup
 
+### Optional transcription context
+
+For **Whisper HTTP** and **Qwen HTTP**, Speech recognition → **Connection settings** includes a shared **Transcription context** field. It is empty by default and saves on blur (up to 1,000 characters). The English placeholder is an example, not a default or automatically submitted text:
+
+> Native Brazilian Portuguese speaker who frequently uses technical terms in English.
+
+Enter relevant background, names, or vocabulary. The text is sent with every new audio segment from the microphone or shared audio to the selected HTTP speech service. It is not agent conversation context and does not include chat history. Leave it empty to omit it entirely. Changing microphone settings replaces recognition; an already-running shared capture keeps its start-time settings until restarted.
+
+The plugin’s authenticated WAV routes transport Unicode/multiline context in a bounded, percent-encoded `x-dlv-transcription-context` header. The host validates it and forwards it as the standard optional `prompt` multipart field, or `prompt` in OminiX JSON/base64 requests. A server that rejects or ignores that optional field will not gain context support from the plugin alone; errors are not retried without context. Context can bias recognition, but does not enforce a language allow-list, guarantee instruction following, or prevent translation. Native Browser and browser-local model engines do not use this HTTP setting.
+
+
 ### Qwen3 HTTP Service
 
 When using Qwen3 ASR or TTS:

@@ -3,6 +3,7 @@ import { readFile, mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { transcriptionContext } from '../../recognition/transcriptionContext.js';
 import { defaultQwenVoice, isQwenVoice } from '../settings.js';
 import { validateMonoPcm16Wav } from '../../recognition/engines/whisper/whisperRecognitionHost.js';
 
@@ -177,8 +178,9 @@ export class QwenHttpHost {
       };
     }
   }
-  async transcribe(input, { lang = 'pt-BR', signal } = {}) {
+  async transcribe(input, { lang = 'pt-BR', context = '', signal } = {}) {
     const bytes = validateMonoPcm16Wav(input, { maxBytes: this.maxBytes }),
+      prompt = transcriptionContext(context),
       resolved = language(lang),
       health = await this.serverInfo(signal);
     let body, headers;
@@ -188,12 +190,14 @@ export class QwenHttpHost {
         file: Buffer.from(bytes).toString('base64'),
         language: resolved,
         response_format: 'json',
+        ...(prompt ? { prompt } : {}),
       });
     } else {
       const form = new FormData();
       form.append('file', new Blob([bytes], { type: 'audio/wav' }), 'utterance.wav');
       form.append('response_format', 'json');
       if (resolved) form.append('language', resolved);
+      if (prompt) form.append('prompt', prompt);
       body = form;
     }
     return this.request(

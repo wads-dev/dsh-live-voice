@@ -1,4 +1,5 @@
 import React from 'react';
+import { TRANSCRIPTION_CONTEXT_MAX_LENGTH } from '../../../recognition/transcriptionContext.js';
 import { useLanguage } from '../../../../app/client/i18n/index.js';
 import { QwenSettings } from '../../../core/qwen/QwenSettings.js';
 import { recognitionEngineOrder } from '../../../core/engineSelection.js';
@@ -8,6 +9,7 @@ import {
   CheckboxField,
   SelectField,
   SettingsSubcard,
+  TextAreaField,
 } from '../../../../shared/design-system/index.js';
 import { createDeviceOptions, useAudioDevices } from '../../hooks/useAudioDevices.js';
 export function RecognitionEngineSettings({
@@ -97,16 +99,22 @@ export function RecognitionEngineSettings({
           updateSettings={updateSettings}
         />
       )}
-      {engine === 'whisper-http' && (
+      {['whisper-http', 'qwen-http'].includes(engine) && (
         <SettingsSubcard title={(commons as any).connection.title()} icon="link">
-          <p>{(recognition as any).whisper.captureHelp()}</p>
-          <WhisperSettings controller={controller} />
-        </SettingsSubcard>
-      )}
-      {engine === 'qwen-http' && (
-        <SettingsSubcard title={(commons as any).connection.title()} icon="link">
-          <p>{(recognition as any).qwen.captureHelp()}</p>
-          {settings.engine !== 'qwen-http' && <QwenSettings controller={controller} />}
+          {engine === 'whisper-http' ? (
+            <WhisperSettings controller={controller} />
+          ) : (
+            settings.engine !== 'qwen-http' && <QwenSettings controller={controller} />
+          )}
+          <TextAreaField
+            label={(recognition as any).context.label()}
+            hint={(recognition as any).context.hint()}
+            placeholder={(recognition as any).context.placeholder()}
+            value={settings.recognitionContext || ''}
+            rows={3}
+            maxLength={TRANSCRIPTION_CONTEXT_MAX_LENGTH}
+            onCommit={(recognitionContext) => updateSettings({ recognitionContext })}
+          />
         </SettingsSubcard>
       )}
     </>

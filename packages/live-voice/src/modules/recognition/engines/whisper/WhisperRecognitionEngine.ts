@@ -54,6 +54,7 @@ export class WhisperHttpRecognitionEngine {
     voiceDetectionPreset = defaultSettings.voiceDetectionPreset,
     voiceDetectionCustomSilenceMs = defaultSettings.voiceDetectionCustomSilenceMs,
     voiceDetectionCustomParagraphMs = defaultSettings.voiceDetectionCustomParagraphMs,
+    recognitionContext = '',
     maxUtteranceSeconds = 60,
     recordings,
     inputSource = 'microphone',
@@ -81,6 +82,7 @@ export class WhisperHttpRecognitionEngine {
     this.voiceDetectionPreset = voiceDetectionPreset;
     this.voiceDetectionCustomSilenceMs = voiceDetectionCustomSilenceMs;
     this.voiceDetectionCustomParagraphMs = voiceDetectionCustomParagraphMs;
+    this.recognitionContext = recognitionContext;
     this.maxUtteranceSeconds = maxUtteranceSeconds;
     Object.assign(this, {
       recordings: recordings ?? createRecordingRepository(),

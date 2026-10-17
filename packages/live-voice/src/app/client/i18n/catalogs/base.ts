@@ -114,6 +114,9 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.recognition.commands.send': string;
   'dsh-live-voice.recognition.commands.stopSpeech': string;
   'dsh-live-voice.recognition.commands.title': string;
+  'dsh-live-voice.recognition.context.hint': string;
+  'dsh-live-voice.recognition.context.label': string;
+  'dsh-live-voice.recognition.context.placeholder': string;
   'dsh-live-voice.recognition.dictation.cancel': string;
   'dsh-live-voice.recognition.engine.label': string;
   'dsh-live-voice.recognition.headphoneMode.help': string;
