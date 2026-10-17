@@ -4,6 +4,8 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 [Product overview](README.md) · [Visão geral em português](README.pt.md) · [简体中文概览](README.zh-CN.md)
 
+## [NEXT] - Unreleased
+
 ## [0.6.2] - 2026-10-17
 
 ### Features
