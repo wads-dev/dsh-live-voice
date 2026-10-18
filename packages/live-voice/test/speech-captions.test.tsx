@@ -295,13 +295,13 @@ for (const playback of ['automatic', 'paused', 'manual']) {
       const inputBar = document.querySelector('[aria-label="Voice controls"]');
       const toggle = document.querySelector('.dlv-composer-toggle');
       const initialStops = stops;
-      assert.equal(toggle.getAttribute('aria-checked'), 'true');
+      assert.equal(toggle.getAttribute('aria-pressed'), 'true');
       await act(async () => {
         toggle.click();
         await new Promise(setImmediate);
       });
       assert.equal(stops, initialStops + 1);
-      assert.equal(toggle.getAttribute('aria-checked'), 'false');
+      assert.equal(toggle.getAttribute('aria-pressed'), 'false');
       assert.equal(document.querySelector('.dlv-speech-bar'), null);
       assert.equal(document.querySelector('[aria-label="Voice controls"]'), inputBar);
       assert.equal(c.snapshot.listening, true);
@@ -311,7 +311,7 @@ for (const playback of ['automatic', 'paused', 'manual']) {
         toggle.click();
         await new Promise(setImmediate);
       });
-      assert.equal(toggle.getAttribute('aria-checked'), 'true');
+      assert.equal(toggle.getAttribute('aria-pressed'), 'true');
       assert.equal(document.querySelector('.dlv-speech-bar'), null);
       assert.equal(spoken, 1, 'enabling again does not resume cancelled playback');
     },

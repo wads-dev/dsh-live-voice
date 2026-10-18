@@ -320,6 +320,7 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.speak.autoPlayback.enabled': string;
   'dsh-live-voice.speak.autoPlayback.help': string;
   'dsh-live-voice.speak.autoPlayback.label': string;
+  'dsh-live-voice.speak.autoPlayback.nextMode': string;
   'dsh-live-voice.speak.autoPlayback.remainingOne': string;
   'dsh-live-voice.speak.autoPlayback.remainingOther': string;
   'dsh-live-voice.speak.autoPlayback.status': string;
@@ -345,7 +346,6 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.speak.interruption.enabledHelp': string;
   'dsh-live-voice.speak.macos.label': string;
   'dsh-live-voice.speak.macos.name': string;
-  'dsh-live-voice.speak.macos.outputHelp': string;
   'dsh-live-voice.speak.macos.voice': string;
   'dsh-live-voice.speak.macos.voiceHelp': string;
   'dsh-live-voice.speak.output.checking': string;

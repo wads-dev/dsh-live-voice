@@ -1,31 +1,50 @@
 import React from 'react';
 import { useLanguage } from '../../../app/client/i18n/index.js';
 import { IconButton } from '../../../shared/design-system/index.js';
+import { DevicePopover } from './DevicePopover.js';
 export function AutoPlaybackToggle({ state, invoke, error }: any) {
   const { scoped: commons } = useLanguage((ctx) => ctx.commons);
   const { scoped: speak } = useLanguage((ctx) => ctx.speak);
+  const { scoped: recognition } = useLanguage((ctx) => ctx.recognition);
   const active = state.settings.announceAssistantMessages !== false;
+  const headphones = state.settings.mode === 'headphones';
+  const modeLabel = !active
+    ? (commons as any).off()
+    : headphones
+      ? (recognition as any).headphoneMode.label()
+      : (recognition as any).speakerMode.label();
+  const nextLabel = !active
+    ? (recognition as any).speakerMode.label()
+    : headphones
+      ? (commons as any).off()
+      : (recognition as any).headphoneMode.label();
+  const nextSettings = !active
+    ? { announceAssistantMessages: true, mode: 'speaker' }
+    : headphones
+      ? { announceAssistantMessages: false }
+      : { announceAssistantMessages: true, mode: 'headphones' };
   const count = state.speechSegmentsRemaining || 0;
   const title =
     count > 0
       ? (speak as any).autoPlayback[count === 1 ? 'remainingOne' : 'remainingOther']({
-          state: active ? (commons as any).on() : (commons as any).off(),
+          state: modeLabel,
           count,
         })
       : (speak as any).autoPlayback.status({
-          state: active ? (commons as any).on() : (commons as any).off(),
+          state: modeLabel,
         });
   return (
-    <IconButton
-      className="dlv-composer-toggle"
-      aria-pressed={active}
-      data-toggle-active={String(active)}
-      label={(speak as any).autoPlayback.label()}
-      title={error || (speak as any).autoPlayback[active ? 'disable' : 'enable']() + ' — ' + title}
-      icon={active ? 'speaker' : 'speakerOff'}
-      role="switch"
-      aria-checked={active}
-      onClick={() => invoke('updateSettings', { announceAssistantMessages: !active })}
-    />
+    <DevicePopover kind="audiooutput" settings={state.settings} invoke={invoke}>
+      <IconButton
+        className="dlv-composer-toggle"
+        aria-pressed={active}
+        data-toggle-active={String(active)}
+        label={title}
+        title={error || title + ' — ' + (speak as any).autoPlayback.nextMode({ mode: nextLabel })}
+        icon={!active ? 'speakerOff' : headphones ? 'headphones' : 'speaker'}
+        data-audio-mode={!active ? 'off' : headphones ? 'headphones' : 'speaker'}
+        onClick={() => invoke('updateSettings', nextSettings)}
+      />
+    </DevicePopover>
   );
 }

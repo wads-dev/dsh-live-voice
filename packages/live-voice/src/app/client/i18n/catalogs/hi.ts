@@ -432,6 +432,8 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.speak.autoPlayback.help':
     'सहायक के नए संदेश अपने आप पढ़कर सुनाए जाते हैं, भले ही माइक्रोफ़ोन बंद हो। जब आप बोल रहे हों, तो प्लेबैक प्रतीक्षा करता है।',
   'dsh-live-voice.speak.autoPlayback.label': 'सहायक का स्वचालित वाचन',
+  'dsh-live-voice.speak.autoPlayback.nextMode':
+    'अगला मोड: {mode}। ऑडियो डिवाइस चुनने के लिए राइट-क्लिक करें।',
   'dsh-live-voice.speak.autoPlayback.remainingOne':
     'सहायक का स्वचालित वाचन: {state} — {count} वाक् खंड शेष है',
   'dsh-live-voice.speak.autoPlayback.remainingOther':
@@ -464,8 +466,6 @@ const hi: LiveVoiceTranslation = {
     'नया उपयोगकर्ता संदेश भेजने या उससे चल रहे एजेंट को दिशा देने पर सहायक का चालू या ठहरा हुआ वाचन बंद हो जाता है।',
   'dsh-live-voice.speak.macos.label': 'macOS say · होस्ट पर ऑडियो',
   'dsh-live-voice.speak.macos.name': 'macOS say',
-  'dsh-live-voice.speak.macos.outputHelp':
-    'macOS say, DSH होस्ट पर चुने गए आउटपुट का उपयोग करता है।',
   'dsh-live-voice.speak.macos.voice': 'macOS say की आवाज़',
   'dsh-live-voice.speak.macos.voiceHelp':
     'say -v में इस्तेमाल किया जाने वाला आवाज़ का सटीक नाम दर्ज करें। macOS की डिफ़ॉल्ट आवाज़ के लिए खाली छोड़ें। होस्ट की आवाज़ों की सूची Terminal में say -v "?" से देखें।',

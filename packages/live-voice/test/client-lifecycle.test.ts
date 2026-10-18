@@ -1243,14 +1243,14 @@ test('all three bars stay ordered captions, shared audio, microphone with no dup
   assert.equal(bars[2].querySelector('[role="switch"]'), null);
   assert.equal(bars[2].querySelector('.dlv-speech-count'), null);
   assert.equal(bars[0].querySelector('[role="switch"]'), null);
-  assert.equal(document.querySelectorAll('[role="switch"]').length, 1);
+  assert.equal(document.querySelectorAll('[data-audio-mode]').length, 1);
   assert.equal(bars[0].querySelector('.dlv-speech-count').textContent, '1/3');
   await act(async () => {
     c.patch({ speaking: false, speechSegmentsRemaining: 0, speechRunActive: false });
   });
   assert.equal(document.querySelectorAll('.dlv-pill').length, 2);
   assert.ok(
-    document.querySelector('[role="switch"]'),
+    document.querySelector('[data-audio-mode]'),
     'autoplay remains accessible without speech',
   );
   assert.equal(meeting.getSnapshot().shared.listening, true);
@@ -1261,10 +1261,10 @@ test('composer autoplay remains between shared audio and microphone while idle, 
   await f.render(h(f.Buttons, f.props('a')));
   const buttons = [...document.querySelectorAll('button')];
   assert.equal(buttons[0].getAttribute('aria-label'), 'Shared audio');
-  assert.equal(buttons[1].getAttribute('role'), 'switch');
+  assert.equal(buttons[1].getAttribute('data-audio-mode'), 'speaker');
   assert.equal(buttons[1].classList.contains('dlv-live-toggle'), false);
   assert.equal(buttons[1].querySelector('.dlv-toggle-state'), null);
-  assert.match(buttons[1].title, /Disable automatic assistant speech/);
+  assert.match(buttons[1].title, /Next mode: Headphones/);
   assert.equal(buttons[0].title, 'Start audio sharing');
   assert.ok(buttons[2].title);
   assert.equal(buttons[2].classList.contains('dlv-mic'), true);
@@ -1276,11 +1276,14 @@ test('composer autoplay remains between shared audio and microphone while idle, 
   };
   const before = f.calls.length;
   await act(async () => buttons[1].click());
-  assert.deepEqual(updates, [{ announceAssistantMessages: false }]);
-  assert.equal(buttons[1].getAttribute('aria-checked'), 'false');
-  assert.match(buttons[1].title, /Enable automatic assistant speech/);
+  assert.deepEqual(updates, [{ announceAssistantMessages: true, mode: 'headphones' }]);
+  assert.equal(buttons[1].getAttribute('data-audio-mode'), 'headphones');
   await act(async () => buttons[1].click());
-  assert.equal(buttons[1].getAttribute('aria-checked'), 'true');
+  assert.deepEqual(updates[1], { announceAssistantMessages: false });
+  assert.equal(buttons[1].getAttribute('aria-pressed'), 'false');
+  assert.match(buttons[1].title, /Next mode: Speakers/);
+  await act(async () => buttons[1].click());
+  assert.equal(buttons[1].getAttribute('aria-pressed'), 'true');
   assert.equal(f.calls.length, before, 'capture and speech lifecycle actions are untouched');
 });
 

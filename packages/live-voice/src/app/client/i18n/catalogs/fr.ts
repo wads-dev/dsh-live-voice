@@ -457,6 +457,8 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.speak.autoPlayback.help':
     'Les nouveaux messages de l’assistant sont lus automatiquement, même avec le microphone désactivé. La lecture attend pendant que vous parlez.',
   'dsh-live-voice.speak.autoPlayback.label': 'Lecture automatique de l’assistant',
+  'dsh-live-voice.speak.autoPlayback.nextMode':
+    'Mode suivant : {mode}. Faites un clic droit pour choisir le périphérique audio.',
   'dsh-live-voice.speak.autoPlayback.remainingOne':
     'Lecture automatique de l’assistant : {state} — {count} segment vocal restant',
   'dsh-live-voice.speak.autoPlayback.remainingOther':
@@ -491,8 +493,6 @@ const fr: LiveVoiceTranslation = {
     'L’envoi d’un nouveau message utilisateur, y compris à l’agent en cours d’exécution, arrête la lecture vocale de l’assistant, qu’elle soit en cours ou en pause.',
   'dsh-live-voice.speak.macos.label': 'macOS say · son sur l’hôte',
   'dsh-live-voice.speak.macos.name': 'macOS say',
-  'dsh-live-voice.speak.macos.outputHelp':
-    'macOS say utilise la sortie sélectionnée sur l’hôte DSH.',
   'dsh-live-voice.speak.macos.voice': 'Voix de macOS say',
   'dsh-live-voice.speak.macos.voiceHelp':
     'Saisissez le nom exact de la voix utilisé par say -v. Laissez vide pour utiliser la voix par défaut de macOS. Listez les voix de l’hôte dans Terminal avec say -v "?".',

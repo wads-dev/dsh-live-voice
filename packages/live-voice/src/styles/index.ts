@@ -1,6 +1,9 @@
 // @ts-nocheck
 // Independent presentation for the DSH Live Voice controls.
 export const styles = `
+.dlv-context-popover{position:fixed;inset:auto;margin:0;z-index:2147483646;box-sizing:border-box;width:280px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;box-shadow:0 8px 30px #0004}
+.dlv-context-popover select{box-sizing:border-box;width:100%;min-width:0;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}.dlv-context-popover select:focus-visible{outline:2px solid var(--dsw-alias-label-primary);outline-offset:2px}
+
 .dlv-icon-button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex-shrink:0;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);padding:0;font:inherit}
 .dlv-icon-button svg{display:block;width:20px;height:20px}
 .dlv-mic{width:30px;height:30px;border:1px solid var(--dsw-alias-border-l1);border-radius:50%}

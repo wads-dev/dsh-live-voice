@@ -441,6 +441,8 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.speak.autoPlayback.help':
     'Novas mensagens do assistente são faladas automaticamente, mesmo com o microfone desligado. A reprodução aguarda enquanto você fala.',
   'dsh-live-voice.speak.autoPlayback.label': 'Fala automática do assistente',
+  'dsh-live-voice.speak.autoPlayback.nextMode':
+    'Próximo modo: {mode}. Clique com o botão direito para escolher o dispositivo de áudio.',
   'dsh-live-voice.speak.autoPlayback.remainingOne':
     'Fala automática do assistente: {state} — resta {count} segmento de fala',
   'dsh-live-voice.speak.autoPlayback.remainingOther':
@@ -474,7 +476,6 @@ const ptBR: LiveVoiceTranslation = {
     'Enviar ou direcionar uma nova mensagem interrompe a fala atual ou pausada do assistente.',
   'dsh-live-voice.speak.macos.label': 'macOS say · áudio no host',
   'dsh-live-voice.speak.macos.name': 'macOS say',
-  'dsh-live-voice.speak.macos.outputHelp': 'O macOS say usa a saída selecionada no host DSH.',
   'dsh-live-voice.speak.macos.voice': 'Voz do macOS say',
   'dsh-live-voice.speak.macos.voiceHelp':
     'Informe o nome exato da voz usado por say -v. Deixe vazio para usar a voz padrão do macOS. Liste as vozes do host no Terminal com say -v "?".',

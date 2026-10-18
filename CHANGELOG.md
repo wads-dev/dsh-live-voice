@@ -6,6 +6,11 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ## [NEXT] - Unreleased
 
+### Features
+
+- Cycle the composer speech button through Off, Speakers (gated listening), and Headphones (open microphone), using the same saved automatic-speech and listening-mode preferences as Settings.
+- Right-click the composer speech or microphone button to choose its audio device in a compact panel above the control, without opening Settings. Keyboard users can use the context-menu key or Shift+F10; Escape dismisses the panel. Device choices stay synchronized with Settings, including client-side playback of audio synthesized by macOS Say.
+
 ## [0.6.2] - 2026-10-17
 
 ### Features

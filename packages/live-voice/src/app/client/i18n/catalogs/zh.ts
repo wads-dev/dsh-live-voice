@@ -397,6 +397,7 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.speak.autoPlayback.help':
     '即使麦克风关闭，助手的新消息也会自动朗读。你说话时会等待，不会播放。',
   'dsh-live-voice.speak.autoPlayback.label': '助手自动朗读',
+  'dsh-live-voice.speak.autoPlayback.nextMode': '下一模式：{mode}。右键单击以选择音频设备。',
   'dsh-live-voice.speak.autoPlayback.remainingOne':
     '助手自动朗读：{state} — 剩余 {count} 个语音片段',
   'dsh-live-voice.speak.autoPlayback.remainingOther':
@@ -427,7 +428,6 @@ const zh: LiveVoiceTranslation = {
     '发送新的用户消息或用新消息引导智能体时，会停止当前正在播放或已暂停的助手语音。',
   'dsh-live-voice.speak.macos.label': 'macOS say · 在主机播放',
   'dsh-live-voice.speak.macos.name': 'macOS say',
-  'dsh-live-voice.speak.macos.outputHelp': 'macOS say 使用 DSH 主机上选定的输出设备。',
   'dsh-live-voice.speak.macos.voice': 'macOS say 音色',
   'dsh-live-voice.speak.macos.voiceHelp':
     '输入 say -v 使用的准确音色名称。留空以使用 macOS 默认音色。在主机终端运行 say -v "?" 查看音色列表。',

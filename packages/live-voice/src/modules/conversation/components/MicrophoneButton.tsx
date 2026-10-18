@@ -1,6 +1,6 @@
 import React from 'react';
 import { IconButton } from '../../../shared/design-system/index.js';
-export type MicrophoneButtonProps = {
+export type MicrophoneButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   disabled?: boolean;
   'aria-pressed'?: boolean;

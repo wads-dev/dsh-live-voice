@@ -4,11 +4,10 @@ import { defaultAgentVoiceContext } from '../../../core/settings.js';
 import { QwenSettings } from '../../../core/qwen/QwenSettings.js';
 import {
   CheckboxField,
-  SelectField,
   SettingsSubcard,
   TextAreaField,
 } from '../../../../shared/design-system/index.js';
-import { createDeviceOptions, useAudioDevices } from '../../hooks/useAudioDevices.js';
+import { AudioDeviceField } from '../../components/AudioDeviceField.js';
 export function SpeechAdvancedSettings({
   controller,
   settings,
@@ -16,28 +15,15 @@ export function SpeechAdvancedSettings({
   updateSettings,
   invoke,
 }: any) {
-  const { scoped: commons } = useLanguage((ctx) => ctx.commons);
   const { scoped: settingsLanguage } = useLanguage((ctx) => ctx.settings);
   const { scoped: speak } = useLanguage((ctx) => ctx.speak);
-  const devices = useAudioDevices();
-  const outputOptions = createDeviceOptions(
-    devices,
-    'audiooutput',
-    (commons as any).systemDefault(),
-    (speak as any).output.fallbackName(),
-  );
   return (
     <>
-      {settings.engine !== 'say' ? (
-        <SelectField
-          label={(speak as any).output.device()}
-          value={settings.outputDeviceId || ''}
-          options={outputOptions}
-          onChange={(event) => updateSettings({ outputDeviceId: event.target.value })}
-        />
-      ) : (
-        <p className="dlv-setting-description">{(speak as any).macos.outputHelp()}</p>
-      )}
+      <AudioDeviceField
+        kind="audiooutput"
+        value={settings.outputDeviceId || ''}
+        onChange={(value) => updateSettings({ outputDeviceId: value })}
+      />
       {settings.engine === 'qwen-http' && (
         <SettingsSubcard title={(speak as any).qwen.connection()} icon="link">
           <QwenSettings controller={controller} />

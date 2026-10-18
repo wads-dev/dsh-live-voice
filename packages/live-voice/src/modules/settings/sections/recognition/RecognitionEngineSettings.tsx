@@ -11,7 +11,7 @@ import {
   SettingsSubcard,
   TextAreaField,
 } from '../../../../shared/design-system/index.js';
-import { createDeviceOptions, useAudioDevices } from '../../hooks/useAudioDevices.js';
+import { AudioDeviceField } from '../../components/AudioDeviceField.js';
 export function RecognitionEngineSettings({
   controller,
   settings,
@@ -20,7 +20,6 @@ export function RecognitionEngineSettings({
 }: any) {
   const { scoped: commons } = useLanguage((ctx) => ctx.commons);
   const { scoped: recognition } = useLanguage((ctx) => ctx.recognition);
-  const devices = useAudioDevices();
   const engine = settings.recognitionEngine || 'browser';
   const setEngine = (next: string) =>
     updateSettings(
@@ -45,16 +44,10 @@ export function RecognitionEngineSettings({
         }))}
         onChange={(event) => setEngine(event.target.value)}
       />
-      <SelectField
-        label={(recognition as any).microphone.device()}
+      <AudioDeviceField
+        kind="audioinput"
         value={settings.inputDeviceId || ''}
-        options={createDeviceOptions(
-          devices,
-          'audioinput',
-          (commons as any).systemDefault(),
-          (commons as any).device.numberedLabel({ number: '' }),
-        )}
-        onChange={(event) => updateSettings({ inputDeviceId: event.target.value })}
+        onChange={(value) => updateSettings({ inputDeviceId: value })}
       />
       <SelectField
         label={(recognition as any).language.label()}

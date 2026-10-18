@@ -5,6 +5,7 @@ import { useConversationActions, useConversationController } from '../hooks/inde
 import { MicrophoneButton } from './MicrophoneButton.js';
 import { microphoneAction } from '../models/microphoneAction.js';
 import { AutoPlaybackToggle } from './AutoPlaybackToggle.js';
+import { DevicePopover } from './DevicePopover.js';
 
 export type ConversationControlsProps = { controller: any };
 export function ConversationControls({ controller }: ConversationControlsProps) {
@@ -18,11 +19,13 @@ export function ConversationControls({ controller }: ConversationControlsProps) 
   return (
     <>
       <AutoPlaybackToggle state={state} invoke={invoke} error={error} />
-      <MicrophoneButton
-        label={label}
-        aria-pressed={Boolean(busy)}
-        onClick={() => invoke(microphoneAction(state))}
-      />
+      <DevicePopover kind="audioinput" settings={state.settings} invoke={invoke}>
+        <MicrophoneButton
+          label={label}
+          aria-pressed={Boolean(busy)}
+          onClick={() => invoke(microphoneAction(state))}
+        />
+      </DevicePopover>
       <ErrorMessage
         error={error}
         dismissLabel={(commons as any).dismissError()}

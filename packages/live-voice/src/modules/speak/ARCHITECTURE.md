@@ -1,6 +1,6 @@
 # Speaking module
 
-`services/speechQueue.ts` schedules speech independently of capture and agent generation. `engines/browser/BrowserSpeakingEngine.ts` uses browser voices, `engines/qwen/QwenSpeakingEngine.ts` uses the Qwen HTTP bridge, and `engines/say/` uses the macOS host speaker. `engines/audio/` manages host audio playback and transcoding. `qwen/QwenSpeakingSettings.tsx` presents engine-specific settings.
+`services/speechQueue.ts` schedules speech independently of capture and agent generation. `engines/browser/BrowserSpeakingEngine.ts` uses browser voices, `engines/qwen/QwenSpeakingEngine.ts` uses the Qwen HTTP bridge, and `engines/say/` synthesizes audio on the macOS host. `engines/audio/` plays host-synthesized Say and Qwen audio in the client browser, using the selected client output device when browser output routing is supported. `qwen/QwenSpeakingSettings.tsx` presents engine-specific settings.
 
 Browser and host-audio adapters share `prepare` / `playPrepared` / idempotent `dispose`; preparation is inaudible and playback starts only after coordinator authorization. Browser preparation creates local utterances, not cached synthesized audio; never pre-enqueue future native utterances past silence, pause, or segment-gap gates. Host-audio prefetch applies equally to Say and Qwen. Local `getPlaybackCapabilities` exposes pause/resume mechanics without provider health requests.
 
