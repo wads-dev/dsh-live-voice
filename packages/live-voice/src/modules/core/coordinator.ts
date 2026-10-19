@@ -101,6 +101,7 @@ export class VoiceCoordinator {
     this.interruptionPausedSpeech = false;
     this.assistantSpeechTimer = null;
     this.assistantSpeechNotBefore = 0;
+    this.assistantSpeechDelayReason = 'silence-delay';
     this.recognition.lang = this.snapshot.settings.recognitionLang;
     this.meter.deviceId = this.snapshot.settings.inputDeviceId;
     this.getSnapshot = () => this.snapshot;
@@ -112,6 +113,7 @@ export class VoiceCoordinator {
   }
   patch(next) {
     this.snapshot = { ...this.snapshot, ...next };
+    this._auditSpeechWait();
     for (const listener of this.listeners) {
       try {
         listener();
@@ -480,6 +482,7 @@ export class VoiceCoordinator {
             if (!valid()) return;
             if (active) {
               this.cancelAutoSend({ preserveIntent: true });
+              this.assistantSpeechDelayReason = 'silence-delay';
               this.assistantSpeechNotBefore = Infinity;
               this._cancelAssistantSpeechTimer();
             } else
@@ -536,6 +539,7 @@ export class VoiceCoordinator {
     this.externalSpeechActive = Boolean(active);
     if (!active) this.externalSpeechConfirmed = false;
     if (active) {
+      this.assistantSpeechDelayReason = 'silence-delay';
       this.assistantSpeechNotBefore = Infinity;
       this._cancelAssistantSpeechTimer();
     } else if (!this.snapshot.recognizing) {
@@ -543,6 +547,7 @@ export class VoiceCoordinator {
         Date.now() + this.snapshot.settings.assistantSpeechDelaySeconds * 1000;
     }
     this._handleSpeechInterruption(this._speechActivity());
+    this._auditSpeechWait();
     if (!active) this._drain();
   }
   confirmExternalSpeech(text) {
@@ -586,6 +591,7 @@ export class VoiceCoordinator {
           this.snapshot.speaking &&
           !this.snapshot.paused
         ) {
+          this.activeRecordingTimeline?.('assistant-interruption-request', { automatic: true });
           this.interruptionPausedSpeech = true;
           void this.pauseSpeech(true).then(() => {
             if (!this._speechActivity()) this._scheduleInterruptionResume();
@@ -628,7 +634,7 @@ export class VoiceCoordinator {
     }, this.snapshot.settings.assistantSpeechDelaySeconds * 1000);
   }
 
-  onResult({ final = '', interim = '', startedAt, paragraphBefore = false }) {
+  onResult({ final = '', interim = '', startedAt, paragraphBefore = false, onCommandRecognized }) {
     if (this.disposed || (!this.snapshot.listening && !this.snapshot.starting)) return;
     const recognizing = this.recognition.activityManaged ? this.snapshot.recognizing : !!interim;
     if (
@@ -673,6 +679,8 @@ export class VoiceCoordinator {
           clear: this.snapshot.settings.voiceCommandClear,
         });
       if (command) {
+        if (onCommandRecognized) onCommandRecognized(command);
+        else this.recordingTimeline?.()?.('voice-command-recognized', { command });
         // Discard pending recognition without rewriting the composer.
         this.transcript.reset();
         this.cancelAutoSend();
@@ -1017,6 +1025,10 @@ export class VoiceCoordinator {
     this.queue = [];
   }
   async stopSpeech(resumeListening = true) {
+    const timeline = this.activeRecordingTimeline ?? this.recordingSpeechWait?.timeline;
+    if (this.snapshot.speaking || this.queue.length || this.recordingSpeechWait)
+      timeline?.('assistant-cancel');
+    this._endSpeechWait('cancelled');
     this.activeRecordingTimeline = null;
     this._cancelAssistantSpeechTimer();
     this.assistantSpeechNotBefore = 0;
@@ -1229,7 +1241,14 @@ export class VoiceCoordinator {
     this.speechController = controller;
     this.speechLaunchPending = true;
     const timeline = this.activeRecordingTimeline ?? this.recordingTimeline?.();
+    this._endSpeechWait('ready');
     this.activeRecordingTimeline = timeline;
+    timeline?.('assistant-play-request', {
+      automatic: !manual,
+      mode: this.snapshot.settings.mode,
+      queuedSegments: this.queue.length,
+      pendingTranscriptions: this.snapshot.pendingTranscriptions,
+    });
     let playbackStarted = false;
     let playbackFinished = false;
     const engine = this.engines[this.snapshot.settings.engine];
@@ -1257,9 +1276,14 @@ export class VoiceCoordinator {
       if (this.speechStopError) throw this.speechStopError;
       if (epoch !== this.speechEpoch || this.disposed) return;
       if (this.snapshot.settings.mode === 'speaker') {
-        if (this.snapshot.listening) timeline?.('capture-gated');
+        const gating = this.snapshot.listening;
+        if (gating) timeline?.('capture-gated');
         await this.stopListening();
-        if (this.inputReleaseError) throw this.inputReleaseError;
+        if (this.inputReleaseError) {
+          if (gating) timeline?.('capture-gate-failed');
+          throw this.inputReleaseError;
+        }
+        if (gating) timeline?.('input-stop-complete');
       }
       if (epoch !== this.speechEpoch || this.disposed) return;
       const queued = item;
@@ -1307,6 +1331,7 @@ export class VoiceCoordinator {
       if (epoch === this.speechEpoch) {
         failed = true;
         this._suppressPending();
+        if (error.name !== 'AbortError') timeline?.('assistant-error');
         if (error.name !== 'AbortError') this.patch({ error: message(error) });
       }
     } finally {
@@ -1336,6 +1361,7 @@ export class VoiceCoordinator {
           this._releaseSpeechHistory();
         this._syncSpeechSegments();
         if (!failed && this.queue.length) {
+          this.assistantSpeechDelayReason = 'segment-gap';
           this.assistantSpeechNotBefore = Date.now() + this.snapshot.settings.segmentGapMs;
           this._drain();
         } else if (
@@ -1362,11 +1388,57 @@ export class VoiceCoordinator {
       if (signal.aborted) done();
     });
   }
+  _endSpeechWait(outcome = 'ready') {
+    const wait = this.recordingSpeechWait;
+    if (!wait) return null;
+    this.recordingSpeechWait = null;
+    wait.timeline?.('assistant-wait-end', { ...wait.details, outcome });
+    return wait.timeline;
+  }
+  _auditSpeechWait() {
+    // Transitions only: no per-frame events, raw text, or inference probabilities.
+    if (this.disposed || !this.queue.length || this.snapshot.speaking) {
+      this._endSpeechWait(this.snapshot.speaking ? 'ready' : 'cancelled');
+      return;
+    }
+    const reasons = [];
+    const manual = this.queue[0]?.manual;
+    if (this.speechSuspended && !manual) reasons.push('suspended');
+    if (this.snapshot.paused) reasons.push('paused');
+    if (this.snapshot.recognizing) reasons.push('user-speech');
+    if (this.externalSpeechActive) reasons.push('external-speech');
+    if (this.snapshot.starting) reasons.push('input-starting');
+    if (!manual && this.snapshot.pendingTranscriptions > 0) reasons.push('transcription');
+    if (!manual && this.snapshot.autoSendAt !== null) reasons.push('delivery');
+    const delay = this.assistantSpeechNotBefore - Date.now();
+    if (delay > 0 && Number.isFinite(delay))
+      reasons.push(this.assistantSpeechDelayReason ?? 'silence-delay');
+    if (!reasons.length) {
+      this._endSpeechWait('ready');
+      return;
+    }
+    const key = reasons.join(',');
+    if (this.recordingSpeechWait?.key === key) return;
+    this._endSpeechWait('changed');
+    const timeline =
+      reasons.includes('segment-gap') && this.activeRecordingTimeline
+        ? this.activeRecordingTimeline
+        : this.recordingTimeline?.();
+    const details = {
+      reasons,
+      queuedSegments: this.queue.length,
+      pendingTranscriptions: this.snapshot.pendingTranscriptions,
+      ...(Number.isFinite(delay) && delay > 0 ? { delayMs: Math.ceil(delay) } : {}),
+    };
+    this.recordingSpeechWait = { key, timeline, details };
+    timeline?.('assistant-wait-start', details);
+  }
   _cancelAssistantSpeechTimer() {
     if (this.assistantSpeechTimer !== null) clearTimeout(this.assistantSpeechTimer);
     this.assistantSpeechTimer = null;
   }
   _drain() {
+    this._auditSpeechWait();
     if (
       this.disposed ||
       (this.speechSuspended && !this.queue[0]?.manual) ||

@@ -1,4 +1,5 @@
 import React from 'react';
+import { EventTimeline } from './EventTimeline.js';
 import { TimelineWindow } from './TimelineWindow.js';
 import { searchSegments } from './segmentSearch.js';
 import {
@@ -270,6 +271,7 @@ function RecordingDetail({
     setName(session.name ?? '');
   }, [session.id, session.name, service]);
   const [selectedSegment, setSelectedSegment] = React.useState('');
+  const [selectedEvents, setSelectedEvents] = React.useState<string[]>([]);
   const clearPlayback = (player = audio.current) => {
     ++playGeneration.current;
     if (player?.hasAttribute('src')) {
@@ -436,6 +438,15 @@ function RecordingDetail({
   };
   const eventName = (kind: string) =>
     ({
+      'voice-command-recognized': copy.recordings.voiceCommandRecognized,
+      'assistant-wait-start': copy.recordings.assistantWaitStart,
+      'assistant-wait-end': copy.recordings.assistantWaitEnd,
+      'assistant-play-request': copy.recordings.assistantPlayRequest,
+      'assistant-interruption-request': copy.recordings.assistantInterruptionRequest,
+      'assistant-cancel': copy.recordings.assistantCancel,
+      'assistant-error': copy.recordings.assistantError,
+      'input-stop-complete': copy.recordings.inputStopComplete,
+      'capture-gate-failed': copy.recordings.captureGateFailed,
       'assistant-start': copy.recordings.assistantStart,
       'assistant-end': copy.recordings.assistantEnd,
       'assistant-pause': copy.recordings.assistantPause,
@@ -444,6 +455,55 @@ function RecordingDetail({
       'capture-start': copy.recordings.captureStart,
       'capture-end': copy.recordings.captureEnd,
     })[kind] ?? kind;
+  const commandName = (command: string) =>
+    ({
+      send: copy.recordings.commandSend,
+      queue: copy.recordings.commandQueue,
+      end: copy.recordings.commandEnd,
+      mute: copy.recordings.commandMute,
+      resume: copy.recordings.commandResume,
+      stopSpeaking: copy.recordings.commandStopSpeaking,
+      clear: copy.recordings.commandClear,
+    })[command] ?? command;
+  const commandsFor = (segment: RecordingSegment) =>
+    (session.events ?? []).filter(
+      (event) =>
+        event.kind === 'voice-command-recognized' && event.details?.segmentId === segment.id,
+    );
+  const eventDetails = (event: NonNullable<RecordingSession['events']>[number]) => {
+    const details = event.details;
+    if (!details) return '';
+    const reasons = {
+      'user-speech': copy.recordings.waitUserSpeech,
+      'external-speech': copy.recordings.waitExternalSpeech,
+      transcription: copy.recordings.waitTranscription,
+      delivery: copy.recordings.waitDelivery,
+      'input-starting': copy.recordings.waitInputStarting,
+      'silence-delay': copy.recordings.waitSilence,
+      'segment-gap': copy.recordings.waitSegmentGap,
+      paused: copy.recordings.waitPaused,
+      suspended: copy.recordings.waitSuspended,
+    };
+    return [
+      details.command && commandName(details.command),
+      ...(details.reasons ?? []).map((reason) => reasons[reason] ?? reason),
+      details.outcome &&
+        {
+          ready: copy.recordings.waitReady,
+          changed: copy.recordings.waitChanged,
+          cancelled: copy.recordings.waitCancelled,
+        }[details.outcome],
+      details.queuedSegments !== undefined &&
+        copy.recordings.queuedSegments + ': ' + details.queuedSegments,
+      details.pendingTranscriptions !== undefined &&
+        copy.recordings.waitTranscription + ': ' + details.pendingTranscriptions,
+      details.delayMs !== undefined && copy.recordings.waitDelay + ': ' + details.delayMs + ' ms',
+      details.automatic !== undefined &&
+        (details.automatic ? copy.recordings.automaticAction : copy.recordings.manualAction),
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  };
   const removeSession = async () => {
     const token = ++generation.current;
     setExporting(false);
@@ -481,7 +541,11 @@ function RecordingDetail({
   const inWindow = (sample: number) => sample >= viewStart && sample <= viewEnd;
   const position = (sample: number) => ((sample - viewStart) / viewLength) * 100 + '%';
   const segmentName = (segment: RecordingSegment) =>
-    (segment.kind === 'speech' ? copy.recordings.speech : copy.recordings.silence) +
+    (commandsFor(segment).length
+      ? copy.recordings.eventCommand
+      : segment.kind === 'speech'
+        ? copy.recordings.speech
+        : copy.recordings.silence) +
     ' · ' +
     duration(segment.startSample, session.sampleRate) +
     ' — ' +
@@ -660,7 +724,7 @@ function RecordingDetail({
             <button
               key={segment.id}
               type="button"
-              data-kind={segment.kind}
+              data-kind={commandsFor(segment).length ? 'command' : segment.kind}
               aria-label={segmentName(segment)}
               title={segmentName(segment)}
               aria-pressed={selectedSegment === segment.id}
@@ -676,23 +740,6 @@ function RecordingDetail({
               disabled={deleting || segment.endSample <= segment.startSample}
               onClick={() => void play(segment, false)}
             />
-          ))}
-        {(session.events ?? [])
-          .filter((event) => inWindow(event.atSample))
-          .map((event, index) => (
-            <span
-              key={event.id}
-              className="dlvd-event-pin"
-              data-event={event.kind}
-              style={{
-                left: position(event.atSample),
-                top: (index % 3) * 12,
-              }}
-              title={eventName(event.kind) + ' · ' + new Date(event.occurredAt).toLocaleString()}
-              aria-hidden="true"
-            >
-              ◆
-            </span>
           ))}
         {session.pins
           .filter((pin) => inWindow(pin.atSample))
@@ -713,11 +760,29 @@ function RecordingDetail({
       <div className="dlvd-timeline-legend">
         <span data-kind="speech">{copy.recordings.speech}</span>
         {' · '}
-        <span data-kind="silence">{copy.recordings.silence}</span>
+        <span data-kind="silence">{copy.recordings.silence}</span> ·{' '}
+        <span data-kind="command">{copy.recordings.eventCommand}</span>
         {' · '}
         {duration(viewStart, session.sampleRate)} –{' '}
         {duration(Math.min(viewEnd, session.savedSamples), session.sampleRate)}
       </div>
+      <EventTimeline
+        events={session.events ?? []}
+        start={viewStart}
+        end={viewEnd}
+        copy={copy.recordings}
+        format={(sample) => duration(sample, session.sampleRate)}
+        name={eventName}
+        details={eventDetails}
+        onSelect={(events) => {
+          setSelectedEvents(events.map((event) => event.id));
+          const row = Array.from(
+            container.current?.querySelectorAll<HTMLElement>('[data-recording-event]') ?? [],
+          ).find((node) => node.dataset.recordingEvent === events[0].id);
+          row?.scrollIntoView?.({ block: 'nearest' });
+          row?.focus();
+        }}
+      />
       <h4>{copy.recordings.events}</h4>
       <p>{copy.recordings.eventsHelp}</p>
       <table className="dlvd-recording-events">
@@ -730,8 +795,16 @@ function RecordingDetail({
         </thead>
         <tbody>
           {(session.events ?? []).map((event) => (
-            <tr key={event.id}>
-              <td>{eventName(event.kind)}</td>
+            <tr
+              key={event.id}
+              data-recording-event={event.id}
+              data-selected={selectedEvents.includes(event.id)}
+              tabIndex={-1}
+            >
+              <td>
+                {eventName(event.kind)}
+                {event.details && <div className="dlvd-event-details">{eventDetails(event)}</div>}
+              </td>
               <td>
                 <time dateTime={event.occurredAt}>
                   {new Date(event.occurredAt).toLocaleString()}.
@@ -774,7 +847,18 @@ function RecordingDetail({
                 <td>
                   <span>{sourceName(session, copy)}</span>
                   <br />
-                  {segment.kind === 'speech' ? copy.recordings.speech : copy.recordings.silence}
+                  {commandsFor(segment).length ? (
+                    <span className="dlvd-command-label">
+                      ϟ {copy.recordings.eventCommand} ·{' '}
+                      {commandsFor(segment)
+                        .map((event) => commandName(event.details!.command!))
+                        .join(', ')}
+                    </span>
+                  ) : segment.kind === 'speech' ? (
+                    copy.recordings.speech
+                  ) : (
+                    copy.recordings.silence
+                  )}
                   {segment.open && <small>{copy.recordings.open}</small>}
                 </td>
                 <td>{duration(segment.startSample, session.sampleRate)}</td>

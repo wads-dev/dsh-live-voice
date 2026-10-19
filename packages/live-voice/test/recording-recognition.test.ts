@@ -263,7 +263,13 @@ test('recording engine saves continuous PCM before VAD and transcribes recording
   const requests: any[] = [];
   const engine = new WhisperHttpRecognitionEngine({
     meter: { context: { sampleRate: 16000 }, source: {} },
-    recordings: { begin: async () => writer },
+    recordings: {
+      begin: async () => writer,
+      timeline: () => async (kind, details) => {
+        (session as any).events ??= [];
+        (session as any).events.push({ kind, details });
+      },
+    },
     voiceDetectionEngine: 'silero',
     voiceDetectionPreset: 'custom',
     voiceDetectionCustomSilenceMs: 500,
@@ -310,6 +316,15 @@ test('recording engine saves continuous PCM before VAD and transcribes recording
   assert.equal(attempts[0].status, 'success');
   assert.equal(attempts[0].text, 'saved speech');
   assert.equal(results[0].final, 'saved speech');
+  results[0].onCommandRecognized('send');
+  results[0].onCommandRecognized('send');
+  await tick();
+  assert.deepEqual((session as any).events, [
+    {
+      kind: 'voice-command-recognized',
+      details: { command: 'send', segmentId: attempts[0].segmentId, attemptId: attempts[0].id },
+    },
+  ]);
   assert.deepEqual(
     recordingSegments(session).map((s) => s.kind),
     ['silence', 'speech', 'silence'],

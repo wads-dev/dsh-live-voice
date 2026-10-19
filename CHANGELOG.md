@@ -8,17 +8,34 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ### Features
 
+#### Live Voice
+
 - Add experimental local Attendee meeting input ([Google Meet quickstart](docs/GOOGLE-MEET.md)) through a compact composer menu, with explicit Google Meet entry and one-click disconnect returning to the URL form without confirmation, saved bot naming and visible participant names beside independent audio bars. The menu contains only a Google Meet URL and Connect; bot name, origin and host-saved key are configured once in Settings, with explicit key saving/replacement/removal and no browser secret readback; participant aliases apply to future transcript and capture labels without rewriting history. Participant-labelled VAD/STT and authenticated browser delivery support real Meet input; upstream overlap isolation is not guaranteed. Sparse audio uses real capture bursts, not fabricated silence. A packaged Compose bridge manages local TLS; supported HTTP or browser-local STT is required. Recording retention groups Attendee participants and bursts by meeting and capture activity while retained, with active/pending/star protection; browser storage limits still apply.
 - Cycle the composer speech button through Off, Speakers (gated listening), and Headphones (open microphone), using the same saved automatic-speech and listening-mode preferences as Settings.
 - Right-click the composer speech or microphone button to choose its audio device in a compact panel above the control, without opening Settings. Keyboard users can use the context-menu key or Shift+F10; Escape dismisses the panel. Device choices stay synchronized with Settings, including client-side playback of audio synthesized by macOS Say.
+- Save recognized voice-command actions as recording events linked to their original speech segment, without duplicating command text or claiming that the requested action completed.
+
+#### Live Voice Debugger
+
+- Highlight speech that produced a recognized voice command in orange and identify the command action, preserving the original speech/silence boundaries and audio.
 
 ### Improvements
 
+#### Live Voice
+
 - Retain compact HTTP transcription-request measurements per attempt: actual prepared WAV size, input/output sample counts and rates, duration, language, preparation time and response status. Inspect and export these alongside expected ranges without storing duplicate audio; older attempts remain explicitly unmeasured. These measurements do not claim server receipt or full model processing.
-- Known limitation — Qwen HTTP automatic language detection can return only the beginning of a complete audio segment. This was reproduced with the local ominix-api service using the same 23.136-second WAV: automatic language returned a truncated transcript, while explicit Portuguese returned the remaining speech in repeated paired tests. Workaround: select the spoken language explicitly and retry the saved segment. The internal server/model cause is still under investigation; this is not a fixed issue or evidence that VAD cut the audio.
+- Known limitation — Qwen HTTP automatic language detection can return only the beginning of a complete audio segment. This was reproduced with the local ominix-api service using the same 23.136-second WAV: automatic language returned a truncated transcript, while explicit Portuguese returned the remaining speech in repeated paired tests. Workaround: select the spoken language explicitly and retry the saved segment. The internal server/model cause is still under investigation; this is not a fixed issue or evidence that VAD cut the audio. Explicit language can also change recognition of mixed-language technical terms; this workaround is not a complete fix.
+
+#### Live Voice Debugger
+
+- Inspect assistant waiting and reasons, playback requests, input-stop request/completion/failure, interruptions and cancellations in a separate event track and timestamped list. Historical sessions gain no invented events.
+- Distinguish event categories with labeled lanes, colors and action symbols. Group nearby events with a count without discarding their real timestamps; activate a marker to highlight every original event in the list.
+- Show immediate, keyboard-accessible event details in a viewport-bounded custom tooltip instead of delayed native titles. Tooltips ignore pointer input so neighboring markers remain reachable; Escape dismisses them.
 - Use compact, accessible play icons in debugger segment rows and download an individual speech or silence segment as WAV. Retranscribe finished speech using current Qwen HTTP or Whisper HTTP settings while preserving earlier attempts and leaving the composer unchanged.
 
 ### Fixes
+
+#### Live Voice Debugger
 
 - Load the selected speech or silence segment into the debugger audio player when clicking its timeline band, instead of clearing playback without loading audio.
 

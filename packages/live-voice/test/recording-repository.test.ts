@@ -123,6 +123,9 @@ test('starred names survive audio writes and timeline events survive capture gat
     for (const value of ['a\nb', 'x'.repeat(121), 'a\u0000b'])
       await assert.rejects(repository.setName!(id, value), { code: 'invalid-range' });
     const timeline = repository.timeline();
+    const details = { reasons: ['user-speech' as const], queuedSegments: 2 };
+    await timeline('assistant-wait-start', details);
+    details.queuedSegments = 99;
     await timeline('capture-gated');
     await writer.finish();
     await timeline('assistant-start');
@@ -135,6 +138,7 @@ test('starred names survive audio writes and timeline events survive capture gat
       saved?.events?.map((e) => e.kind),
       [
         'capture-start',
+        'assistant-wait-start',
         'capture-gated',
         'capture-end',
         'assistant-start',
@@ -148,8 +152,28 @@ test('starred names survive audio writes and timeline events survive capture gat
     );
     assert.equal(saved?.events?.at(-1)?.atSample, 16000);
     const exported = JSON.parse(await (await repository.export(id)).text());
+    assert.equal(
+      saved?.events?.find((e) => e.kind === 'assistant-wait-start')?.details?.queuedSegments,
+      2,
+    );
     assert.equal(exported.recording.name, saved?.name);
     assert.deepEqual(exported.recording.events, saved?.events);
+    const beforePins = structuredClone(saved?.pins);
+    const commandTimeline = repository.timeline(shared.session.id);
+    await shared.finish();
+    await commandTimeline('voice-command-recognized', {
+      command: 'send',
+      segmentId: 'exact-source',
+      attemptId: 'exact-attempt',
+    });
+    const commandSession = await repository.get(shared.session.id);
+    assert.equal(commandSession?.events?.at(-1)?.details?.segmentId, 'exact-source');
+    assert.equal(commandSession?.events?.at(-1)?.kind, 'voice-command-recognized');
+    assert.equal(
+      (await repository.get(id))?.events?.some((e) => e.kind === 'voice-command-recognized'),
+      false,
+    );
+    assert.deepEqual((await repository.get(id))?.pins, beforePins);
     await repository.setName!(id, 'Renamed after capture');
     await repository.setName!(id, '');
     assert.equal((await repository.get(id))?.name, '');

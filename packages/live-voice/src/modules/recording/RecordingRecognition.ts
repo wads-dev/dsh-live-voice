@@ -6,6 +6,7 @@ import type {
   RecordingAttempt,
   RecordingPin,
   RecordingParticipant,
+  RecordingVoiceCommand,
 } from './types.js';
 import type { SileroVadOptions, SileroVadStream } from '../recognition/vad/SileroVadRuntime.js';
 type CaptureHandle = { finish(): Promise<void>; release(): void };
@@ -24,6 +25,7 @@ interface RecognitionCallbacks {
     interim: string;
     startedAt: number;
     paragraphBefore?: boolean;
+    onCommandRecognized?(command: RecordingVoiceCommand): void;
   }): void;
   onActivity?(active: boolean): void;
   onError?(error: Error): void;
@@ -179,6 +181,7 @@ export async function startRecordingRecognition(
     abort: () => {},
   };
   engine.session = session;
+  const commandTimeline = engine.recordings.timeline(writer.session.id);
   const valid = () => engine.session === session && !signal?.aborted;
   // Range descriptors only: future post-roll must never block serialized PCM writes.
   const awaitingTail: RecordingAttempt[] = [];
@@ -387,6 +390,7 @@ export async function startRecordingRecognition(
             text,
             finishedAt: new Date().toISOString(),
           });
+          let commandRecorded = false;
           if (valid() && text)
             onResult?.({
               final: text,
@@ -395,6 +399,15 @@ export async function startRecordingRecognition(
                 Date.parse(writer.session.startedAt) +
                 ((attempt.speechStartSample ?? attempt.startSample) / rate) * 1000,
               paragraphBefore: attempt.paragraphBefore,
+              onCommandRecognized: (command) => {
+                if (commandRecorded) return;
+                commandRecorded = true;
+                void commandTimeline('voice-command-recognized', {
+                  command,
+                  segmentId: attempt.segmentId,
+                  attemptId: attempt.id,
+                }).catch((error) => onError?.(new Error(engine.recordingErrorMessage(error))));
+              },
             });
         } catch (error) {
           await writer

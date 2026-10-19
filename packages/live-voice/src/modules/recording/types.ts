@@ -34,7 +34,40 @@ export interface RecordingAttempt {
   error?: string;
   request?: RecordingRequestMetadata;
 }
+export type RecordingWaitReason =
+  | 'user-speech'
+  | 'external-speech'
+  | 'transcription'
+  | 'delivery'
+  | 'input-starting'
+  | 'silence-delay'
+  | 'segment-gap'
+  | 'paused'
+  | 'suspended';
+export type RecordingVoiceCommand =
+  'send' | 'queue' | 'end' | 'mute' | 'resume' | 'stopSpeaking' | 'clear';
+export interface RecordingEventDetails {
+  command?: RecordingVoiceCommand;
+  segmentId?: string;
+  attemptId?: string;
+  reasons?: RecordingWaitReason[];
+  queuedSegments?: number;
+  pendingTranscriptions?: number;
+  delayMs?: number;
+  automatic?: boolean;
+  mode?: 'speaker' | 'headphones';
+  outcome?: 'ready' | 'cancelled' | 'changed';
+}
 export type RecordingEventKind =
+  | 'voice-command-recognized'
+  | 'assistant-wait-start'
+  | 'assistant-wait-end'
+  | 'assistant-play-request'
+  | 'assistant-interruption-request'
+  | 'assistant-cancel'
+  | 'assistant-error'
+  | 'input-stop-complete'
+  | 'capture-gate-failed'
   | 'assistant-start'
   | 'assistant-end'
   | 'assistant-pause'
@@ -45,6 +78,7 @@ export type RecordingEventKind =
 export interface RecordingEvent {
   id: string;
   kind: RecordingEventKind;
+  details?: RecordingEventDetails;
   occurredAt: string;
   atSample: number; // Captured sample boundary, not an invented audio position during capture gaps.
 }
@@ -143,7 +177,9 @@ export interface RecordingRepository extends RecordingService {
     policy: RecordingPolicy;
     configuration?: RecordingSession['configuration'];
   }): Promise<RecordingWriter>;
-  timeline(): (kind: RecordingEventKind) => Promise<void>;
+  timeline(
+    recordingId?: string,
+  ): (kind: RecordingEventKind, details?: RecordingEventDetails) => Promise<void>;
   dispose(): Promise<void>;
 }
 export function recordingSegments(session: RecordingSession): RecordingSegment[] {

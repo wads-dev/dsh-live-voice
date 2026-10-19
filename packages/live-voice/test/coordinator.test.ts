@@ -126,7 +126,7 @@ test('recording timeline distinguishes gating from real playback start and ignor
   await f.coordinator.startConversation();
   const playback = f.coordinator.speak('A diagnostic answer.');
   await turn();
-  assert.deepEqual(events, ['capture-gated']);
+  assert.deepEqual(events, ['assistant-play-request', 'capture-gated', 'input-stop-complete']);
   assert.equal(f.coordinator.snapshot.listening, false);
   options.onPlaybackStart();
   options.onPlaybackStart();
@@ -135,7 +135,9 @@ test('recording timeline distinguishes gating from real playback start and ignor
   f.done();
   await playback;
   assert.deepEqual(events, [
+    'assistant-play-request',
     'capture-gated',
+    'input-stop-complete',
     'assistant-start',
     'assistant-pause',
     'assistant-resume',
@@ -823,7 +825,12 @@ test('voice commands run before the minimum-word filter and never enter the comp
   const submitted = [];
   f.coordinator.composer.submit = (mode) => submitted.push(mode);
   await f.coordinator.startConversation();
-  f.sessions[0].onResult({ final: 'SEND!!!' });
+  const commandEvents = [];
+  f.sessions[0].onResult({
+    final: 'SEND!!!',
+    onCommandRecognized: (command) => commandEvents.push(command),
+  });
+  assert.deepEqual(commandEvents, ['send']);
   assert.deepEqual(submitted, ['steer']);
   assert.equal(f.coordinator.snapshot.settings.sendingMode, 'manual');
   assert.equal(f.draft(), 'typed');
@@ -1655,4 +1662,73 @@ test('silent recording writes preserve the auto-send deadline while speech work 
   cb.onProcessingChange({ pending: 1, transcribing: 0, deliveryPending: 0 });
   t.mock.timers.tick(1500);
   assert.equal(sent.length, 2);
+});
+
+test('speech audit records wait reason transitions without frame spam or starting playback early', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const f = fixture({ assistantSpeechDelaySeconds: 0.6 });
+  t.after(() => f.coordinator.dispose());
+  const events = [];
+  f.coordinator.recordingTimeline = () => (kind, details) => events.push({ kind, details });
+  await f.coordinator.startConversation();
+  const input = f.sessions.at(-1);
+  input.onActivity(true);
+  f.coordinator.observeMessage('private-id', 'Private text must never enter audit.', {
+    complete: true,
+  });
+  assert.equal(events[0].kind, 'assistant-wait-start');
+  assert.deepEqual(events[0].details.reasons, ['user-speech']);
+  for (let i = 0; i < 20; i++) input.onActivity(true);
+  assert.equal(events.length, 1);
+  input.onProcessingChange({ pending: 1, transcribing: 1, deliveryPending: 1 });
+  assert.deepEqual(events.at(-1).details.reasons, ['user-speech', 'transcription']);
+  input.onActivity(false);
+  assert.ok(events.at(-1).details.reasons.includes('silence-delay'));
+  t.mock.timers.tick(600);
+  await turn();
+  assert.equal(f.spoken.length, 0, 'pending transcription still owns the boundary');
+  input.onProcessingChange({ pending: 0, transcribing: 0, deliveryPending: 0 });
+  await turn();
+  assert.equal(f.spoken.length, 1);
+  assert.ok(events.some((e) => e.kind === 'assistant-wait-end' && e.details.outcome === 'ready'));
+  assert.ok(
+    events.findIndex((e) => e.kind === 'assistant-play-request') <
+      events.findIndex((e) => e.kind === 'capture-gated'),
+  );
+  assert.ok(events.some((e) => e.kind === 'input-stop-complete'));
+  assert.equal(JSON.stringify(events).includes('Private text'), false);
+  assert.equal(JSON.stringify(events).includes('private-id'), false);
+});
+
+test('speech audit distinguishes failed input teardown, cancellation and actual engine start', async (t) => {
+  const f = fixture();
+  t.after(() => f.coordinator.dispose());
+  const events = [];
+  f.coordinator.recordingTimeline = () => (kind, details) => events.push({ kind, details });
+  await f.coordinator.startConversation();
+  f.recognition.stop = async () => {
+    throw new Error('private hardware failure');
+  };
+  await f.coordinator.speak('Diagnostic answer.');
+  assert.ok(events.some((e) => e.kind === 'capture-gate-failed'));
+  assert.ok(events.some((e) => e.kind === 'assistant-error'));
+  assert.ok(!events.some((e) => e.kind === 'input-stop-complete' || e.kind === 'assistant-start'));
+  assert.equal(JSON.stringify(events).includes('private hardware'), false);
+  f.recognition.stop = async () => {};
+});
+
+test('cancelling a waiting speech run closes the wait without fabricating playback', async (t) => {
+  const f = fixture();
+  t.after(() => f.coordinator.dispose());
+  const events = [];
+  f.coordinator.recordingTimeline = () => (kind, details) => events.push({ kind, details });
+  await f.coordinator.startConversation();
+  f.sessions.at(-1).onActivity(true);
+  f.coordinator.observeMessage('waiting', 'A queued answer.', { complete: true });
+  await f.coordinator.stopSpeech(false);
+  assert.ok(events.some((e) => e.kind === 'assistant-cancel'));
+  assert.ok(
+    events.some((e) => e.kind === 'assistant-wait-end' && e.details.outcome === 'cancelled'),
+  );
+  assert.ok(!events.some((e) => e.kind === 'assistant-start'));
 });

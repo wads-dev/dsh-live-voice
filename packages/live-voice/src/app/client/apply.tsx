@@ -74,8 +74,8 @@ export function apply(ctx) {
   const recordings = createRecordingRepository(undefined, () => recordingTranscriber(preferences.getSnapshot()));
   const recordingTimeline = () => {
     const append = recordings.timeline();
-    return (kind) => {
-      void append(kind).catch(() => {
+    return (kind, details) => {
+      void append(kind, details).catch(() => {
         // Metadata failures must be visible without blocking or cancelling playback.
         for (const entry of controllers.values())
           entry.controller.patch({ error: t('dsh-live-voice.recording.error.failed') });

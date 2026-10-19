@@ -223,6 +223,24 @@ test('integrated primary recordings tab separates sources, plays silence, export
       atSample: 900,
     },
   ];
+  records[0].events.push({
+    id: 'wait',
+    kind: 'assistant-wait-start',
+    occurredAt: '2026-10-14T12:00:01Z',
+    atSample: 100,
+    details: {
+      reasons: ['user-speech', 'transcription'],
+      queuedSegments: 1,
+      pendingTranscriptions: 1,
+    },
+  });
+  records[0].events.push({
+    id: 'command',
+    kind: 'voice-command-recognized',
+    atSample: 300,
+    occurredAt: '2026-10-14T12:00:03Z',
+    details: { command: 'send', segmentId: 'speech', attemptId: 'attempt' },
+  });
   const current = service(records);
   target.window[RECORDING_KEY] = current;
   const audioCalls = [],
@@ -272,6 +290,27 @@ test('integrated primary recordings tab separates sources, plays silence, export
   const select = document.querySelector('.dlvd-recordings select');
   assert.equal(select.options.length, 4);
   assert.match(document.querySelector('.dlvd-recording-detail').textContent, /test transcript/);
+  assert.equal(document.querySelectorAll('.dlvd-event-track [data-event]').length, 3);
+  assert.equal(document.querySelectorAll('.dlvd-timeline [data-event]').length, 0);
+  assert.ok(document.querySelector('.dlvd-timeline button[data-kind=command]'));
+  assert.ok(
+    document.querySelector('.dlvd-command-label').textContent.includes(copy.recordings.commandSend),
+  );
+  assert.ok(
+    document
+      .querySelector('.dlvd-recording-events')
+      .textContent.includes(copy.recordings.assistantWaitStart),
+  );
+  assert.ok(
+    document
+      .querySelector('.dlvd-recording-events')
+      .textContent.includes(copy.recordings.waitUserSpeech),
+  );
+  assert.ok(
+    document
+      .querySelector('.dlvd-recording-events')
+      .textContent.includes(copy.recordings.waitTranscription),
+  );
   assert.ok(document.querySelector('.dlvd-request').textContent.includes('230,444 B'));
   assert.ok(document.querySelector('.dlvd-request').textContent.includes('7.200 s'));
   assert.ok(
@@ -282,7 +321,7 @@ test('integrated primary recordings tab separates sources, plays silence, export
       .querySelector('.dlvd-recording-events')
       .textContent.includes(copy.recordings.assistantStart),
   );
-  assert.equal(document.querySelectorAll('.dlvd-event-pin').length, 1);
+  assert.equal(document.querySelectorAll('.dlvd-event-marker').length, 3);
   assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('6.000 MB'));
   assert.ok(document.querySelector('.dlvd-recording-meta').textContent.includes('1.000 MB'));
   const inputValue = async (field, value) =>
@@ -310,7 +349,7 @@ test('integrated primary recordings tab separates sources, plays silence, export
   assert.equal(document.querySelectorAll('.dlvd-timeline button').length, 1);
   assert.equal(document.querySelector('.dlvd-timeline button').style.width, '100%');
   assert.equal(document.querySelector('.dlvd-timeline button').style.left, '0%');
-  assert.equal(document.querySelectorAll('.dlvd-event-pin').length, 0);
+  assert.equal(document.querySelectorAll('.dlvd-event-marker').length, 1);
   assert.equal(document.querySelectorAll('.dlvd-timeline .dlvd-pin').length, 0);
   await key(ranges[0], 'End');
   assert.equal(rangeValue(ranges[0]), '449', 'handles cannot cross');
@@ -393,13 +432,13 @@ test('integrated primary recordings tab separates sources, plays silence, export
   owner.window.HTMLMediaElement.prototype.play = async () => {
     playCount++;
   };
-  for (const kind of ['speech', 'silence']) {
+  for (const kind of ['command', 'silence']) {
     await act(async () => {
       document.querySelector('.dlvd-timeline button[data-kind=' + kind + ']').click();
       await flush();
     });
     assert.ok(document.querySelector('audio').src.startsWith('blob:test-'));
-    assert.deepEqual(audioCalls.at(-1), kind === 'speech' ? ['mic', 200, 500] : ['mic', 0, 200]);
+    assert.deepEqual(audioCalls.at(-1), kind === 'command' ? ['mic', 200, 500] : ['mic', 0, 200]);
   }
   assert.equal(playCount, 0, 'timeline loads the exact segment without automatic playback');
   const retried = deferred();

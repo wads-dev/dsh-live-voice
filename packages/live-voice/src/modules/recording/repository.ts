@@ -664,16 +664,18 @@ export function createRecordingRepository(
         emit();
       });
     },
-    timeline() {
+    timeline(recordingId) {
       // Bind before speaker gating seals microphone capture. Never attach to unrelated later runs.
-      const targets = [...writers.entries()];
-      return async (kind) => {
+      const targets = [...writers.entries()].filter(([id]) => !recordingId || id === recordingId);
+      return async (kind, details) => {
         const occurredAt = now();
+        const context = details ? structuredClone(details) : undefined;
         await Promise.all(
           targets.map(async ([id, active]) => {
             const value: RecordingEvent = {
               id: crypto.randomUUID(),
               kind,
+              ...(context ? { details: context } : {}),
               occurredAt,
               atSample: active.writer.session.capturedSamples,
             };
