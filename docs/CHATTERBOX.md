@@ -17,6 +17,8 @@ The current host-audio converter invokes `/usr/bin/afconvert`: this path require
 
 ## Local service contract
 
+For complete request/response schemas and the distinction between provider and DSH endpoints, see the [HTTP TTS contract](HTTP-TTS.md#chatterbox-compatible-jobs-and-reference-voices).
+
 The plugin is a thin client; Python, models, personal recordings and launchd configuration are **not bundled in the npm package**. The initial service implementation lives in this checkout's ignored local experiment directory and must remain installed for this host. It is not a portable one-command public installer.
 
 The plugin uses these fixed loopback endpoints (no user-supplied URL or arbitrary file paths):

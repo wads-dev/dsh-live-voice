@@ -24,6 +24,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 #### Live Voice
 
+- Document compatible HTTP speech-server contracts with separate TTS and STT guides: routes, request/response examples, readiness, language/audio limits, cancellation and the distinction between provider APIs and the authenticated DSH bridge. Add a short README entry point.
 - Retain compact HTTP transcription-request measurements per attempt: actual prepared WAV size, input/output sample counts and rates, duration, language, preparation time and response status. Inspect and export these alongside expected ranges without storing duplicate audio; older attempts remain explicitly unmeasured. These measurements do not claim server receipt or full model processing.
 - Known limitation — Qwen HTTP automatic language detection can return only the beginning of a complete audio segment. This was reproduced with the local ominix-api service using the same 23.136-second WAV: automatic language returned a truncated transcript, while explicit Portuguese returned the remaining speech in repeated paired tests. Workaround: select the spoken language explicitly and retry the saved segment. The internal server/model cause is still under investigation; this is not a fixed issue or evidence that VAD cut the audio. Explicit language can also change recognition of mixed-language technical terms; this workaround is not a complete fix.
 

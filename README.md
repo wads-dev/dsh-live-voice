@@ -90,6 +90,10 @@ With Qwen or Whisper, recording is enabled by default to retain compressed audio
 
 This requires browser WebCodecs Opus support; persistent recording also requires IndexedDB and Web Locks. Saving is incremental, not a guarantee against power loss, storage clearing, or loss of the newest unsaved samples. Recordings belong to this browser profile and exact site origin, including its port. Opus is lossy; obtain consent before recording other people. You can opt out of recording in Settings; disabling it does not delete saved recordings. Browser SpeechRecognition does not use this archive pipeline.
 
+## Compatible HTTP servers
+
+See [HTTP engine contracts](docs/HTTP-ENGINES.md) for the routes and request/response payloads expected by the TTS and STT adapters.
+
 ## Documentation
 
 Detailed guides for deep-diving into engines and configurations:

@@ -92,6 +92,10 @@ Com Qwen ou Whisper, a gravação vem ativada por padrão para guardar áudio co
 
 É necessário suporte a WebCodecs Opus; a gravação persistente também exige IndexedDB e Web Locks. O salvamento incremental não garante proteção contra queda de energia, limpeza do storage ou perda das últimas amostras ainda não salvas. As gravações pertencem ao perfil do navegador e à origem exata, incluindo a porta. Opus tem perdas; obtenha consentimento antes de gravar outras pessoas. Você pode desativar a gravação nas Configurações; isso não exclui gravações salvas. Browser SpeechRecognition não utiliza este pipeline.
 
+## Servidores HTTP compatíveis
+
+Veja os [contratos HTTP dos mecanismos](docs/HTTP-ENGINES.md) (em inglês) para as rotas e os payloads de envio e resposta esperados pelos adaptadores TTS e STT.
+
 ## Documentação
 
 Os guias técnicos abaixo estão em inglês:
