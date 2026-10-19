@@ -11,10 +11,12 @@ import { RecordingPanel } from './RecordingPanel.js';
 import { RuntimePanel } from './RuntimePanel.js';
 export function DebuggerPanel({
   copy,
+  locale = 'en',
   onClose,
   target = window,
 }: {
   copy: DebuggerTranslation;
+  locale?: string;
   onClose(): void;
   target?: any;
 }) {
@@ -133,7 +135,7 @@ export function DebuggerPanel({
         aria-labelledby={tabsId + '-recordings-tab'}
         hidden={tab !== 'recordings'}
       >
-        {tab === 'recordings' && <RecordingPanel copy={copy} target={target} />}
+        {tab === 'recordings' && <RecordingPanel copy={copy} locale={locale} target={target} />}
       </div>
       {hasRuntimes && (
         <div

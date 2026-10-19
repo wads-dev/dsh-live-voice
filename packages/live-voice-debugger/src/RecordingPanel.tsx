@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatBytes } from './formatBytes.js';
 import { RecordingStorage } from './RecordingStorage.js';
 import { EventTimeline } from './EventTimeline.js';
 import { TimelineWindow } from './TimelineWindow.js';
@@ -36,7 +37,6 @@ function SegmentIcon({ kind }: { kind: 'play' | 'download' | 'retry' }) {
     </svg>
   );
 }
-const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(3) + ' MB';
 function duration(samples: number, rate: number) {
   const milliseconds = Math.max(0, Math.round((samples / Math.max(1, rate)) * 1000));
   const seconds = Math.floor(milliseconds / 1000);
@@ -66,7 +66,15 @@ function stateName(session: RecordingSession, copy: DebuggerTranslation) {
   }[session.state];
 }
 
-export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; target: any }) {
+export function RecordingPanel({
+  copy,
+  target,
+  locale = 'en',
+}: {
+  copy: DebuggerTranslation;
+  target: any;
+  locale?: string;
+}) {
   const [view, setView] = React.useState<RecordingView>({
     service: null,
     sessions: [],
@@ -152,6 +160,7 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
         <>
           {view.loading && <p role="status">{copy.recordings.loading}</p>}
           <RecordingStorage
+            locale={locale}
             service={view.service}
             sessions={view.sessions}
             loading={view.loading}
@@ -233,6 +242,7 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
             <div className="dlvd-recording-detail dlvd-scroll" tabIndex={0}>
               {selected && !clearing ? (
                 <RecordingDetail
+                  locale={locale}
                   key={selected.id}
                   copy={copy}
                   session={selected}
@@ -252,12 +262,14 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
 }
 
 function RecordingDetail({
+  locale,
   copy,
   session,
   service,
   segments,
   refresh,
 }: {
+  locale: string;
   copy: DebuggerTranslation;
   session: RecordingSession;
   service: RecordingService;
@@ -627,7 +639,7 @@ function RecordingDetail({
         <dd>
           {session.audioBytes === undefined
             ? copy.recordings.storageUnknown
-            : megabytes(session.audioBytes)}
+            : formatBytes(session.audioBytes, locale)}
         </dd>
         <dt>{copy.recordings.captured}</dt>
         <dd>{duration(session.capturedSamples, session.sampleRate)}</dd>

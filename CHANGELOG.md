@@ -28,7 +28,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 #### Live Voice Debugger
 
-- Show a prominent all-source recording storage summary with session count and saved encoded-audio MB. Keep known bytes visible as a lower bound when legacy sessions are unmeasured; distinguish this from total browser storage.
+- Show a prominent all-source recording storage summary with session count and saved encoded-audio size in automatic B, KB, MB, GB or TB units, with at most one decimal place and UI-locale separators (comma in Portuguese). Keep known bytes visible as a lower bound when legacy sessions are unmeasured; distinguish this from total browser storage.
 - Delete saved recordings across all sources with an explicit snapshot confirmation, including starred-session counts and size. Preserve capturing/pending sessions, report partial failures and never include newly created sessions in the confirmed batch. DSH conversations, exported files and future capture are unchanged.
 - Inspect assistant waiting and reasons, playback requests, input-stop request/completion/failure, interruptions and cancellations in a separate event track and timestamped list. Historical sessions gain no invented events.
 - Distinguish event categories with labeled lanes, colors and action symbols. Group nearby events with a count without discarding their real timestamps; activate a marker to highlight every original event in the list.

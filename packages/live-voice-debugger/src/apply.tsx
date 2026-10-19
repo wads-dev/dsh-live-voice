@@ -42,11 +42,18 @@ export function apply(ctx: any) {
     notify();
   };
   function Host() {
-    const { scoped: labels } = useDebuggerLanguage();
+    const { scoped: labels, current } = useDebuggerLanguage();
     React.useEffect(() => {
       if (popup && !popup.closed) popup.document.title = labels.commons.title;
     }, [labels.commons.title]);
-    return <DebuggerPanel copy={labels} target={window} onClose={() => queueMicrotask(close)} />;
+    return (
+      <DebuggerPanel
+        copy={labels}
+        locale={current.locale}
+        target={window}
+        onClose={() => queueMicrotask(close)}
+      />
+    );
   }
   // Open synchronously inside the user's click so browsers preserve popup permission.
   const open = () => {

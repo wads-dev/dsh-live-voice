@@ -77,6 +77,7 @@ async function setup(t, initial) {
     await act(async () => {
       root.render(
         <RecordingStorage
+          locale="pt-BR"
           service={service}
           sessions={records}
           loading={false}
@@ -138,14 +139,14 @@ test('global storage card remains independent of source filtering and confirms a
     f.root.render(<RecordingPanel target={target} copy={f.copy} />);
     await flush();
   });
-  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('3.000 MB'));
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('3 MB'));
   const select = document.querySelector('.dlvd-toolbar select');
   await act(async () => {
     select.value = JSON.stringify(['microphone', 'mic']);
     select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true }));
     await flush();
   });
-  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('3.000 MB'));
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('3 MB'));
   await f.click('.dlvd-storage-overview button');
   assert.ok(document.querySelector('.dlvd-delete-all-confirm').textContent.includes('2 sessão'));
   assert.ok(
@@ -164,7 +165,7 @@ test('global storage card remains independent of source filtering and confirms a
   await f.click('.dlvd-delete-all-confirm .dlvd-delete-all');
   assert.deepEqual(f.calls, ['mic', 'shared']);
   assert.equal(f.records.length, 0);
-  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('0.000 MB'));
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('0 B'));
   assert.ok(document.querySelector('.dlvd-storage-result').textContent.includes('Apagadas: 2'));
 });
 test('bulk deletion uses confirmed snapshot, rechecks pending work and reports partial failures', async (t) => {
@@ -224,13 +225,11 @@ for (const cancel of ['replacement', 'pagehide', 'unmount'])
 test('partial storage is not zero and loading or failed enumeration cannot authorize deletion', async (t) => {
   const f = await setup(t, [recording('known'), recording('legacy', { audioBytes: undefined })]);
   await f.render();
-  assert.ok(
-    document.querySelector('.dlvd-audio-total').textContent.includes('Pelo menos 1.000 MB'),
-  );
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('Pelo menos 1 MB'));
   assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('1 sessão'));
   await f.render({ loading: true });
   assert.equal(document.querySelector('.dlvd-storage-overview button').disabled, true);
-  assert.ok(!document.querySelector('.dlvd-audio-total').textContent.includes('0.000'));
+  assert.ok(!document.querySelector('.dlvd-audio-total').textContent.includes('0 B'));
   await f.render({ failed: true });
   assert.equal(document.querySelector('.dlvd-storage-overview button').disabled, true);
   assert.ok(
@@ -238,4 +237,27 @@ test('partial storage is not zero and loading or failed enumeration cannot autho
       .querySelector('.dlvd-audio-total')
       .textContent.includes(f.copy.recordings.storageUnknown),
   );
+});
+
+test('total, selected session and delete preview use the same UI-locale formatter without remounting', async (t) => {
+  const f = await setup(t, [recording('forty', { audioBytes: 40_500_000 })]);
+  const target = new f.dom.window.EventTarget();
+  target[RECORDING_KEY] = f.service;
+  await act(async () => {
+    f.root.render(<RecordingPanel target={target} copy={f.copy} locale="pt-BR" />);
+    await flush();
+  });
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('40,5 MB'));
+  assert.ok(document.querySelector('.dlvd-recording-meta').textContent.includes('40,5 MB'));
+  await f.click('.dlvd-storage-overview button');
+  assert.ok(document.querySelector('.dlvd-delete-all-confirm').textContent.includes('40,5 MB'));
+  assert.ok(!document.querySelector('.dlvd-recording-storage').textContent.includes('(MB)'));
+  await act(async () => {
+    f.root.render(<RecordingPanel target={target} copy={copyFor('en')} locale="en" />);
+    await flush();
+  });
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('40.5 MB'));
+  assert.ok(document.querySelector('.dlvd-recording-meta').textContent.includes('40.5 MB'));
+  assert.ok(document.querySelector('.dlvd-delete-all-confirm').textContent.includes('40.5 MB'));
+  assert.deepEqual(f.calls, []);
 });

@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatBytes } from './formatBytes.js';
 import type {
   RecordingService,
   RecordingSession,
@@ -21,7 +22,6 @@ export function recordingStorage(sessions: RecordingSession[]) {
   }
   return { bytes, unknown, count: sessions.length };
 }
-const mb = (bytes: number) => (bytes / 1_000_000).toFixed(3) + ' MB';
 const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/{([a-zA-Z]+)}/g, (all, key) => String(values[key] ?? all));
 type Preview = { ids: string[]; bytes: number; unknown: number; stars: number; busy: number };
@@ -29,6 +29,7 @@ type Result = { removed: number; skipped: number; failed: number };
 
 /** Bulk deletion is bounded by the explicitly confirmed snapshot, never the changing live list. */
 export function RecordingStorage({
+  locale = 'en',
   service,
   sessions,
   loading,
@@ -37,6 +38,7 @@ export function RecordingStorage({
   refresh,
   onBusy,
 }: {
+  locale?: string;
   service: RecordingService;
   sessions: RecordingSession[];
   loading: boolean;
@@ -162,8 +164,11 @@ export function RecordingStorage({
                 : failed
                   ? copy.storageUnknown
                   : total.unknown
-                    ? fill(copy.storagePartial, { size: mb(total.bytes), count: total.unknown })
-                    : mb(total.bytes)}
+                    ? fill(copy.storagePartial, {
+                        size: formatBytes(total.bytes, locale),
+                        count: total.unknown,
+                      })
+                    : formatBytes(total.bytes, locale)}
             </strong>
           </p>
           <p className="dlvd-storage-count">
@@ -207,8 +212,11 @@ export function RecordingStorage({
           <p>
             {copy.storageAudio}:{' '}
             {preview.unknown
-              ? fill(copy.storagePartial, { size: mb(preview.bytes), count: preview.unknown })
-              : mb(preview.bytes)}
+              ? fill(copy.storagePartial, {
+                  size: formatBytes(preview.bytes, locale),
+                  count: preview.unknown,
+                })
+              : formatBytes(preview.bytes, locale)}
           </p>
           <p>{copy.deleteAllWarning}</p>
           <div className="dlvd-toolbar">

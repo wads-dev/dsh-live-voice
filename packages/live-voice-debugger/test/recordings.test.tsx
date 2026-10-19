@@ -322,8 +322,8 @@ test('integrated primary recordings tab separates sources, plays silence, export
       .textContent.includes(copy.recordings.assistantStart),
   );
   assert.equal(document.querySelectorAll('.dlvd-event-marker').length, 3);
-  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('6.000 MB'));
-  assert.ok(document.querySelector('.dlvd-recording-meta').textContent.includes('1.000 MB'));
+  assert.ok(document.querySelector('.dlvd-audio-total').textContent.includes('6 MB'));
+  assert.ok(document.querySelector('.dlvd-recording-meta').textContent.includes('1 MB'));
   const inputValue = async (field, value) =>
     act(async () => {
       Object.getOwnPropertyDescriptor(owner.window.HTMLInputElement.prototype, 'value').set.call(
