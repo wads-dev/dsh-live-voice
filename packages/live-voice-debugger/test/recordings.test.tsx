@@ -50,6 +50,18 @@ const session = (id = 'mic', kind = 'microphone', sourceId = id) => ({
       createdAt: '2026-10-14T12:00:00Z',
       status: 'success',
       text: 'test transcript',
+      request: {
+        transport: 'http-wav',
+        preparedAt: '2026-10-14T12:00:00Z',
+        payloadBytes: 230444,
+        inputSamples: 720,
+        inputSampleRate: 100,
+        sampleCount: 115200,
+        sampleRate: 16000,
+        durationMs: 7200,
+        language: 'pt-BR',
+        responseStatus: 200,
+      },
     },
   ],
 });
@@ -260,6 +272,11 @@ test('integrated primary recordings tab separates sources, plays silence, export
   const select = document.querySelector('.dlvd-recordings select');
   assert.equal(select.options.length, 4);
   assert.match(document.querySelector('.dlvd-recording-detail').textContent, /test transcript/);
+  assert.ok(document.querySelector('.dlvd-request').textContent.includes('230,444 B'));
+  assert.ok(document.querySelector('.dlvd-request').textContent.includes('7.200 s'));
+  assert.ok(
+    document.querySelector('.dlvd-request').textContent.includes(copy.recordings.requestHelp),
+  );
   assert.ok(
     document
       .querySelector('.dlvd-recording-events')
@@ -341,7 +358,9 @@ test('integrated primary recordings tab separates sources, plays silence, export
   assert.equal(records[0].name, 'Problem X / Y / Z');
   assert.ok(document.querySelector('.dlvd-session-list').textContent.includes('Problem X / Y / Z'));
   const button = (label) =>
-    [...document.querySelectorAll('.dlvd-recordings button')].find((b) => b.textContent === label);
+    [...document.querySelectorAll('.dlvd-recordings button')].find(
+      (b) => b.textContent === label || b.getAttribute('aria-label')?.startsWith(label + ' · '),
+    );
   await act(async () => {
     button(copy.recordings.play).click();
     await flush();
@@ -359,6 +378,71 @@ test('integrated primary recordings tab separates sources, plays silence, export
   });
   assert.deepEqual(exports, ['mic']);
   assert.equal(downloaded, 'recording-mic.json');
+  const action = (key) =>
+    [...document.querySelectorAll('.dlvd-segments button')].find((b) =>
+      b.getAttribute('aria-label')?.startsWith(copy.recordings[key] + ' · '),
+    );
+  assert.equal(action('play').textContent, '', 'play is an icon with an accessible label');
+  await act(async () => {
+    action('download').click();
+    await flush();
+  });
+  assert.deepEqual(audioCalls.at(-1), ['mic', 0, 200]);
+  assert.equal(downloaded, 'recording-mic-0-200.wav');
+  let playCount = 0;
+  owner.window.HTMLMediaElement.prototype.play = async () => {
+    playCount++;
+  };
+  for (const kind of ['speech', 'silence']) {
+    await act(async () => {
+      document.querySelector('.dlvd-timeline button[data-kind=' + kind + ']').click();
+      await flush();
+    });
+    assert.ok(document.querySelector('audio').src.startsWith('blob:test-'));
+    assert.deepEqual(audioCalls.at(-1), kind === 'speech' ? ['mic', 200, 500] : ['mic', 0, 200]);
+  }
+  assert.equal(playCount, 0, 'timeline loads the exact segment without automatic playback');
+  const retried = deferred();
+  let retryArgs;
+  current.retranscribe = (...args) => {
+    retryArgs = args;
+    return retried.promise;
+  };
+  current.notify();
+  await act(async () => {
+    current.notify();
+    await flush();
+  });
+  await act(async () => {
+    action('retranscribe').click();
+    await flush();
+  });
+  assert.deepEqual(retryArgs.slice(0, 2), ['mic', 'speech']);
+  assert.equal(action('retranscribe').disabled, true);
+  assert.ok(document.body.textContent.includes(copy.recordings.retranscribing));
+  records[0].attempts.push({
+    ...records[0].attempts[0],
+    id: 'retried',
+    text: 'complete transcript',
+  });
+  await act(async () => {
+    retried.resolve();
+    await flush();
+  });
+  assert.equal(document.querySelectorAll('.dlvd-attempt').length, 2);
+  assert.equal(action('retranscribe').disabled, false);
+  current.retranscribe = async () => {
+    throw new Error('private retry failure');
+  };
+  await act(async () => {
+    action('retranscribe').click();
+    await flush();
+  });
+  assert.equal(
+    document.querySelector('[role=alert]').textContent,
+    copy.recordings.retranscribeError,
+  );
+  assert.equal(document.body.textContent.includes('private retry failure'), false);
   await act(async () => button(copy.recordings.delete).click());
   assert.deepEqual(removed, []);
   await act(async () => button(copy.recordings.cancel).click());
@@ -426,7 +510,9 @@ test('recording actions localize errors and reject late playback after selection
     await flush();
   });
   const button = (label) =>
-    [...document.querySelectorAll('.dlvd-recordings button')].find((b) => b.textContent === label);
+    [...document.querySelectorAll('.dlvd-recordings button')].find(
+      (b) => b.textContent === label || b.getAttribute('aria-label')?.startsWith(label + ' · '),
+    );
   current.audio = async () => {
     throw new Error('private failure');
   };
@@ -443,6 +529,9 @@ test('recording actions localize errors and reject late playback after selection
   await act(async () => {
     button(copy.recordings.play).click();
   });
+  current.audio = async () => {
+    throw new Error('selection failed');
+  };
   await act(async () => document.querySelector('.dlvd-timeline button').click());
   await act(async () => {
     obsolete.resolve(new Blob(['obsolete']));
@@ -501,7 +590,9 @@ test('recording protection toggles, persists on reload, and leaves storage and m
   };
   const star = () => document.querySelector('.dlvd-recording-detail button[aria-pressed]');
   const button = (label) =>
-    [...document.querySelectorAll('.dlvd-recordings button')].find((b) => b.textContent === label);
+    [...document.querySelectorAll('.dlvd-recordings button')].find(
+      (b) => b.textContent === label || b.getAttribute('aria-label')?.startsWith(label + ' · '),
+    );
   await render();
   assert.equal(star().textContent, '☆');
   assert.equal(star().getAttribute('aria-label'), 'Keep indefinitely');

@@ -436,3 +436,157 @@ test('missing native codecs fail explicitly and a disposed repository rejects ne
   await repository.dispose();
   await assert.rejects(repository.begin(input()), { code: 'disposed' });
 });
+
+test('archive retranscription preserves attempts and audio, rejects active/silent ranges, audits cancellation', async () => {
+  const codecs = fakeCodecs();
+  let release!: (text: string) => void;
+  let inferenceSignal: AbortSignal | undefined;
+  const calls: { length: number; rate: number }[] = [];
+  const repository = createRecordingRepository(undefined, () => ({
+    engine: 'qwen-http',
+    transcribe: async (pcm, rate, signal, onRequest) => {
+      await onRequest?.({
+        transport: 'http-wav',
+        preparedAt: new Date().toISOString(),
+        payloadBytes: 44 + pcm.length * 2,
+        inputSamples: pcm.length,
+        inputSampleRate: rate,
+        sampleCount: pcm.length,
+        sampleRate: rate,
+        durationMs: (pcm.length * 1000) / rate,
+        language: 'pt-BR',
+      });
+      calls.push({ length: pcm.length, rate });
+      inferenceSignal = signal;
+      return new Promise<string>((resolve, reject) => {
+        release = resolve;
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    },
+  }));
+  try {
+    const writer = await repository.begin(input());
+    await writer.append(new Float32Array(64000));
+    const silence = await writer.pin('silence-start', 0, 0);
+    const speech = await writer.pin('speech-start', 16000, 18000);
+    await writer.pin('silence-start', 48000, 50000);
+    const original = {
+      id: 'original',
+      segmentId: speech.id,
+      engine: 'qwen-http',
+      startSample: 3200,
+      endSample: 60800,
+      createdAt: new Date().toISOString(),
+      status: 'success' as const,
+      text: 'cut',
+    };
+    await writer.attempt(original);
+    await assert.rejects(repository.retranscribe!(writer.session.id, speech.id), {
+      code: 'active-recording',
+    });
+    await writer.finish();
+    const before = await repository.get(writer.session.id);
+    await assert.rejects(repository.retranscribe!(writer.session.id, silence.id), {
+      code: 'invalid-range',
+    });
+    const running = repository.retranscribe!(writer.session.id, speech.id);
+    while (!calls.length) await new Promise((r) => setImmediate(r));
+    assert.deepEqual(calls, [{ length: 57600, rate: 16000 }]);
+    await assert.rejects(repository.remove(writer.session.id), { code: 'active-recording' });
+    await assert.rejects(repository.retranscribe!(writer.session.id, speech.id), {
+      code: 'active-recording',
+    });
+    assert.equal((await repository.get(writer.session.id))?.attempts.at(-1)?.status, 'pending');
+    release('complete');
+    await running;
+    const after = await repository.get(writer.session.id);
+    assert.deepEqual(after?.attempts[0], original);
+    assert.equal(after?.attempts.at(-1)?.text, 'complete');
+    assert.equal(after?.attempts.at(-1)?.request?.payloadBytes, 115244);
+    const exported = JSON.parse(await (await repository.export(writer.session.id)).text());
+    assert.deepEqual(exported.recording.attempts.at(-1).request, after?.attempts.at(-1)?.request);
+    assert.deepEqual(after?.pins, before?.pins);
+    assert.equal(after?.audioBytes, before?.audioBytes);
+    const controller = new AbortController();
+    const cancelled = repository.retranscribe!(writer.session.id, speech.id, controller.signal);
+    while (calls.length < 2) await new Promise((r) => setImmediate(r));
+    controller.abort();
+    await assert.rejects(cancelled);
+    assert.equal(inferenceSignal?.aborted, true);
+    assert.equal((await repository.get(writer.session.id))?.attempts.at(-1)?.error, 'cancelled');
+    assert.equal((await repository.get(writer.session.id))?.attempts.length, 3);
+    assert.equal(
+      (await repository.get(writer.session.id))?.attempts.at(-1)?.request?.payloadBytes,
+      115244,
+    );
+  } finally {
+    await repository.dispose();
+    codecs.restore();
+  }
+});
+
+test('orphaned archive retry recovers without changing completed capture and respects live locks', async () => {
+  const descriptors = ['indexedDB', 'navigator'].map((k) =>
+    Object.getOwnPropertyDescriptor(globalThis, k),
+  );
+  const store = createMemoryStore();
+  const saved: any = {
+    id: 'orphan',
+    kind: 'microphone',
+    sourceId: 'microphone',
+    label: 'microphone',
+    state: 'completed',
+    sampleRate: 16000,
+    capturedSamples: 16000,
+    savedSamples: 16000,
+    audioBytes: 0,
+    persistent: true,
+    codec: 'opus',
+    keepPrevious: 1,
+    pins: [],
+    startedAt: '2026-10-19T12:00:00Z',
+    endedAt: '2026-10-19T12:00:01Z',
+    attempts: [
+      {
+        id: 'retry',
+        segmentId: 'speech',
+        engine: 'qwen-http',
+        startSample: 0,
+        endSample: 16000,
+        status: 'pending',
+        createdAt: '2026-10-19T12:01:00Z',
+      },
+    ],
+  };
+  await store.create(saved);
+  await store.create({ ...saved, id: 'busy' });
+  Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: {} });
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: {
+      locks: {
+        request: async (
+          name: string,
+          _options: unknown,
+          callback: (lock: object | null) => unknown,
+        ) => callback(name.endsWith('busy') ? null : {}),
+      },
+    },
+  });
+  const repository = createRecordingRepository(async () => store);
+  try {
+    const records = await repository.list();
+    const recovered = records.find((r) => r.id === 'orphan')!;
+    assert.equal(recovered.state, 'completed');
+    assert.equal(recovered.endedAt, saved.endedAt);
+    assert.equal(recovered.attempts[0].status, 'error');
+    assert.equal(recovered.attempts[0].error, 'interrupted');
+    assert.equal(records.find((r) => r.id === 'busy')?.attempts[0].status, 'pending');
+  } finally {
+    await repository.dispose();
+    ['indexedDB', 'navigator'].forEach((key, i) => {
+      if (descriptors[i]) Object.defineProperty(globalThis, key, descriptors[i]!);
+      else delete (globalThis as any)[key];
+    });
+  }
+});

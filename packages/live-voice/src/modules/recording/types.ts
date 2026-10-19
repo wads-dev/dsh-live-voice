@@ -6,6 +6,19 @@ export interface RecordingPin {
   confirmedAtSample: number;
   delaySamples: number;
 }
+/** Measured browser-to-DSH request body; not server receipt or model-consumption proof. */
+export interface RecordingRequestMetadata {
+  transport: 'http-wav';
+  preparedAt: string;
+  payloadBytes: number;
+  inputSamples: number;
+  inputSampleRate: number;
+  sampleCount: number;
+  sampleRate: number;
+  durationMs: number;
+  language: string;
+  responseStatus?: number;
+}
 export interface RecordingAttempt {
   id: string;
   segmentId: string;
@@ -19,6 +32,7 @@ export interface RecordingAttempt {
   status: 'pending' | 'success' | 'error';
   text?: string;
   error?: string;
+  request?: RecordingRequestMetadata;
 }
 export type RecordingEventKind =
   | 'assistant-start'
@@ -103,6 +117,8 @@ export interface RecordingService {
   remove(id: string): Promise<void>;
   setStarred(id: string, starred: boolean): Promise<void>;
   setName?(id: string, name: string): Promise<void>;
+  /** Explicit archive-only retry; never delivers text to a composer. */
+  retranscribe?(id: string, segmentId: string, signal?: AbortSignal): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 export interface RecordingWriter {

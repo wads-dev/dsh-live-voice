@@ -12,6 +12,15 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 - Cycle the composer speech button through Off, Speakers (gated listening), and Headphones (open microphone), using the same saved automatic-speech and listening-mode preferences as Settings.
 - Right-click the composer speech or microphone button to choose its audio device in a compact panel above the control, without opening Settings. Keyboard users can use the context-menu key or Shift+F10; Escape dismisses the panel. Device choices stay synchronized with Settings, including client-side playback of audio synthesized by macOS Say.
 
+### Improvements
+
+- Retain compact HTTP transcription-request measurements per attempt: actual prepared WAV size, input/output sample counts and rates, duration, language, preparation time and response status. Inspect and export these alongside expected ranges without storing duplicate audio; older attempts remain explicitly unmeasured. These measurements do not claim server receipt or full model processing.
+- Use compact, accessible play icons in debugger segment rows and download an individual speech or silence segment as WAV. Retranscribe finished speech using current Qwen HTTP or Whisper HTTP settings while preserving earlier attempts and leaving the composer unchanged.
+
+### Fixes
+
+- Load the selected speech or silence segment into the debugger audio player when clicking its timeline band, instead of clearing playback without loading audio.
+
 ## [0.6.2] - 2026-10-17
 
 ### Features

@@ -10,6 +10,30 @@ import {
 import type { DebuggerTranslation } from './i18n/index.js';
 import { createRecordingInspector, type RecordingView } from './recordingInspector.js';
 
+function SegmentIcon({ kind }: { kind: 'play' | 'download' | 'retry' }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {kind === 'play' ? (
+        <path d="m8 5 11 7-11 7z" fill="currentColor" />
+      ) : kind === 'download' ? (
+        <path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5" />
+      ) : (
+        <path d="M20 7v5h-5M20 12a8 8 0 1 0-2 6M20 7v5" />
+      )}
+    </svg>
+  );
+}
 const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(3) + ' MB';
 function duration(samples: number, rate: number) {
   const milliseconds = Math.max(0, Math.round((samples / Math.max(1, rate)) * 1000));
@@ -233,6 +257,9 @@ function RecordingDetail({
   const playGeneration = React.useRef(0);
   const [error, setError] = React.useState<keyof DebuggerTranslation['recordings'] | null>(null);
   const [playing, setPlaying] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
+  const [retrying, setRetrying] = React.useState('');
+  const retry = React.useRef<AbortController | null>(null);
   const [exporting, setExporting] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [starring, setStarring] = React.useState(false);
@@ -263,6 +290,7 @@ function RecordingDetail({
     const player = audio.current;
     const release = () => {
       ++generation.current;
+      retry.current?.abort();
       clearPlayback(player);
       clearDownload();
     };
@@ -272,7 +300,7 @@ function RecordingDetail({
       release();
     };
   }, [service, session.id]);
-  const play = async (segment?: RecordingSegment) => {
+  const play = async (segment?: RecordingSegment, autoplay = true) => {
     clearPlayback();
     const token = generation.current;
     const request = playGeneration.current;
@@ -288,7 +316,8 @@ function RecordingDetail({
       const url = api.createObjectURL(blob);
       playback.current = { url, api };
       player.src = url;
-      await player.play();
+      player.load();
+      if (autoplay) await player.play();
     } catch {
       if (token === generation.current && request === playGeneration.current) {
         clearPlayback();
@@ -299,6 +328,67 @@ function RecordingDetail({
       if (token === generation.current && request === playGeneration.current) setPlaying(false);
     }
   };
+  const saveBlob = (blob: Blob, filename: string) => {
+    clearDownload();
+    const doc = container.current?.ownerDocument;
+    const api = doc?.defaultView?.URL;
+    if (!doc || !api) return;
+    const url = api.createObjectURL(blob);
+    download.current = { url, api };
+    const link = doc.createElement('a');
+    link.href = url;
+    link.download = filename;
+    doc.body.appendChild(link);
+    try {
+      link.click();
+    } finally {
+      link.remove();
+    }
+  };
+  const downloadSegment = async (segment: RecordingSegment) => {
+    if (downloading || exporting) return;
+    const token = generation.current;
+    setDownloading(true);
+    setError(null);
+    try {
+      const blob = await service.audio(session.id, segment.startSample, segment.endSample);
+      if (token !== generation.current) return;
+      saveBlob(
+        blob,
+        'recording-' +
+          session.id.replace(/[^a-zA-Z0-9_-]/g, '_') +
+          '-' +
+          segment.startSample +
+          '-' +
+          segment.endSample +
+          '.wav',
+      );
+    } catch {
+      if (token === generation.current) setError('downloadError');
+    } finally {
+      if (token === generation.current) setDownloading(false);
+    }
+  };
+  const retranscribe = async (segment: RecordingSegment) => {
+    if (!service.retranscribe || retry.current) return;
+    const controller = new AbortController();
+    retry.current = controller;
+    const token = generation.current;
+    setRetrying(segment.id);
+    setSelectedSegment(segment.id);
+    setError(null);
+    try {
+      await service.retranscribe(session.id, segment.id, controller.signal);
+    } catch {
+      if (token === generation.current) setError('retranscribeError');
+    } finally {
+      if (retry.current === controller) retry.current = null;
+      if (token === generation.current) {
+        setRetrying('');
+        refresh();
+      }
+    }
+  };
   const exportSession = async () => {
     const token = generation.current;
     setExporting(true);
@@ -307,20 +397,7 @@ function RecordingDetail({
     try {
       const blob = await service.export(session.id);
       if (token !== generation.current) return;
-      const doc = container.current?.ownerDocument;
-      const api = doc?.defaultView?.URL;
-      if (!doc || !api) return;
-      const url = api.createObjectURL(blob);
-      download.current = { url, api };
-      const link = doc.createElement('a');
-      link.href = url;
-      link.download = 'recording-' + session.id.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';
-      doc.body.appendChild(link);
-      try {
-        link.click();
-      } finally {
-        link.remove();
-      }
+      saveBlob(blob, 'recording-' + session.id.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json');
     } catch {
       if (token === generation.current) {
         clearDownload();
@@ -513,12 +590,16 @@ function RecordingDetail({
         >
           {copy.recordings.playSession}
         </button>
-        <button type="button" disabled={exporting || deleting} onClick={() => void exportSession()}>
+        <button
+          type="button"
+          disabled={exporting || downloading || deleting}
+          onClick={() => void exportSession()}
+        >
           {copy.recordings.export}
         </button>
         <button
           type="button"
-          disabled={deleting || starring || naming}
+          disabled={deleting || starring || naming || !!retrying}
           onClick={() => setConfirmDelete(true)}
         >
           {copy.recordings.delete}
@@ -533,7 +614,7 @@ function RecordingDetail({
           <p>{copy.recordings.confirmDelete}</p>
           <button
             type="button"
-            disabled={deleting || starring || naming}
+            disabled={deleting || starring || naming || !!retrying}
             onClick={() => void removeSession()}
           >
             {copy.recordings.delete}
@@ -544,10 +625,11 @@ function RecordingDetail({
         </div>
       )}
       {error && <p role="alert">{copy.recordings[error]}</p>}
+      {retrying && <p role="status">{copy.recordings.retranscribing}</p>}
       <audio
         ref={audio}
         controls
-        preload="none"
+        preload="metadata"
         aria-label={copy.recordings.audio}
         onError={() => {
           clearPlayback();
@@ -591,11 +673,8 @@ function RecordingDetail({
                     100 +
                   '%',
               }}
-              onClick={() => {
-                clearPlayback();
-                setPlaying(false);
-                setSelectedSegment(segment.id);
-              }}
+              disabled={deleting || segment.endSample <= segment.startSample}
+              onClick={() => void play(segment, false)}
             />
           ))}
         {(session.events ?? [])
@@ -704,6 +783,8 @@ function RecordingDetail({
                 <td>
                   <button
                     type="button"
+                    className="dlvd-segment-action"
+                    title={copy.recordings.play}
                     disabled={deleting || segment.endSample <= segment.startSample}
                     aria-label={
                       copy.recordings.play +
@@ -714,8 +795,42 @@ function RecordingDetail({
                     }
                     onClick={() => void play(segment)}
                   >
-                    {copy.recordings.play}
+                    <SegmentIcon kind="play" />
                   </button>
+                  <button
+                    type="button"
+                    className="dlvd-segment-action"
+                    disabled={
+                      downloading ||
+                      exporting ||
+                      deleting ||
+                      segment.endSample <= segment.startSample
+                    }
+                    title={copy.recordings.download}
+                    aria-label={copy.recordings.download + ' · ' + segmentName(segment)}
+                    onClick={() => void downloadSegment(segment)}
+                  >
+                    <SegmentIcon kind="download" />
+                  </button>
+                  {segment.kind === 'speech' && service.retranscribe && (
+                    <button
+                      type="button"
+                      className="dlvd-segment-action"
+                      disabled={
+                        deleting ||
+                        !!retrying ||
+                        session.state === 'recording' ||
+                        segment.open ||
+                        segment.endSample <= segment.startSample ||
+                        segment.attempts.some((a) => a.status === 'pending')
+                      }
+                      title={copy.recordings.retranscribeHelp}
+                      aria-label={copy.recordings.retranscribe + ' · ' + segmentName(segment)}
+                      onClick={() => void retranscribe(segment)}
+                    >
+                      <SegmentIcon kind="retry" />
+                    </button>
+                  )}
                 </td>
               </tr>
               {segment.kind === 'speech' && (
@@ -754,6 +869,53 @@ function RecordingDetail({
                             {duration(attempt.startSample, session.sampleRate)} —{' '}
                             {duration(attempt.endSample, session.sampleRate)}
                           </div>
+                          {attempt.request ? (
+                            <details className="dlvd-request">
+                              <summary>
+                                {copy.recordings.requestMetadata} ·{' '}
+                                {attempt.request.payloadBytes.toLocaleString()} B ·{' '}
+                                {(attempt.request.durationMs / 1000).toFixed(3)} s
+                              </summary>
+                              <p>{copy.recordings.requestHelp}</p>
+                              <dl className="dlvd-recording-meta">
+                                <dt>{copy.recordings.requestBytes}</dt>
+                                <dd>{attempt.request.payloadBytes.toLocaleString()} B</dd>
+                                <dt>{copy.recordings.requestInput}</dt>
+                                <dd>
+                                  {attempt.request.inputSamples.toLocaleString()} /{' '}
+                                  {attempt.request.inputSampleRate.toLocaleString()} Hz
+                                </dd>
+                                <dt>{copy.recordings.requestSamples}</dt>
+                                <dd>
+                                  {attempt.request.sampleCount.toLocaleString()} /{' '}
+                                  {attempt.request.sampleRate.toLocaleString()} Hz
+                                </dd>
+                                <dt>{copy.recordings.duration}</dt>
+                                <dd>{(attempt.request.durationMs / 1000).toFixed(3)} s</dd>
+                                <dt>{copy.recordings.requestExpected}</dt>
+                                <dd>
+                                  {duration(
+                                    attempt.endSample - attempt.startSample,
+                                    session.sampleRate,
+                                  )}
+                                </dd>
+                                <dt>{copy.recordings.requestLanguage}</dt>
+                                <dd>{attempt.request.language}</dd>
+                                <dt>{copy.recordings.requestPrepared}</dt>
+                                <dd>
+                                  <time dateTime={attempt.request.preparedAt}>
+                                    {new Date(attempt.request.preparedAt).toLocaleString()}
+                                  </time>
+                                </dd>
+                                <dt>{copy.recordings.requestStatus}</dt>
+                                <dd>
+                                  {attempt.request.responseStatus ?? copy.recordings.requestUnknown}
+                                </dd>
+                              </dl>
+                            </details>
+                          ) : (
+                            <small>{copy.recordings.requestUnknown}</small>
+                          )}
                           {attempt.text != null && (
                             <p className="dlvd-transcript">{attempt.text}</p>
                           )}

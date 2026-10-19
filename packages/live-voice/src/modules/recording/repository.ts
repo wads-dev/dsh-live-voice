@@ -6,6 +6,7 @@ import type {
   RecordingSession,
   RecordingParticipant,
   RecordingWriter,
+  RecordingRequestMetadata,
 } from './types.js';
 import { recordingSegments } from './types.js';
 import {
@@ -72,8 +73,22 @@ function base64(bytes: Uint8Array): string {
   return btoa(text);
 }
 
-export function createRecordingRepository(openStore: () => Promise<PageStore> = openRecordingStore): RecordingRepository {
+export interface RecordingTranscriber {
+  engine: string;
+  transcribe(
+    pcm: Float32Array,
+    rate: number,
+    signal?: AbortSignal,
+    onRequest?: (metadata: RecordingRequestMetadata) => Promise<void>,
+  ): Promise<string>;
+}
+export function createRecordingRepository(
+  openStore: () => Promise<PageStore> = openRecordingStore,
+  getTranscriber?: () => RecordingTranscriber,
+): RecordingRepository {
   const memory = createMemoryStore();
+  let retryLifetime: AbortController | undefined;
+  const retryJobs = new Set<Promise<void>>();
   const listeners = new Set<() => void>();
   const writers = new Map<
     string,
@@ -114,7 +129,12 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
         try {
           // One recovery pass per repository lifetime, never on each list/get.
           for (const session of await store.list()) {
-            if (session.state !== 'recording' || localActive.has(session.id)) continue;
+            if (
+              localActive.has(session.id) ||
+              (session.state !== 'recording' &&
+                !session.attempts.some((a) => a.status === 'pending'))
+            )
+              continue;
             if (!globalThis.navigator?.locks)
               throw new RecordingRepositoryError(
                 'storage-unavailable',
@@ -126,12 +146,19 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
               async (lock) => {
                 if (!lock || localActive.has(session.id)) return;
                 await store.update(session.id, (current) =>
-                  current.state === 'recording'
+                  current.state === 'recording' ||
+                  current.attempts.some((a) => a.status === 'pending')
                     ? {
                         ...current,
-                        state: 'interrupted',
-                        endedAt: now(),
-                        pins: current.pins.filter((pin) => pin.atSample <= current.savedSamples),
+                        ...(current.state === 'recording'
+                          ? {
+                              state: 'interrupted' as const,
+                              endedAt: now(),
+                              pins: current.pins.filter(
+                                (pin) => pin.atSample <= current.savedSamples,
+                              ),
+                            }
+                          : {}),
                         attempts: current.attempts.map((attempt) =>
                           attempt.status === 'pending'
                             ? {
@@ -215,20 +242,28 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
       await store.remove(id);
     });
   }
-  const groupName = (groupId: string) => 'dsh-live-voice.recording-group:' + JSON.stringify(['attendee', groupId]);
+  const groupName = (groupId: string) =>
+    'dsh-live-voice.recording-group:' + JSON.stringify(['attendee', groupId]);
   async function deleteGroup(store: PageStore, groupId: string, members: StoredSession[]) {
     if (members.some((s) => localActive.has(s.id))) return;
     const releases: (() => void)[] = [];
     try {
       if (store !== memory) {
         releases.push(await holdLock(groupId, groupName(groupId)));
-        for (const member of [...members].sort((a, b) => a.id.localeCompare(b.id))) releases.push(await holdLock(member.id));
+        for (const member of [...members].sort((a, b) => a.id.localeCompare(b.id)))
+          releases.push(await holdLock(member.id));
       }
-      await store.removeGroup(groupId, members.map((s) => s.id));
+      await store.removeGroup(
+        groupId,
+        members.map((s) => s.id),
+      );
     } catch (error) {
-      if (!(error instanceof RecordingRepositoryError) || error.code !== 'active-recording') throw error;
+      if (!(error instanceof RecordingRepositoryError) || error.code !== 'active-recording')
+        throw error;
       // A concurrent writer/protection operation owns a member: never remove siblings alone.
-    } finally { for (const release of releases.reverse()) release(); }
+    } finally {
+      for (const release of releases.reverse()) release();
+    }
   }
   async function prune(
     kind: RecordingSession['kind'],
@@ -236,7 +271,9 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
     target?: PageStore,
     participantRetention = false,
   ): Promise<void> {
-    const stores = target ? [target] : [memory, ...(globalThis.indexedDB ? [await persistentStore()] : [])];
+    const stores = target
+      ? [target]
+      : [memory, ...(globalThis.indexedDB ? [await persistentStore()] : [])];
     for (const store of participantRetention ? stores : []) {
       const groups = new Map<string, StoredSession[]>();
       for (const session of await store.list()) {
@@ -244,10 +281,31 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
         const id = session.participant.groupId;
         groups.set(id, [...(groups.get(id) ?? []), session]);
       }
-      const ordinary = [...groups].filter(([, members]) => members.every((s) => !s.starred && s.state !== 'recording' && !localActive.has(s.id) && !s.attempts.some((a) => a.status === 'pending')));
-      const latest = (members: StoredSession[]) => [...members].sort((a, b) => b.startedAt.localeCompare(a.startedAt) || (b.createdOrder ?? 0) - (a.createdOrder ?? 0))[0];
-      ordinary.sort(([aid, a], [bid, b]) => { const x = latest(a), y = latest(b); return y.startedAt.localeCompare(x.startedAt) || (y.createdOrder ?? 0) - (x.createdOrder ?? 0) || bid.localeCompare(aid); });
-      for (const [id, members] of ordinary.slice(Math.max(1, keepPrevious))) await deleteGroup(store, id, members);
+      const ordinary = [...groups].filter(([, members]) =>
+        members.every(
+          (s) =>
+            !s.starred &&
+            s.state !== 'recording' &&
+            !localActive.has(s.id) &&
+            !s.attempts.some((a) => a.status === 'pending'),
+        ),
+      );
+      const latest = (members: StoredSession[]) =>
+        [...members].sort(
+          (a, b) =>
+            b.startedAt.localeCompare(a.startedAt) || (b.createdOrder ?? 0) - (a.createdOrder ?? 0),
+        )[0];
+      ordinary.sort(([aid, a], [bid, b]) => {
+        const x = latest(a),
+          y = latest(b);
+        return (
+          y.startedAt.localeCompare(x.startedAt) ||
+          (y.createdOrder ?? 0) - (x.createdOrder ?? 0) ||
+          bid.localeCompare(aid)
+        );
+      });
+      for (const [id, members] of ordinary.slice(Math.max(1, keepPrevious)))
+        await deleteGroup(store, id, members);
     }
     const available = target
       ? (await target.list()).sort(
@@ -382,6 +440,123 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
       }
       return new Blob(parts, { type: 'audio/wav' });
     },
+    ...(getTranscriber
+      ? {
+          retranscribe(id: string, segmentId: string, requestedSignal?: AbortSignal) {
+            retryLifetime ??= new AbortController();
+            const signal = requestedSignal
+              ? AbortSignal.any([requestedSignal, retryLifetime.signal])
+              : retryLifetime.signal;
+            const task = (async () => {
+              check();
+              signal?.throwIfAborted();
+              const transcriber = getTranscriber();
+              // Hold the recording lock across inference. Retention/removal cannot delete its audit.
+              const { store, session } = await locate(id);
+              if (localActive.has(id) || session.state === 'recording')
+                throw new RecordingRepositoryError(
+                  'active-recording',
+                  'Finish capture before retranscribing.',
+                );
+              const release = store === memory ? () => {} : await holdLock(id);
+              if (localActive.has(id)) {
+                release();
+                throw new RecordingRepositoryError('active-recording', 'The recording is busy.');
+              }
+              localActive.add(id);
+              try {
+                const current = await store.get(id);
+                if (!current)
+                  throw new RecordingRepositoryError('not-found', 'The recording was removed.');
+                const segment = recordingSegments(current).find((s) => s.id === segmentId);
+                if (
+                  !segment ||
+                  segment.kind !== 'speech' ||
+                  segment.open ||
+                  segment.endSample <= segment.startSample
+                )
+                  throw new RecordingRepositoryError(
+                    'invalid-range',
+                    'A closed speech segment is required.',
+                  );
+                if (
+                  current.attempts.some((a) => a.segmentId === segmentId && a.status === 'pending')
+                )
+                  throw new RecordingRepositoryError(
+                    'active-recording',
+                    'This segment already has a pending transcription.',
+                  );
+                const margin = (value?: number) =>
+                  Math.round((Math.max(800, value ?? 0) * current.sampleRate) / 1000);
+                const attempt: RecordingAttempt = {
+                  id: crypto.randomUUID(),
+                  segmentId,
+                  engine: transcriber.engine,
+                  startSample: Math.max(
+                    0,
+                    segment.startSample - margin(current.configuration?.preRollMs),
+                  ),
+                  endSample: Math.min(
+                    current.savedSamples,
+                    segment.endSample + margin(current.configuration?.postRollMs),
+                  ),
+                  speechStartSample: segment.startSample,
+                  paragraphBefore: segment.attempts[0]?.paragraphBefore,
+                  createdAt: now(),
+                  status: 'pending',
+                };
+                const save = async (value: RecordingAttempt) => {
+                  await store.update(id, (latest) => ({
+                    ...latest,
+                    attempts: [...latest.attempts.filter((a) => a.id !== value.id), value],
+                  }));
+                  emit();
+                };
+                await save(attempt);
+                try {
+                  signal?.throwIfAborted();
+                  const pcm = await readRange(
+                    store,
+                    current,
+                    attempt.startSample,
+                    attempt.endSample,
+                  );
+                  signal?.throwIfAborted();
+                  const text = await transcriber.transcribe(
+                    pcm,
+                    current.sampleRate,
+                    signal,
+                    async (metadata) => {
+                      attempt.request = metadata;
+                      await save(attempt);
+                    },
+                  );
+                  signal?.throwIfAborted();
+                  await save({ ...attempt, status: 'success', text, finishedAt: now() });
+                } catch (error) {
+                  await save({
+                    ...attempt,
+                    status: 'error',
+                    error: signal?.aborted
+                      ? 'cancelled'
+                      : error instanceof Error
+                        ? error.message
+                        : String(error),
+                    finishedAt: now(),
+                  });
+                  throw error;
+                }
+              } finally {
+                localActive.delete(id);
+                release();
+              }
+            })();
+            retryJobs.add(task);
+            void task.finally(() => retryJobs.delete(task)).catch(() => {});
+            return task;
+          },
+        }
+      : {}),
     async export(id) {
       const { store, session } = await settled(id);
       const parts: BlobPart[] = [
@@ -525,13 +700,35 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
       let participant: RecordingParticipant | undefined;
       if (input.participant !== undefined) {
         const source = input.participant;
-        const text = (value: unknown, max: number, nonempty = true) => typeof value === 'string' && (!nonempty || value.length > 0) && value.length <= max && !/[\x00-\x1f]/.test(value);
-        if (!source || Object.keys(source).some((key) => !['provider', 'groupId', 'participantId', 'originalName', 'alias'].includes(key)) || source.provider !== 'attendee' || !text(source.groupId, 128) ||
-          !text(source.participantId, 256) || !text(source.originalName, 80, false) ||
-          (source.alias !== undefined && !text(source.alias, 80)) || input.kind !== 'shared')
-          throw new RecordingRepositoryError('invalid-range', 'The recording participant metadata is invalid.');
-        participant = { provider: 'attendee', groupId: source.groupId, participantId: source.participantId,
-          originalName: source.originalName, ...(source.alias !== undefined ? { alias: source.alias } : {}) };
+        const text = (value: unknown, max: number, nonempty = true) =>
+          typeof value === 'string' &&
+          (!nonempty || value.length > 0) &&
+          value.length <= max &&
+          !/[\x00-\x1f]/.test(value);
+        if (
+          !source ||
+          Object.keys(source).some(
+            (key) =>
+              !['provider', 'groupId', 'participantId', 'originalName', 'alias'].includes(key),
+          ) ||
+          source.provider !== 'attendee' ||
+          !text(source.groupId, 128) ||
+          !text(source.participantId, 256) ||
+          !text(source.originalName, 80, false) ||
+          (source.alias !== undefined && !text(source.alias, 80)) ||
+          input.kind !== 'shared'
+        )
+          throw new RecordingRepositoryError(
+            'invalid-range',
+            'The recording participant metadata is invalid.',
+          );
+        participant = {
+          provider: 'attendee',
+          groupId: source.groupId,
+          participantId: source.participantId,
+          originalName: source.originalName,
+          ...(source.alias !== undefined ? { alias: source.alias } : {}),
+        };
       }
       return serial(async () => {
         check();
@@ -590,12 +787,19 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
         };
         let releaseGroup: (() => void) | undefined;
         try {
-          if (participant && policy.enabled) releaseGroup = await holdLock(participant.groupId, groupName(participant.groupId), true);
+          if (participant && policy.enabled)
+            releaseGroup = await holdLock(
+              participant.groupId,
+              groupName(participant.groupId),
+              true,
+            );
           await store.create(session);
         } catch (error) {
           release();
           throw storageError(error);
-        } finally { releaseGroup?.(); }
+        } finally {
+          releaseGroup?.();
+        }
         localActive.add(id);
         let tail: Promise<unknown> = Promise.resolve();
         let pending = new Float32Array(sampleRate);
@@ -842,6 +1046,8 @@ export function createRecordingRepository(openStore: () => Promise<PageStore> = 
     async dispose() {
       if (disposed) return;
       disposing = true;
+      retryLifetime?.abort();
+      await Promise.allSettled([...retryJobs]);
       await lifecycle;
       const results = await Promise.allSettled(
         [...writers.values()].map((active) => active.writer.finish('interrupted')),

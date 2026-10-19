@@ -26,6 +26,7 @@ for (const Engine of [WhisperHttpRecognitionEngine, QwenHttpRecognitionEngine]) 
         return writer;
       };
       let ingest, classify, reply;
+      let sentBytes = 0;
       let recognizing = false;
       const changes = [];
       const statuses = [];
@@ -55,10 +56,12 @@ for (const Engine of [WhisperHttpRecognitionEngine, QwenHttpRecognitionEngine]) 
           return { finish: async () => {}, release() {} };
         },
         globals: {
-          fetch: () =>
-            new Promise((resolve) => {
+          fetch: (_url, options) => {
+            sentBytes = options.body.byteLength;
+            return new Promise((resolve) => {
               reply = resolve;
-            }),
+            });
+          },
         },
       });
       t.after(async () => {
@@ -118,6 +121,11 @@ for (const Engine of [WhisperHttpRecognitionEngine, QwenHttpRecognitionEngine]) 
       );
       await tick();
       assert.equal(typeof reply, 'function');
+      const pendingAttempt = (await recordings.list())[0].attempts[0];
+      assert.equal(pendingAttempt.request?.payloadBytes, sentBytes);
+      assert.equal(pendingAttempt.request?.sampleCount, (sentBytes - 44) / 2);
+      assert.equal(pendingAttempt.request?.durationMs, (sentBytes - 44) / 32);
+      assert.equal(pendingAttempt.request?.responseStatus, undefined);
       assert.equal(changes.at(-1).transcribing, 1);
       assert.ok(changes.at(-1).deliveryPending > 0);
       assert.equal(statuses.at(-1), 'Transcribing');
@@ -125,10 +133,11 @@ for (const Engine of [WhisperHttpRecognitionEngine, QwenHttpRecognitionEngine]) 
       await tick();
       assert.equal(changes.at(-1).transcribing, 1);
       assert.ok(changes.at(-1).deliveryPending > 0);
-      reply({ ok: true, json: async () => ({ ok: true, value: { text: 'words' } }) });
+      reply({ ok: true, status: 200, json: async () => ({ ok: true, value: { text: 'words' } }) });
       await tick();
       assert.equal(changes.at(-1).transcribing, 0);
       assert.equal(statuses.at(-1), 'Waiting');
+      assert.equal((await recordings.list())[0].attempts[0].request?.responseStatus, 200);
       const quietStart = statuses.length;
       for (let i = 0; i < 10; i++) frame(512, 0);
       await tick();

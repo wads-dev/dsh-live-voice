@@ -8,6 +8,7 @@ import { microphoneAction } from '../../modules/conversation/models/microphoneAc
 import { SessionSpeechMemory } from '../../modules/speak/services/sessionSpeechMemory.js';
 import { readSileroVadDiagnostics } from '../../modules/recognition/vad/SileroVadRuntime.js';
 import { createRecordingRepository } from '../../modules/recording/repository.js';
+import { recordingTranscriber } from '../../modules/recognition/recordingTranscriber.js';
 import { RECORDING_KEY, RECORDING_CHANGED } from '../../modules/recording/types.js';
 import { sileroVadAssetBase } from '../../modules/recognition/vad/assets.js';
 import { createVadAssetDiagnostics } from './vadDiagnostics.js';
@@ -70,7 +71,7 @@ export function apply(ctx) {
   let preferencesLoaded = false;
   const settingsControllers = new Set();
   let disposed = false;
-  const recordings = createRecordingRepository();
+  const recordings = createRecordingRepository(undefined, () => recordingTranscriber(preferences.getSnapshot()));
   const recordingTimeline = () => {
     const append = recordings.timeline();
     return (kind) => {

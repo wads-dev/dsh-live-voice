@@ -1,4 +1,5 @@
 import { transcriptionContextHeader } from '../recognition/transcriptionContext.js';
+import { transcriptionRequestMetadata } from './requestMetadata.js';
 import type {
   RecordingRepository,
   RecordingWriter,
@@ -357,6 +358,10 @@ export async function startRecordingRecognition(
           if (engine.transcribePcm) {
             text = await engine.transcribePcm(pcm, rate, lang || engine.lang, request.signal);
           } else {
+            const body = capture.encode(pcm, rate);
+            attempt.request = transcriptionRequestMetadata(body, pcm.length, rate, lang);
+            await writer.attempt(attempt);
+            if (!valid()) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
             const response = await engine.g.fetch(engine.route + '/transcribe', {
               method: 'POST',
               headers: {
@@ -367,9 +372,10 @@ export async function startRecordingRecognition(
                 ...transcriptionContextHeader(engine.recognitionContext),
               },
               credentials: 'same-origin',
-              body: capture.encode(pcm, rate),
+              body,
               signal: request.signal,
             });
+            attempt.request.responseStatus = response.status;
             const json = await response.json();
             if (!response.ok || !json?.ok)
               throw new Error(json?.error?.message || 'Recognition request failed.');
