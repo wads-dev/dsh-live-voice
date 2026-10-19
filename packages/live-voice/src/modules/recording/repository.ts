@@ -214,6 +214,11 @@ export function createRecordingRepository(
     if (store === memory) {
       const latest = await store.get(id);
       if (
+        strict &&
+        (latest?.state === 'recording' || latest?.attempts.some((a) => a.status === 'pending'))
+      )
+        throw activeError();
+      if (
         !strict &&
         (latest?.starred || latest?.attempts.some((attempt) => attempt.status === 'pending'))
       )
@@ -232,6 +237,11 @@ export function createRecordingRepository(
         return;
       }
       const latest = await store.get(id);
+      if (
+        strict &&
+        (latest?.state === 'recording' || latest?.attempts.some((a) => a.status === 'pending'))
+      )
+        throw activeError();
       if (
         !strict &&
         (latest?.starred ||

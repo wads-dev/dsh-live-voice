@@ -33,6 +33,14 @@ export type RecordingsTranslation = {
   confirmDelete: string;
   date: string;
   delete: string;
+  deleteAll: string;
+  deleteAllActive: string;
+  deleteAllConfirm: string;
+  deleteAllConfirmAction: string;
+  deleteAllPreview: string;
+  deleteAllProgress: string;
+  deleteAllResult: string;
+  deleteAllWarning: string;
   deleteError: string;
   download: string;
   downloadError: string;
@@ -114,6 +122,10 @@ export type RecordingsTranslation = {
   start: string;
   state: string;
   storageAudio: string;
+  storageOverview: string;
+  storagePartial: string;
+  storageScope: string;
+  storageSessions: string;
   storageTotal: string;
   storageUnknown: string;
   success: string;

@@ -221,6 +221,8 @@ test('repository serializes append, pins, reads and attempt upserts; exports enc
     };
     await writer.attempt(attempt);
     await writer.finish();
+    await assert.rejects(repository.remove(writer.session.id), { code: 'active-recording' });
+    assert.equal((await repository.get(writer.session.id))?.attempts[0].status, 'pending');
     await writer.attempt({ ...attempt, status: 'success', text: 'Test result' });
     await assert.rejects(writer.append(new Float32Array(1)), { code: 'sealed' });
     await assert.rejects(writer.pin('silence-start', 500, 500), { code: 'sealed' });

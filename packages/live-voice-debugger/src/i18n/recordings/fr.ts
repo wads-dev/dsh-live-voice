@@ -35,6 +35,18 @@ const translation = {
     'Supprimer cet enregistrement entier, y compris son audio et son historique de transcription ? Cette action est irréversible. Supprimer un enregistrement actif supprime aussi son futur audio enregistré.',
   date: 'Début',
   delete: 'Supprimer toute la session',
+  deleteAll: 'Supprimer tous les enregistrements',
+  deleteAllActive:
+    'Toutes les sessions enregistrent ou ont une transcription en attente. Arrêtez la capture et attendez la fin du traitement avant de les supprimer.',
+  deleteAllConfirm: 'Supprimer les enregistrements de toutes les sources ?',
+  deleteAllConfirmAction: 'Oui, supprimer ces enregistrements',
+  deleteAllPreview:
+    '{count} session(s) sélectionnée(s), dont {stars} avec étoile. {busy} session(s) en capture ou traitement seront conservées.',
+  deleteAllProgress: 'Suppression : {done} sur {count}…',
+  deleteAllResult:
+    'Supprimées : {removed} · Conservées ou déjà absentes : {skipped} · Échecs : {failed}',
+  deleteAllWarning:
+    'Supprime définitivement audio, transcriptions et événements de ce navigateur et site. Inclut les sessions étoilées, quel que soit le filtre. Exclut les sessions créées après cette confirmation. Les conversations DSH, fichiers exportés et futurs enregistrements ne changent pas.',
   deleteError: 'Impossible de supprimer l’enregistrement.',
   download: 'Télécharger le segment WAV',
   downloadError: 'Impossible de télécharger ce segment.',
@@ -123,6 +135,11 @@ const translation = {
   start: 'Début',
   state: 'État',
   storageAudio: 'Audio stocké (MB)',
+  storageOverview: 'Stockage des enregistrements',
+  storagePartial: 'Au moins {size} · {count} session(s) non mesurée(s)',
+  storageScope:
+    'Toutes les sources de ce navigateur et site. Audio encodé sauvegardé uniquement ; hors métadonnées, surcharge de base de données, exports et audio non sauvegardé. Ce n’est pas le stockage total du navigateur.',
+  storageSessions: '{count} session(s), toutes sources confondues',
   storageTotal: 'Total de l’audio stocké (MB)',
   storageUnknown: 'Indisponible',
   success: 'Réussite',

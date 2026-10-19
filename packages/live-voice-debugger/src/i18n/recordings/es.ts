@@ -35,6 +35,18 @@ const translation = {
     '¿Eliminar toda esta grabación, incluido el audio y el historial de transcripción? No se puede deshacer. Eliminar una grabación activa también descarta su audio guardado futuro.',
   date: 'Inicio',
   delete: 'Eliminar sesión completa',
+  deleteAll: 'Borrar todas las grabaciones',
+  deleteAllActive:
+    'Todas las sesiones están grabando o tienen transcripción pendiente. Detén la captura y espera al procesamiento antes de borrarlas.',
+  deleteAllConfirm: '¿Borrar grabaciones guardadas de todas las fuentes?',
+  deleteAllConfirmAction: 'Sí, borrar estas grabaciones',
+  deleteAllPreview:
+    '{count} sesión(es) seleccionada(s), incluidas {stars} con estrella. Se conservarán {busy} sesión(es) grabando o procesando.',
+  deleteAllProgress: 'Borrando {done} de {count}…',
+  deleteAllResult:
+    'Borradas: {removed} · Conservadas o ya ausentes: {skipped} · Fallidas: {failed}',
+  deleteAllWarning:
+    'Elimina permanentemente audio, transcripciones y eventos de este navegador y sitio. Incluye sesiones con estrella, sin importar el filtro de fuente. No incluye sesiones creadas después de esta confirmación. No cambia conversaciones de DSH, archivos exportados ni futuras grabaciones.',
   deleteError: 'No se pudo eliminar la grabación.',
   download: 'Descargar WAV del segmento',
   downloadError: 'No se pudo descargar este segmento.',
@@ -123,6 +135,11 @@ const translation = {
   start: 'Inicio',
   state: 'Estado',
   storageAudio: 'Audio almacenado (MB)',
+  storageOverview: 'Almacenamiento de grabaciones',
+  storagePartial: 'Al menos {size} · {count} sesión(es) sin medir',
+  storageScope:
+    'Todas las fuentes de este navegador y sitio. Solo audio codificado guardado; excluye metadatos, sobrecarga de base de datos, archivos exportados y audio sin guardar. No es el uso total del navegador.',
+  storageSessions: '{count} sesión(es) de todas las fuentes',
   storageTotal: 'Total de audio almacenado (MB)',
   storageUnknown: 'No disponible',
   success: 'Éxito',

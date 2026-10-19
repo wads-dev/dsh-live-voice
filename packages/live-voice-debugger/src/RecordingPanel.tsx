@@ -1,4 +1,5 @@
 import React from 'react';
+import { RecordingStorage } from './RecordingStorage.js';
 import { EventTimeline } from './EventTimeline.js';
 import { TimelineWindow } from './TimelineWindow.js';
 import { searchSegments } from './segmentSearch.js';
@@ -76,6 +77,7 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
   });
   const inspector = React.useRef<ReturnType<typeof createRecordingInspector> | null>(null);
   const [filter, setFilter] = React.useState('');
+  const [clearing, setClearing] = React.useState(false);
   React.useEffect(() => {
     const current = createRecordingInspector(target, setView);
     inspector.current = current;
@@ -97,6 +99,15 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
     .filter((session) => !filter || sourceKey(session) === filter)
     .slice()
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  React.useEffect(() => {
+    if (
+      !view.loading &&
+      !view.failed &&
+      filter &&
+      !view.sessions.some((session) => sourceKey(session) === filter)
+    )
+      setFilter('');
+  }, [filter, view.sessions, view.loading, view.failed]);
   React.useEffect(() => {
     if (
       !view.loading &&
@@ -140,12 +151,15 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
       ) : (
         <>
           {view.loading && <p role="status">{copy.recordings.loading}</p>}
-          <p className="dlvd-audio-total">
-            {copy.recordings.storageTotal}:{' '}
-            {view.sessions.every((s) => s.audioBytes !== undefined)
-              ? megabytes(view.sessions.reduce((sum, s) => sum + (s.audioBytes ?? 0), 0))
-              : copy.recordings.storageUnknown}
-          </p>
+          <RecordingStorage
+            service={view.service}
+            sessions={view.sessions}
+            loading={view.loading}
+            failed={view.failed}
+            copy={copy.recordings}
+            refresh={() => inspector.current?.refresh()}
+            onBusy={setClearing}
+          />
           <div className="dlvd-recording-columns">
             <div
               className="dlvd-session-list dlvd-scroll"
@@ -217,7 +231,7 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
                 ))}
             </div>
             <div className="dlvd-recording-detail dlvd-scroll" tabIndex={0}>
-              {selected ? (
+              {selected && !clearing ? (
                 <RecordingDetail
                   key={selected.id}
                   copy={copy}

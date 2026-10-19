@@ -35,6 +35,16 @@ const translation = {
     '删除整个录音，包括音频和转录历史？此操作无法撤销。删除正在录制的会话还会丢弃后续保存的音频。',
   date: '开始时间',
   delete: '删除整个会话',
+  deleteAll: '删除所有录音',
+  deleteAllActive: '所有会话正在录音或等待转写。请停止采集并等待处理完成后再清理。',
+  deleteAllConfirm: '删除所有来源的已保存录音？',
+  deleteAllConfirmAction: '是，删除这些录音',
+  deleteAllPreview:
+    '已选择 {count} 个会话，包括 {stars} 个加星会话。将保留 {busy} 个正在录音或处理的会话。',
+  deleteAllProgress: '正在删除 {done} 项，共 {count} 项…',
+  deleteAllResult: '已删除：{removed} · 已保留或已不存在：{skipped} · 失败：{failed}',
+  deleteAllWarning:
+    '永久删除此浏览器和站点中的音频、转写及事件。包括加星会话，不受来源筛选影响。此确认后创建的新会话不包含在内。不影响 DSH 对话、导出文件或未来录音。',
   deleteError: '无法删除录音。',
   download: '下载片段 WAV',
   downloadError: '无法下载此片段。',
@@ -121,6 +131,11 @@ const translation = {
   start: '开始',
   state: '状态',
   storageAudio: '已存储音频 (MB)',
+  storageOverview: '录音存储',
+  storagePartial: '至少 {size} · {count} 个会话未测量',
+  storageScope:
+    '此浏览器和站点的所有来源。仅计算已保存的编码音频；不含元数据、数据库开销、导出文件或未保存音频。并非浏览器总存储用量。',
+  storageSessions: '所有来源共 {count} 个会话',
   storageTotal: '已存储音频总量 (MB)',
   storageUnknown: '不可用',
   success: '成功',

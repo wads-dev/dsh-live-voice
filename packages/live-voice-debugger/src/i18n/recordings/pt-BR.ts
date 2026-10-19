@@ -35,6 +35,17 @@ const translation = {
     'Excluir esta gravação inteira, incluindo áudio e histórico de transcrição? Não é possível desfazer. Excluir uma gravação ativa também descarta o áudio salvo futuro.',
   date: 'Início',
   delete: 'Excluir sessão inteira',
+  deleteAll: 'Apagar todas as gravações',
+  deleteAllActive:
+    'Todas as sessões estão gravando ou com transcrição pendente. Pare a captura e aguarde o processamento antes de apagá-las.',
+  deleteAllConfirm: 'Apagar gravações salvas de todas as fontes?',
+  deleteAllConfirmAction: 'Sim, apagar estas gravações',
+  deleteAllPreview:
+    '{count} sessão(ões) selecionada(s), incluindo {stars} com estrela. {busy} sessão(ões) gravando ou processando serão preservadas.',
+  deleteAllProgress: 'Apagando {done} de {count}…',
+  deleteAllResult: 'Apagadas: {removed} · Preservadas ou já ausentes: {skipped} · Falhas: {failed}',
+  deleteAllWarning:
+    'Remove definitivamente áudio, transcrições e eventos deste navegador e site. Inclui sessões com estrela, independentemente do filtro de fonte. Novas sessões criadas após esta confirmação não entram na limpeza. Conversas do DSH, arquivos exportados e gravações futuras não são alterados.',
   deleteError: 'Não foi possível excluir a gravação.',
   download: 'Baixar WAV do segmento',
   downloadError: 'Não foi possível baixar este segmento.',
@@ -123,6 +134,11 @@ const translation = {
   start: 'Início',
   state: 'Estado',
   storageAudio: 'Áudio armazenado (MB)',
+  storageOverview: 'Armazenamento das gravações',
+  storagePartial: 'Pelo menos {size} · {count} sessão(ões) sem medição',
+  storageScope:
+    'Todas as fontes deste navegador e site. Apenas áudio codificado salvo; não inclui metadados, espaço interno do banco, arquivos exportados nem áudio ainda não salvo. Não é o uso total do navegador.',
+  storageSessions: '{count} sessão(ões) de todas as fontes',
   storageTotal: 'Total de áudio armazenado (MB)',
   storageUnknown: 'Indisponível',
   success: 'Sucesso',

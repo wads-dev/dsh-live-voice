@@ -35,6 +35,17 @@ const translation = {
     'Delete this entire recording, including its audio and transcription history? This cannot be undone. Deleting an active recording also discards its future saved audio.',
   date: 'Started',
   delete: 'Delete entire session',
+  deleteAll: 'Delete all recordings',
+  deleteAllActive:
+    'All sessions are recording or have pending transcription. Stop capture and wait for processing before clearing them.',
+  deleteAllConfirm: 'Delete saved recordings from all sources?',
+  deleteAllConfirmAction: 'Yes, delete these recordings',
+  deleteAllPreview:
+    '{count} session(s) selected, including {stars} starred. {busy} recording or processing session(s) will be kept.',
+  deleteAllProgress: 'Deleting {done} of {count}…',
+  deleteAllResult: 'Deleted: {removed} · Kept or already absent: {skipped} · Failed: {failed}',
+  deleteAllWarning:
+    'This permanently removes their audio, transcripts and events from this browser and site. Includes starred sessions, regardless of the source filter. New sessions created after this confirmation are not included. DSH conversations, exported files and future recording remain unchanged.',
   deleteError: 'Unable to delete the recording.',
   download: 'Download segment WAV',
   downloadError: 'Unable to download this segment.',
@@ -123,6 +134,11 @@ const translation = {
   start: 'Start',
   state: 'State',
   storageAudio: 'Stored audio (MB)',
+  storageOverview: 'Recording storage',
+  storagePartial: 'At least {size} · {count} session(s) unmeasured',
+  storageScope:
+    'All sources in this browser and site. Encoded saved audio only; excludes metadata, database overhead, exported files and unsaved audio. Not total browser storage usage.',
+  storageSessions: '{count} session(s) across all sources',
   storageTotal: 'Total stored audio (MB)',
   storageUnknown: 'Unavailable',
   success: 'Success',
