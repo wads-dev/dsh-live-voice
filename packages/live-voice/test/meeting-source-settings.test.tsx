@@ -32,7 +32,9 @@ test('meeting source names have labelled fields and persist only on blur', async
       </LiveVoiceTranslationProvider>,
     ),
   );
-  const inputs = [...document.querySelectorAll('input')];
+  const inputs = [...document.querySelectorAll('input')].filter((input) =>
+    /Microphone source name|Shared-audio source name/.test(input.closest('label').textContent),
+  );
   assert.deepEqual(
     inputs.map((input) => input.value),
     ['Me', 'Them'],

@@ -1,10 +1,20 @@
 import { defaultSettings, normalizeSourceName } from '../../core/settings.js';
 
-export type MeetingSource = 'microphone' | 'shared';
+export type MeetingSource = 'microphone' | 'shared' | `attendee:${string}`;
 
 /** One composer writer; independent recognizers deliver final chunks in arrival order. */
 export class MeetingTranscript {
   private active = new Set<MeetingSource>();
+  private labels = new Map<MeetingSource, string>();
+  setLabel(source: MeetingSource, name: string) {
+    this.labels.set(source, normalizeSourceName(name, source));
+  }
+  forget(source: MeetingSource) {
+    this.active.delete(source);
+    this.labels.delete(source);
+    this.sourceTimestamps.delete(source);
+    if (this.last === source) this.last = null;
+  }
   private last: MeetingSource | null = null;
   private timestamps = false;
   private sourceTimestamps = new Map<MeetingSource, boolean>();
@@ -29,7 +39,7 @@ export class MeetingTranscript {
     if (!chunk || !this.active.has(source)) return;
     const draft = this.composer.getDraft();
     if (!draft) this.last = null;
-    const labelled = this.active.size > 1;
+    const labelled = this.active.size > 1 || source.startsWith('attendee:');
     const timestamps = this.sourceTimestamps.get(source) ?? this.timestamps;
     const changed = this.last !== source || paragraphBefore;
     const date = new Date(Number.isFinite(startedAt) ? startedAt! : Date.now());
@@ -51,7 +61,8 @@ export class MeetingTranscript {
           '] '
         : '';
     const key = source === 'microphone' ? 'microphoneSourceName' : 'sharedSourceName';
-    const name = normalizeSourceName(this.settings()[key], defaultSettings[key]);
+    const name =
+      this.labels.get(source) || normalizeSourceName(this.settings()[key], defaultSettings[key]);
     const prefix = changed ? stamp + (labelled ? name + ': ' : '') : '';
     const boundary =
       paragraphBefore ||

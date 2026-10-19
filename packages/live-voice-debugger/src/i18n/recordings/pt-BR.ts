@@ -1,6 +1,7 @@
 import type { RecordingsTranslation } from './base.js';
 const translation = {
   active: 'Gravando',
+  aliasAtCapture: 'Apelido na captura',
   allSources: 'Todas as fontes',
   assistantEnd: 'Reprodução do assistente encerrada',
   assistantPause: 'Reprodução do assistente pausada',
@@ -36,6 +37,7 @@ const translation = {
   interrupted: 'Interrompida',
   loadError: 'Não foi possível carregar as gravações. Tente atualizar.',
   loading: 'Carregando gravações…',
+  meetingId: 'ID da reunião',
   memory: 'Somente na memória',
   microphone: 'Microfone',
   name: 'Nome da sessão',
@@ -43,6 +45,10 @@ const translation = {
     'Não foi possível salvar o nome. Marque a sessão com estrela e use uma única linha de até 120 caracteres.',
   noAttempts: 'Nenhuma tentativa de transcrição ainda.',
   open: 'Segmento aberto',
+  originalName: 'Nome original na captura',
+  participant: 'Participante',
+  participantDetails: 'Identidade do participante na captura',
+  participantId: 'ID do participante',
   pending: 'Pendente',
   persistent: 'Salva localmente',
   pinConfirmed: 'Confirmado em',

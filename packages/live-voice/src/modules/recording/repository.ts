@@ -4,6 +4,7 @@ import type {
   RecordingPin,
   RecordingRepository,
   RecordingSession,
+  RecordingParticipant,
   RecordingWriter,
 } from './types.js';
 import { recordingSegments } from './types.js';
@@ -41,7 +42,7 @@ function range(start: number, end: number, length: number): void {
       'The requested sample range is outside the saved recording.',
     );
 }
-async function holdLock(id: string): Promise<() => void> {
+async function holdLock(id: string, name = lockName(id), wait = false): Promise<() => void> {
   if (!globalThis.navigator?.locks)
     throw new RecordingRepositoryError(
       'storage-unavailable',
@@ -49,7 +50,7 @@ async function holdLock(id: string): Promise<() => void> {
     );
   return new Promise((resolve, reject) => {
     navigator.locks
-      .request(lockName(id), { ifAvailable: true }, async (lock) => {
+      .request(name, wait ? {} : { ifAvailable: true }, async (lock) => {
         if (!lock) {
           reject(
             new RecordingRepositoryError(
@@ -71,7 +72,7 @@ function base64(bytes: Uint8Array): string {
   return btoa(text);
 }
 
-export function createRecordingRepository(): RecordingRepository {
+export function createRecordingRepository(openStore: () => Promise<PageStore> = openRecordingStore): RecordingRepository {
   const memory = createMemoryStore();
   const listeners = new Set<() => void>();
   const writers = new Map<
@@ -109,7 +110,7 @@ export function createRecordingRepository(): RecordingRepository {
   async function persistentStore(): Promise<PageStore> {
     if (!opening)
       opening = (async () => {
-        const store = await openRecordingStore();
+        const store = await openStore();
         try {
           // One recovery pass per repository lifetime, never on each list/get.
           for (const session of await store.list()) {
@@ -214,11 +215,40 @@ export function createRecordingRepository(): RecordingRepository {
       await store.remove(id);
     });
   }
+  const groupName = (groupId: string) => 'dsh-live-voice.recording-group:' + JSON.stringify(['attendee', groupId]);
+  async function deleteGroup(store: PageStore, groupId: string, members: StoredSession[]) {
+    if (members.some((s) => localActive.has(s.id))) return;
+    const releases: (() => void)[] = [];
+    try {
+      if (store !== memory) {
+        releases.push(await holdLock(groupId, groupName(groupId)));
+        for (const member of [...members].sort((a, b) => a.id.localeCompare(b.id))) releases.push(await holdLock(member.id));
+      }
+      await store.removeGroup(groupId, members.map((s) => s.id));
+    } catch (error) {
+      if (!(error instanceof RecordingRepositoryError) || error.code !== 'active-recording') throw error;
+      // A concurrent writer/protection operation owns a member: never remove siblings alone.
+    } finally { for (const release of releases.reverse()) release(); }
+  }
   async function prune(
     kind: RecordingSession['kind'],
     keepPrevious: number,
     target?: PageStore,
+    participantRetention = false,
   ): Promise<void> {
+    const stores = target ? [target] : [memory, ...(globalThis.indexedDB ? [await persistentStore()] : [])];
+    for (const store of participantRetention ? stores : []) {
+      const groups = new Map<string, StoredSession[]>();
+      for (const session of await store.list()) {
+        if (session.participant?.provider !== 'attendee') continue;
+        const id = session.participant.groupId;
+        groups.set(id, [...(groups.get(id) ?? []), session]);
+      }
+      const ordinary = [...groups].filter(([, members]) => members.every((s) => !s.starred && s.state !== 'recording' && !localActive.has(s.id) && !s.attempts.some((a) => a.status === 'pending')));
+      const latest = (members: StoredSession[]) => [...members].sort((a, b) => b.startedAt.localeCompare(a.startedAt) || (b.createdOrder ?? 0) - (a.createdOrder ?? 0))[0];
+      ordinary.sort(([aid, a], [bid, b]) => { const x = latest(a), y = latest(b); return y.startedAt.localeCompare(x.startedAt) || (y.createdOrder ?? 0) - (x.createdOrder ?? 0) || bid.localeCompare(aid); });
+      for (const [id, members] of ordinary.slice(Math.max(1, keepPrevious))) await deleteGroup(store, id, members);
+    }
     const available = target
       ? (await target.list()).sort(
           (a, b) =>
@@ -230,6 +260,7 @@ export function createRecordingRepository(): RecordingRepository {
     const sessions = available.filter(
       (session) =>
         session.kind === kind &&
+        session.participant?.provider !== 'attendee' &&
         !session.starred &&
         !session.attempts.some((attempt) => attempt.status === 'pending') &&
         session.state !== 'recording' &&
@@ -422,7 +453,7 @@ export function createRecordingRepository(): RecordingRepository {
           release();
         }
         emit();
-        if (!starred) await prune(updated.kind, updated.keepPrevious, store);
+        if (!starred) await prune(updated.kind, updated.keepPrevious, store, !!updated.participant);
         emit();
       });
     },
@@ -491,6 +522,17 @@ export function createRecordingRepository(): RecordingRepository {
     },
     async begin(input) {
       check();
+      let participant: RecordingParticipant | undefined;
+      if (input.participant !== undefined) {
+        const source = input.participant;
+        const text = (value: unknown, max: number, nonempty = true) => typeof value === 'string' && (!nonempty || value.length > 0) && value.length <= max && !/[\x00-\x1f]/.test(value);
+        if (!source || Object.keys(source).some((key) => !['provider', 'groupId', 'participantId', 'originalName', 'alias'].includes(key)) || source.provider !== 'attendee' || !text(source.groupId, 128) ||
+          !text(source.participantId, 256) || !text(source.originalName, 80, false) ||
+          (source.alias !== undefined && !text(source.alias, 80)) || input.kind !== 'shared')
+          throw new RecordingRepositoryError('invalid-range', 'The recording participant metadata is invalid.');
+        participant = { provider: 'attendee', groupId: source.groupId, participantId: source.participantId,
+          originalName: source.originalName, ...(source.alias !== undefined ? { alias: source.alias } : {}) };
+      }
       return serial(async () => {
         check();
         const { sampleRate, policy } = input;
@@ -519,7 +561,7 @@ export function createRecordingRepository(): RecordingRepository {
             persistent = false;
           } // A denied durability request is not a failed IDB write.
         }
-        await prune(input.kind, Math.max(1, Math.floor(policy.keepPrevious)), store);
+        await prune(input.kind, Math.max(1, Math.floor(policy.keepPrevious)), store, !!participant);
         const id = crypto.randomUUID();
         const release = policy.enabled ? await holdLock(id) : () => {};
         let session: StoredSession = {
@@ -527,6 +569,7 @@ export function createRecordingRepository(): RecordingRepository {
           sourceId: input.sourceId,
           kind: input.kind,
           label: input.label,
+          ...(participant ? { participant } : {}),
           sampleRate,
           startedAt: now(),
           createdOrder: ++creationSequence,
@@ -545,12 +588,14 @@ export function createRecordingRepository(): RecordingRepository {
           ],
           keepPrevious: Math.max(1, Math.floor(policy.keepPrevious)),
         };
+        let releaseGroup: (() => void) | undefined;
         try {
+          if (participant && policy.enabled) releaseGroup = await holdLock(participant.groupId, groupName(participant.groupId), true);
           await store.create(session);
         } catch (error) {
           release();
           throw storageError(error);
-        }
+        } finally { releaseGroup?.(); }
         localActive.add(id);
         let tail: Promise<unknown> = Promise.resolve();
         let pending = new Float32Array(sampleRate);
@@ -698,7 +743,7 @@ export function createRecordingRepository(): RecordingRepository {
                 attempts: [...current.attempts.filter((attempt) => attempt.id !== copy.id), copy],
               }));
               if (sealed && copy.status !== 'pending') {
-                await serial(() => prune(input.kind, session.keepPrevious, store));
+                await serial(() => prune(input.kind, session.keepPrevious, store, !!participant));
                 emit();
               }
             });
@@ -753,7 +798,7 @@ export function createRecordingRepository(): RecordingRepository {
                 writers.delete(id);
                 release();
               }
-              await serial(() => prune(input.kind, session.keepPrevious, store));
+              await serial(() => prune(input.kind, session.keepPrevious, store, !!participant));
               emit();
             });
             return finishPromise;

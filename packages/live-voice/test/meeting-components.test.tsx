@@ -11,7 +11,7 @@ import {
 } from '../src/modules/conversation/components/MeetingControls.js';
 import { VoiceCoordinator } from '../src/modules/core/coordinator.ts';
 import { LiveVoiceTranslationProvider } from '../src/app/client/i18n/index.js';
-test('shared audio toggle starts directly and only renders its own active bar without explanatory text', async (t) => {
+test('meeting menu starts shared audio only after selection and renders its own active bar', async (t) => {
   const dom = new JSDOM('<div id="root"></div>', { pretendToBeVisual: true });
   const old = { window: globalThis.window, document: globalThis.document };
   Object.assign(globalThis, {
@@ -71,16 +71,18 @@ test('shared audio toggle starts directly and only renders its own active bar wi
     ),
   );
   assert.equal(document.querySelectorAll('[role="group"]').length, 0);
-  const toggle = document.querySelector('button[aria-label="Shared audio"]');
+  const toggle = document.querySelector('button[aria-label="Meeting mode"]');
   assert.equal(toggle.dataset.toggleActive, 'false');
   assert.equal(toggle.querySelector('path').getAttribute('d'), iconPaths.meetingOff);
-  await act(async () => document.querySelector('button[aria-label="Shared audio"]').click());
+  await act(async () => document.querySelector('button[aria-label="Meeting mode"]').click());
+  assert.equal(starts, 0);
+  await act(async () => document.querySelector('.dlv-meeting-menu > button').click());
   assert.equal(starts, 1);
   assert.equal(toggle.dataset.toggleActive, 'true');
   assert.equal(toggle.querySelector('path').getAttribute('d'), iconPaths.meeting);
   assert.equal(
-    document.querySelector('button[aria-label="Shared audio"]').title,
-    'Stop audio sharing',
+    document.querySelector('button[aria-label="Meeting mode"]').title,
+    'Meeting actions',
   );
   assert.equal(document.querySelectorAll('[role="group"]').length, 1);
   assert.equal(document.querySelector('p'), null);

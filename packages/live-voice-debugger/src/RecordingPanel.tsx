@@ -24,11 +24,13 @@ function duration(samples: number, rate: number) {
 }
 const sourceKey = (session: RecordingSession) => JSON.stringify([session.kind, session.sourceId]);
 const sourceName = (session: RecordingSession, copy: DebuggerTranslation) =>
-  (session.kind === 'microphone' ? copy.recordings.microphone : copy.recordings.shared) +
+  (session.participant?.provider === 'attendee'
+    ? copy.recordings.participant
+    : session.kind === 'microphone'
+      ? copy.recordings.microphone
+      : copy.recordings.shared) +
   ' · ' +
-  (session.label || session.sourceId) +
-  ' · ' +
-  session.sourceId;
+  (session.label || session.sourceId);
 function stateName(session: RecordingSession, copy: DebuggerTranslation) {
   return {
     recording: copy.recordings.active,
@@ -92,6 +94,7 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
             {sources.map((session) => (
               <option key={sourceKey(session)} value={sourceKey(session)}>
                 {sourceName(session, copy)}
+                {session.participant ? ' · ' + session.participant.participantId : ''}
               </option>
             ))}
           </select>
@@ -159,6 +162,8 @@ export function RecordingPanel({ copy, target }: { copy: DebuggerTranslation; ta
                                       ★
                                     </span>
                                   )}{' '}
+                                  <span>{sourceName(session, copy)}</span>
+                                  <br />
                                   {session.name && (
                                     <strong>
                                       {session.name}
@@ -406,7 +411,33 @@ function RecordingDetail({
     duration(segment.endSample, session.sampleRate);
   return (
     <section ref={container} aria-label={sourceName(session, copy)}>
-      <h3>{session.name || sourceName(session, copy)}</h3>
+      <h3>{sourceName(session, copy)}</h3>
+      {session.name && (
+        <p>
+          <strong>
+            {copy.recordings.name}: {session.name}
+          </strong>
+        </p>
+      )}
+      {session.participant && (
+        <details>
+          <summary>{copy.recordings.participantDetails}</summary>
+          <dl>
+            <dt>{copy.recordings.originalName}</dt>
+            <dd>{session.participant.originalName}</dd>
+            {session.participant.alias && (
+              <>
+                <dt>{copy.recordings.aliasAtCapture}</dt>
+                <dd>{session.participant.alias}</dd>
+              </>
+            )}
+            <dt>{copy.recordings.participantId}</dt>
+            <dd>{session.participant.participantId}</dd>
+            <dt>{copy.recordings.meetingId}</dt>
+            <dd>{session.participant.groupId}</dd>
+          </dl>
+        </details>
+      )}
       {session.starred && service.setName && (
         <form
           className="dlvd-toolbar"
@@ -662,6 +693,8 @@ function RecordingDetail({
             <React.Fragment key={segment.id}>
               <tr data-selected={selectedSegment === segment.id}>
                 <td>
+                  <span>{sourceName(session, copy)}</span>
+                  <br />
                   {segment.kind === 'speech' ? copy.recordings.speech : copy.recordings.silence}
                   {segment.open && <small>{copy.recordings.open}</small>}
                 </td>
@@ -672,7 +705,13 @@ function RecordingDetail({
                   <button
                     type="button"
                     disabled={deleting || segment.endSample <= segment.startSample}
-                    aria-label={copy.recordings.play + ' · ' + segmentName(segment)}
+                    aria-label={
+                      copy.recordings.play +
+                      ' · ' +
+                      sourceName(session, copy) +
+                      ' · ' +
+                      segmentName(segment)
+                    }
                     onClick={() => void play(segment)}
                   >
                     {copy.recordings.play}

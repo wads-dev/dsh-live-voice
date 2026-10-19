@@ -131,6 +131,8 @@ test('modular settings composes speech, recognition, and conversation tabs', asy
     assert.equal(section.open, true, 'essential sections start expanded');
   }
   const conversation = panels[2];
+  assert.ok(conversation.textContent.includes('Meeting mode'));
+  assert.equal(panels[1].textContent.includes('Meeting mode'), false);
   const responseDelay = [...conversation.querySelectorAll('select')].find(
     (select) => [...select.options].map((option) => option.value).join(',') === '0.6,1.5,2,3,4,5',
   );

@@ -96,6 +96,11 @@ export const defaultSettings = Object.freeze({
   sharedTimestampsEnabled: false,
   microphoneSourceName: 'Me',
   sharedSourceName: 'Them',
+  meetingSource: 'shared',
+  attendeeApiUrl: 'http://localhost:8000',
+  attendeeIngressUrl: '',
+  attendeeBotId: '',
+  attendeeBotName: 'DSH Live Voice',
   voiceCommandSend: 'send, send message',
   voiceCommandQueue: 'queue, queue message',
   voiceCommandEnd: 'end, end conversation',
@@ -270,6 +275,16 @@ export function normalizeSettings(value) {
       source.microphoneShortcut,
       defaultSettings.microphoneShortcut,
     ),
+    meetingSource: source.meetingSource === 'attendee' ? 'attendee' : 'shared',
+    attendeeApiUrl:
+      typeof source.attendeeApiUrl === 'string'
+        ? source.attendeeApiUrl.slice(0, 256)
+        : defaultSettings.attendeeApiUrl,
+    attendeeIngressUrl:
+      typeof source.attendeeIngressUrl === 'string' ? source.attendeeIngressUrl.slice(0, 1024) : '',
+    attendeeBotName: normalizeSourceName(source.attendeeBotName, defaultSettings.attendeeBotName),
+    attendeeBotId:
+      typeof source.attendeeBotId === 'string' ? source.attendeeBotId.slice(0, 128) : '',
     meetingShortcut: normalizeShortcut(source.meetingShortcut, defaultSettings.meetingShortcut),
     assistantSpeechShortcut: normalizeShortcut(
       source.assistantSpeechShortcut,

@@ -73,10 +73,10 @@ export class MeetingController {
         ...this.settings(),
         microphoneEnabled: true,
         timestampsEnabled:
-          source === 'shared'
+          source !== 'microphone'
             ? this.settings().sharedTimestampsEnabled
             : this.settings().timestampsEnabled,
-        ...(source === 'shared'
+        ...(source !== 'microphone'
           ? {
               voiceCommandsEnabled:
                 this.settings().sharedVoiceCommandsEnabled ?? this.settings().voiceCommandsEnabled,
@@ -92,7 +92,12 @@ export class MeetingController {
         },
         submit: (mode) => this.composer.submit?.(mode),
         handleQuestionResult: (result) => this.composer.handleQuestionResult?.(result),
-        canAutoSend: () => this.composer.canAutoSend?.() !== false,
+        canAutoSend: () =>
+          this.composer.canAutoSend?.() !== false &&
+          [...this.inputs.entries()].every(
+            ([other, input]) =>
+              other === source || (!input.deliveryPending() && !input.getSnapshot().recognizing),
+          ),
       },
     });
     this.inputOverrides.set(source, {
@@ -108,8 +113,9 @@ export class MeetingController {
         patch.sharedVoiceCommandsEnabled = next.voiceCommandsEnabled;
       if (Object.hasOwn(next, 'timestampsEnabled')) {
         this.transcript.setSourceTimestamps(source, next.timestampsEnabled);
-        patch[source === 'shared' ? 'sharedTimestampsEnabled' : 'timestampsEnabled'] =
-          next.timestampsEnabled;
+        if (!source.startsWith('attendee:'))
+          patch[source === 'shared' ? 'sharedTimestampsEnabled' : 'timestampsEnabled'] =
+            next.timestampsEnabled;
       }
       if (Object.keys(patch).length) return this.savePreferences?.(input, patch);
     };
@@ -132,7 +138,12 @@ export class MeetingController {
   applySettings(settings) {
     for (const [source, input] of this.inputs) {
       const timestamps =
-        source === 'shared' ? settings.sharedTimestampsEnabled : settings.timestampsEnabled;
+        source.startsWith('attendee:') &&
+        typeof this.inputOverrides.get(source)?.timestampsEnabled === 'boolean'
+          ? this.inputOverrides.get(source).timestampsEnabled
+          : source !== 'microphone'
+            ? settings.sharedTimestampsEnabled
+            : settings.timestampsEnabled;
       this.transcript.setSourceTimestamps(source, Boolean(timestamps));
       VoiceCoordinator.prototype.updateSettings.call(input, {
         ...settings,
@@ -159,7 +170,7 @@ export class MeetingController {
     this.transcript.setTimestamps(enabled);
     this.patch(null, { timestamps: enabled });
   }
-  async start(source, request) {
+  async start(source, request, supplied) {
     if (this.disposed) {
       request
         ?.then((stream) => stream.getTracks().forEach((track) => track.stop()))
@@ -184,11 +195,14 @@ export class MeetingController {
     this.patch(source, { starting: true, error: null });
     try {
       const settings = this.settings();
-      const { meter, engine } = this.createSource(source, settings);
+      const { meter, engine } = supplied || this.createSource(source, settings);
       const input = this.input(source);
       input.recognition.activityManaged = engine.activityManaged === true;
       input.meter = meter;
-      input.updateSettings({ microphoneEnabled: true });
+      // Sparse external audio restarts its recorder, not the user's input policy.
+      // Retain a participant's mute across bursts; explicit tab/mic starts keep
+      // their established unmute behavior.
+      if (!source.startsWith('attendee:')) input.updateSettings({ microphoneEnabled: true });
       this.applySettings(settings);
       input.patch({ conversation: true, starting: true, error: null });
       Object.assign(job, { meter, engine });
@@ -223,7 +237,15 @@ export class MeetingController {
         onResult: ({ final, interim, startedAt, paragraphBefore }) => {
           if (!valid()) return;
           const accepted = this.onSpeech?.(source, final || interim) !== false;
-          if (accepted) input.onResult({ final, interim, startedAt, paragraphBefore });
+          if (accepted)
+            input.onResult({
+              final,
+              interim,
+              startedAt: Number.isFinite(startedAt)
+                ? startedAt + (engine.attendeeTimestampOffset || 0)
+                : startedAt,
+              paragraphBefore,
+            });
           else if (final && !engine.activityManaged) input.patch({ recognizing: false });
           if (final && !interim && !engine.activityManaged) {
             this.onActivity?.(source, false);
@@ -264,7 +286,7 @@ export class MeetingController {
       if (valid()) {
         this.patch(source, {
           error:
-            source === 'shared' && error.message === 'No shared audio track was returned.'
+            source !== 'microphone' && error.message === 'No shared audio track was returned.'
               ? this.t('noAudio')
               : error.code === 'external-audio-unsupported'
                 ? this.t('browserSharedUnsupported')
@@ -313,13 +335,35 @@ export class MeetingController {
     await job?.engine?.stop();
     await job?.meter?.stop();
   }
+  async removeParticipant(source) {
+    if (!source.startsWith('attendee:')) return;
+    await this.stop(source);
+    const input = this.inputs.get(source);
+    if (input) {
+      input.disposed = true;
+      input.listeners.clear();
+    }
+    this.inputs.delete(source);
+    this.inputOverrides.delete(source);
+    this.generations.delete(source);
+    this.transcript.forget(source);
+    const { [source]: removed, ...remaining } = this.snapshot;
+    this.snapshot = remaining;
+    this.patch(null, {});
+  }
   async end() {
-    await Promise.all(['microphone', 'shared'].map((source) => this.stop(source)));
+    await this.attendee?.stop();
+    await Promise.all(
+      [...new Set(['microphone', 'shared', ...this.jobs.keys()])].map((source) =>
+        this.stop(source),
+      ),
+    );
     this.transcript.reset();
     this.patch(null, { active: false });
   }
   async dispose() {
     this.disposed = true;
+    await this.attendee?.dispose?.();
     await this.end();
     for (const input of this.inputs.values()) {
       input.cancelAutoSend();

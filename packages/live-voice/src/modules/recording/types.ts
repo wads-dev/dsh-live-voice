@@ -34,11 +34,20 @@ export interface RecordingEvent {
   occurredAt: string;
   atSample: number; // Captured sample boundary, not an invented audio position during capture gaps.
 }
+/** Source identity and names at capture start; later aliases never rewrite this evidence. */
+export interface RecordingParticipant {
+  provider: 'attendee';
+  groupId: string;
+  participantId: string;
+  originalName: string;
+  alias?: string;
+}
 export interface RecordingSession {
   id: string;
   sourceId: string;
   kind: RecordingKind;
   label: string;
+  participant?: RecordingParticipant;
   name?: string;
   events?: RecordingEvent[];
   startedAt: string;
@@ -113,6 +122,7 @@ export interface RecordingRepository extends RecordingService {
     sourceId: string;
     kind: RecordingKind;
     label: string;
+    participant?: RecordingParticipant;
     sampleRate: number;
     policy: RecordingPolicy;
     configuration?: RecordingSession['configuration'];

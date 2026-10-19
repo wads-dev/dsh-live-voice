@@ -11,6 +11,11 @@ import { HostAudioSpeakingEngine } from '../src/modules/speak/engines/audio/Host
 import { BrowserSpeakingEngine } from '../src/modules/speak/engines/browser/BrowserSpeakingEngine.js';
 
 const h = React.createElement;
+async function toggleSharedAudio() {
+  if (!document.querySelector('.dlv-meeting-menu'))
+    await act(async () => document.querySelector('[aria-label="Meeting mode"]').click());
+  await act(async () => [...document.querySelectorAll('.dlv-meeting-menu > button')][0].click());
+}
 function deferred() {
   let resolve;
   const promise = new Promise((r) => {
@@ -276,7 +281,7 @@ test('meeting-only leave protection survives composer navigation and clears afte
   const request = async () => new window.EventTarget();
   window.navigator.mediaDevices.getDisplayMedia = request;
   await f.render(h(f.Buttons, f.props('a')));
-  await act(async () => document.querySelector('[aria-label="Shared audio"]').click());
+  await toggleSharedAudio();
   const leave = () => {
     const event = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
@@ -1171,7 +1176,7 @@ test('spoken finals answer pending questions as custom text without touching the
   );
 });
 
-test('sharing requests permission on first click without ending normal voice or blocking speech', async (t) => {
+test('sharing requests permission only after selecting the explicit tab action without ending normal voice or blocking speech', async (t) => {
   const f = await fixture(t);
   let requests = 0;
   let meeting;
@@ -1188,7 +1193,7 @@ test('sharing requests permission on first click without ending normal voice or 
   await f.render(h(f.Buttons, f.props('a')));
   const c = f.controllers[0];
   const before = f.calls.filter(([name]) => name === 'end').length;
-  await act(async () => document.querySelector('[aria-label="Shared audio"]').click());
+  await toggleSharedAudio();
   assert.equal(requests, 1);
   assert.equal(f.calls.filter(([name]) => name === 'end').length, before);
   await c.speak('Test speech', 'test');
@@ -1197,7 +1202,7 @@ test('sharing requests permission on first click without ending normal voice or 
   assert.equal(f.calls.filter(([name]) => name === 'conversation').length, 1);
   assert.equal(meeting.getSnapshot().shared.listening, true);
   const stops = f.calls.filter(([name]) => name === 'stop').length;
-  await act(async () => document.querySelector('[aria-label="Shared audio"]').click());
+  await toggleSharedAudio();
   assert.equal(meeting.getSnapshot().shared.listening, false);
   assert.equal(f.calls.filter(([name]) => name === 'stop').length, stops);
 });
@@ -1225,8 +1230,8 @@ test('all three bars stay ordered captions, shared audio, microphone with no dup
       speechSegmentsTotal: 3,
       speechSegmentIndex: 1,
     });
-    document.querySelector('[aria-label="Shared audio"]').click();
   });
+  await toggleSharedAudio();
   const bars = [...document.querySelectorAll('.dlv-pill')];
   assert.equal(bars.length, 3);
   assert.ok(bars[0].classList.contains('dlv-speech-pill'));
@@ -1260,12 +1265,12 @@ test('composer autoplay remains between shared audio and microphone while idle, 
   const f = await fixture(t);
   await f.render(h(f.Buttons, f.props('a')));
   const buttons = [...document.querySelectorAll('button')];
-  assert.equal(buttons[0].getAttribute('aria-label'), 'Shared audio');
+  assert.equal(buttons[0].getAttribute('aria-label'), 'Meeting mode');
   assert.equal(buttons[1].getAttribute('data-audio-mode'), 'speaker');
   assert.equal(buttons[1].classList.contains('dlv-live-toggle'), false);
   assert.equal(buttons[1].querySelector('.dlv-toggle-state'), null);
   assert.match(buttons[1].title, /Next mode: Headphones/);
-  assert.equal(buttons[0].title, 'Start audio sharing');
+  assert.equal(buttons[0].title, 'Meeting actions');
   assert.ok(buttons[2].title);
   assert.equal(buttons[2].classList.contains('dlv-mic'), true);
   const c = f.controllers[0];
@@ -1614,7 +1619,7 @@ test('shared meeting capture survives chat replacement and routes only to the co
   const a = f.props('a', { setDraft: (text) => edits.push(['a', text]) });
   const b = f.props('b', { setDraft: (text) => edits.push(['b', text]) });
   await f.render(h(f.Buttons, a));
-  await act(async () => document.querySelector('[aria-label="Shared audio"]').click());
+  await toggleSharedAudio();
   const meeting = creates[0];
   const job = meeting.jobs.get('shared');
   await act(async () => meeting.transcript.append('shared', 'Before navigation'));

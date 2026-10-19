@@ -2,12 +2,14 @@ import React from 'react';
 import { useLanguage } from '../../../../app/client/i18n/index.js';
 import { SettingsCard, SettingsSection } from '../../../../shared/design-system/index.js';
 import { DeliverySettings } from './DeliverySettings.js';
+import { MeetingSourceSettings } from './MeetingSourceSettings.js';
 import { ShortcutSettings } from './ShortcutSettings.js';
 import { VoiceModeSettings } from './VoiceModeSettings.js';
 import { ConversationDelaySettings } from './ConversationDelaySettings.js';
 import { PlaybackPolicySettings } from '../speak/PlaybackPolicySettings.js';
 export function ConversationSettingsSection(props: {
   settings: any;
+  controller?: any;
   updateSettings(value: any): void;
 }) {
   const { scoped: settingsLanguage } = useLanguage((ctx) => ctx.settings);
@@ -23,6 +25,7 @@ export function ConversationSettingsSection(props: {
           <PlaybackPolicySettings {...props} />
           <ConversationDelaySettings {...props} />
         </SettingsSection>
+        <MeetingSourceSettings {...props} />
         <SettingsSection
           title={(settingsLanguage as any).layout.shortcut()}
           icon="keyboard"

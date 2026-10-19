@@ -109,6 +109,11 @@ export function ConversationStatusBar({
                   onClick={() => invoke(state.muted ? 'resumeListeningInput' : 'muteListening')}
                 />
               ) : null}
+              {sourceLabel && (
+                <span className="dlv-source-name" title={sourceLabel}>
+                  {sourceLabel}
+                </span>
+              )}
             </>
           }
         >

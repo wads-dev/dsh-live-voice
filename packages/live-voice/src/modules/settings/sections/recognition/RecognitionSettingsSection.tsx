@@ -7,7 +7,6 @@ import { SilenceDetectionSettings } from './SilenceDetectionSettings.js';
 import { VoiceCommandSettings } from './VoiceCommandSettings.js';
 import { RecognitionStatus } from './RecognitionStatus.js';
 import { RecordingSettings } from './RecordingSettings.js';
-import { MeetingSourceSettings } from '../conversation/MeetingSourceSettings.js';
 export function RecognitionSettingsSection(props: any) {
   const { scoped: settingsLanguage } = useLanguage((ctx) => ctx.settings);
   return (
@@ -17,7 +16,6 @@ export function RecognitionSettingsSection(props: any) {
         <SettingsSection title={(settingsLanguage as any).layout.transcription()} icon="mic">
           <RecognitionEngineSettings {...props} />
         </SettingsSection>
-        <MeetingSourceSettings {...props} />
         <VoiceCommandSettings {...props} />
         <SilenceDetectionSettings {...props} />
         <RecordingSettings {...props} />

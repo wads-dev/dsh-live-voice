@@ -687,3 +687,78 @@ test('all six recording catalogs contain the same nonempty localized keys', () =
     for (const key of keys) assert.ok(copy.recordings[key].trim());
   }
 });
+test('participant sources stay visible beside custom titles and label each segment without inferring identity from source IDs', async () => {
+  const records = ['a', 'b', 'c'].map((id, index) => ({
+    ...session(id, 'shared', 'opaque/source:' + id),
+    label: 'Same display',
+    name: index === 0 ? 'Custom highlighted take' : '',
+    participant: {
+      provider: 'attendee',
+      groupId: 'bot_Test',
+      participantId: 'device/' + id + ':uuid',
+      originalName: 'Original ' + id,
+      alias: 'Same display',
+    },
+  }));
+  records.push(session('legacy', 'shared', 'legacy-attendee-looking:source'));
+  const current = service(records);
+  const owner = new JSDOM('<div id="root"></div>', { url: 'http://localhost' });
+  owner.window[RECORDING_KEY] = current;
+  const previous = {
+    window: globalThis.window,
+    document: globalThis.document,
+    flag: globalThis.IS_REACT_ACT_ENVIRONMENT,
+  };
+  globalThis.window = owner.window;
+  globalThis.document = owner.window.document;
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  const root = createRoot(document.getElementById('root'));
+  const copy = copyFor('en-US');
+  try {
+    await act(async () => {
+      root.render(React.createElement(DebuggerPanel, { copy, target: owner.window, onClose() {} }));
+      await flush();
+    });
+    const filter = document.querySelector('.dlvd-recordings select');
+    const participantOptions = [...filter.options].filter((o) =>
+      o.textContent.startsWith(copy.recordings.participant + ' · Same display'),
+    );
+    assert.equal(participantOptions.length, 3);
+    assert.equal(new Set(participantOptions.map((o) => o.value)).size, 3);
+    const header = [...document.querySelectorAll('h3')].find((h) =>
+      h.textContent.startsWith(copy.recordings.participant),
+    );
+    assert.ok(header);
+    assert.equal(header.textContent.includes('opaque/source'), false);
+    assert.ok(document.body.textContent.includes('Custom highlighted take'));
+    assert.ok(document.body.textContent.includes('Original a'));
+    assert.ok(document.body.textContent.includes('device/a:uuid'));
+    const segments = [...document.querySelectorAll('.dlvd-segments tbody tr')].filter((r) =>
+      r.querySelector('button'),
+    );
+    assert.ok(segments.length > 0);
+    for (const row of segments) {
+      assert.ok(row.textContent.includes('Same display'));
+      assert.ok(
+        row
+          .querySelector('button')
+          .getAttribute('aria-label')
+          .includes(copy.recordings.participant + ' · Same display'),
+      );
+    }
+    assert.ok(
+      [...filter.options].some((o) =>
+        o.textContent.includes(copy.recordings.shared + ' · legacy-attendee-looking:source'),
+      ),
+    );
+  } finally {
+    await act(async () => root.unmount());
+    owner.window.close();
+    if (previous.window === undefined) delete globalThis.window;
+    else globalThis.window = previous.window;
+    if (previous.document === undefined) delete globalThis.document;
+    else globalThis.document = previous.document;
+    if (previous.flag === undefined) delete globalThis.IS_REACT_ACT_ENVIRONMENT;
+    else globalThis.IS_REACT_ACT_ENVIRONMENT = previous.flag;
+  }
+});

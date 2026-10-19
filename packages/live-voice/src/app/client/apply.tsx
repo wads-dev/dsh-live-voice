@@ -14,6 +14,7 @@ import { createVadAssetDiagnostics } from './vadDiagnostics.js';
 import { createTranscriptionLeaveGuard } from './transcriptionLeaveGuard.js';
 import { SpeechStatusBar } from '../../modules/conversation/components/SpeechStatusBar.js';
 import { MeetingController } from '../../modules/conversation/models/meeting.js';
+import { AttendeeClient } from '../../modules/conversation/models/AttendeeClient.js';
 import { SharedAudioMeter, requestSharedAudio } from '../../modules/core/sharedAudio.js';
 import {
   MeetingToggle,
@@ -89,15 +90,18 @@ export function apply(ctx) {
   let voiceModeActive = false;
   let meetingEntry = null;
   let sharedSpeechActive = false;
+  const externalSpeaking = new Set();
   const meeting = new MeetingController({
     onActivity: (source, active) => {
-      if (source !== 'shared') return;
-      sharedSpeechActive = active;
-      meetingEntry?.controller.setExternalSpeechActivity(active);
+      if (source === 'microphone') return;
+      if (active) externalSpeaking.add(source);
+      else externalSpeaking.delete(source);
+      sharedSpeechActive = externalSpeaking.size > 0;
+      meetingEntry?.controller.setExternalSpeechActivity(sharedSpeechActive);
       meetingEntry?.controller.refreshDeliveryReadiness();
     },
     onSpeech: (source, text) =>
-      source !== 'shared' || meetingEntry?.controller.confirmExternalSpeech(text) !== false,
+      source === 'microphone' || meetingEntry?.controller.confirmExternalSpeech(text) !== false,
     stopSpeech: () => meetingEntry?.controller.stopSpeech(),
     composer: {
       getDraft: () => meetingEntry?.draft || '',
@@ -126,9 +130,25 @@ export function apply(ctx) {
       return { meter, engine: recognitionFor(settings, meter, source) };
     },
   });
+  meeting.attendee = new AttendeeClient(
+    meeting,
+    (source, meter, name) => {
+      const settings = preferences.getSnapshot();
+      if (settings.recognitionEngine === 'browser') throw new Error('external-pcm-unsupported');
+      const engine = recognitionFor(settings, meter, source);
+      engine.inputSource = 'shared';
+      engine.sourceId = source;
+      engine.sourceLabel = name;
+      return engine;
+    },
+    (key, values) => t('dsh-live-voice.meeting.attendee.' + key, values),
+  );
+  meeting.attendee.canStart = () =>
+    !disposed && preferences.getSnapshot().recognitionEngine !== 'browser';
+  meeting.attendee.canDeliver = () => !disposed && !!meetingEntry?.composers.size;
   leaveGuard.watch(() => {
     const state = meeting.getSnapshot();
-    return [state.microphone, state.shared];
+    return Object.values(state).filter((value) => value && typeof value === 'object');
   }, meeting.subscribe);
   let updateManager;
   if (typeof ctx.inject === 'function')
@@ -148,6 +168,8 @@ export function apply(ctx) {
       voiceModeActive ||
       retiring.size ||
       m.active ||
+      meeting.attendee.getSnapshot().active ||
+      meeting.attendee.getSnapshot().starting ||
       m.shared.starting ||
       m.shared.pending ||
       m.microphone.starting ||
@@ -386,7 +408,14 @@ export function apply(ctx) {
       throw error;
     }
   }
+  let attendeeRecognitionSettings = null;
   const unsubscribePreferences = preferences.subscribe((settings) => {
+    if (
+      attendeeRecognitionSettings &&
+      [...recognitionSettingKeys].some((key) => attendeeRecognitionSettings[key] !== settings[key])
+    )
+      void meeting.attendee.stop();
+    attendeeRecognitionSettings = settings;
     if (disposed) return;
     preferencesLoaded = true;
     const speechChanged =
@@ -457,6 +486,7 @@ export function apply(ctx) {
     suspendSessionSpeech(entry);
     entry.closed = true;
     if (meetingEntry === entry) {
+      void meeting.attendee.stop();
       meeting.cancelDelivery();
       meetingEntry = null;
       meeting.transcript.setActive('microphone', false);
@@ -534,12 +564,20 @@ export function apply(ctx) {
       composer: {
         getDraft: () => entry.draft,
         canAutoSend: () =>
-          !meeting.input().deliveryPending() && !meeting.input().getSnapshot().recognizing,
+          [...meeting.inputs.values()].every(
+            (input) => !input.deliveryPending() && !input.getSnapshot().recognizing,
+          ),
         appendFinal: (text, startedAt, paragraphBefore) => {
           meeting.cancelDelivery();
           if (
             meetingEntry === entry &&
             (entry.meeting?.getSnapshot().shared.listening ||
+              entry.meeting?.attendee?.getSnapshot().active ||
+              Object.entries(entry.meeting?.getSnapshot() || {}).some(
+                ([source, state]) =>
+                  source.startsWith('attendee:') &&
+                  (state.listening || state.starting || state.pending),
+              ) ||
               entry.controller.getSnapshot().timestamps)
           ) {
             meeting.transcript.setSourceTimestamps(
@@ -889,6 +927,7 @@ export function apply(ctx) {
         entry.composers.delete(token.current);
         if (!entry.composers.size) suspendSessionSpeech(entry);
         if (meetingEntry === entry && !entry.composers.size) {
+          void meeting.attendee.stop();
           meeting.cancelDelivery();
           meetingEntry = null;
           meeting.transcript.setActive('microphone', false);
@@ -903,7 +942,10 @@ export function apply(ctx) {
       if (!entry || entry.closed || disposed) return;
       if (!input || typeof props.inputActions?.setDraft !== 'function') return;
       if (meetingEntry !== entry) {
-        if (meetingEntry) suspendSessionSpeech(meetingEntry);
+        if (meetingEntry) {
+          void meeting.attendee.stop();
+          suspendSessionSpeech(meetingEntry);
+        }
         meeting.cancelDelivery();
         meetingEntry = entry;
         entry.controller.setExternalSpeechActivity(sharedSpeechActive);
@@ -981,7 +1023,7 @@ export function apply(ctx) {
     useComposer(entry, props);
     return entry ? (
       <div className="dlv-composer-toggles">
-        <MeetingToggle meeting={entry.meeting} onToggle={entry.toggleMeetingSource} />
+        <MeetingToggle meeting={entry.meeting} onToggle={entry.toggleMeetingSource} controller={entry.controller} />
         <ConversationControls controller={entry.controller} />
       </div>
     ) : null;
@@ -1029,6 +1071,7 @@ export function apply(ctx) {
       const update = c.updateSettings.bind(c);
       c.applySavedSettings = update;
       c.localModels = localModels;
+      c.attendee = meeting.attendee;
       settingsControllers.add(c);
       const unsubscribeLeaveGuard = leaveGuard.watch(() => [c.getSnapshot()], c.subscribe);
       const unsubscribeDiagnostics = c.subscribe(notifyDiagnostics);

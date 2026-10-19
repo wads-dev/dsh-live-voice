@@ -1,6 +1,7 @@
 import type { RecordingsTranslation } from './base.js';
 const translation = {
   active: 'Grabando',
+  aliasAtCapture: 'Alias al capturar',
   allSources: 'Todas las fuentes',
   assistantEnd: 'Reproducción del asistente finalizada',
   assistantPause: 'Reproducción del asistente pausada',
@@ -36,6 +37,7 @@ const translation = {
   interrupted: 'Interrumpida',
   loadError: 'No se pudieron cargar las grabaciones. Intente actualizar.',
   loading: 'Cargando grabaciones…',
+  meetingId: 'ID de reunión',
   memory: 'Solo en memoria',
   microphone: 'Micrófono',
   name: 'Nombre de la sesión',
@@ -43,6 +45,10 @@ const translation = {
     'No se pudo guardar el nombre. Marca la sesión con estrella y usa una línea de hasta 120 caracteres.',
   noAttempts: 'Todavía no hay intentos de transcripción.',
   open: 'Segmento abierto',
+  originalName: 'Nombre original al capturar',
+  participant: 'Participante',
+  participantDetails: 'Identidad del participante al capturar',
+  participantId: 'ID del participante',
   pending: 'Pendiente',
   persistent: 'Guardada localmente',
   pinConfirmed: 'Confirmado en',

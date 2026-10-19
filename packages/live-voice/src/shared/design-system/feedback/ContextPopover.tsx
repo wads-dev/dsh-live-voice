@@ -4,9 +4,11 @@ import React from 'react';
 export function ContextPopover({
   label,
   trigger,
+  openOnClick = false,
   children,
 }: React.PropsWithChildren<{
   label: string;
+  openOnClick?: boolean;
   trigger: React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>;
 }>) {
   const id = React.useId();
@@ -22,13 +24,23 @@ export function ContextPopover({
     node.showPopover?.();
     const position = () => {
       const rect = anchor.getBoundingClientRect();
+      node.style.maxHeight = Math.max(0, window.innerHeight - 24) + 'px';
       const bubble = node.getBoundingClientRect();
       node.style.left =
         Math.max(12, Math.min(rect.right - bubble.width, window.innerWidth - bubble.width - 12)) +
         'px';
-      node.style.top = Math.max(12, rect.top - bubble.height - 8) + 'px';
+      node.style.top =
+        Math.max(
+          12,
+          Math.min(rect.top - bubble.height - 8, window.innerHeight - bubble.height - 12),
+        ) + 'px';
     };
     position();
+    // Forms, validation feedback and disclosures can grow after the panel opens.
+    const observer =
+      typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(position) : null;
+    observer?.observe(node);
+    observer?.observe(anchor);
     node.querySelector<HTMLElement>('select, button, input, [tabindex]')?.focus();
     const outside = (event: PointerEvent) => {
       if (!node.contains(event.target as Node) && !anchor.contains(event.target as Node)) close();
@@ -49,6 +61,7 @@ export function ContextPopover({
     window.addEventListener('resize', position);
     window.addEventListener('scroll', position, true);
     return () => {
+      observer?.disconnect();
       node.hidePopover?.();
       document.removeEventListener('pointerdown', outside, true);
       document.removeEventListener('keydown', key, true);
@@ -63,6 +76,9 @@ export function ContextPopover({
         'aria-haspopup': 'dialog',
         'aria-expanded': Boolean(anchor),
         'aria-controls': anchor ? id : undefined,
+        onClick: openOnClick
+          ? (event) => setAnchor(anchor ? null : event.currentTarget)
+          : trigger.props.onClick,
         onContextMenu: (event) => {
           event.preventDefault();
           setAnchor(event.currentTarget);

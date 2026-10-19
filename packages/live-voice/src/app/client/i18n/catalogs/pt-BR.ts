@@ -102,6 +102,83 @@ const ptBR: LiveVoiceTranslation = {
     'A instalação não está disponível para este perfil ou versão do DSH. Use o gerenciador de plugins do DSH.',
   'dsh-live-voice.debugger.uncertain':
     'O resultado da instalação é desconhecido. Verifique o gerenciador de plugins do DSH antes de continuar; não haverá nova tentativa por aqui.',
+  'dsh-live-voice.meeting.actions': 'Ações da reunião',
+  'dsh-live-voice.meeting.attendee.admissionUnknown': 'A admissão na reunião não está confirmada.',
+  'dsh-live-voice.meeting.attendee.advanced': 'Conexão avançada',
+  'dsh-live-voice.meeting.attendee.aliasHelp':
+    'Os apelidos valem somente nesta conexão e nos próximos textos transcritos. Não alteram os nomes na reunião.',
+  'dsh-live-voice.meeting.attendee.apiKey': "Chave de API",
+  'dsh-live-voice.meeting.attendee.apiUrl': 'URL da API Attendee local',
+  'dsh-live-voice.meeting.attendee.automaticReceiver': 'Receptor detectado pelo DSH',
+  'dsh-live-voice.meeting.attendee.botId': 'ID do bot (opcional; vincula o primeiro bot)',
+  'dsh-live-voice.meeting.attendee.botName': 'Nome do bot na reunião',
+  'dsh-live-voice.meeting.attendee.configureConnection': 'Configurar conexão do Attendee',
+  'dsh-live-voice.meeting.attendee.confirmRelease': 'Descartar controle sem sair',
+  'dsh-live-voice.meeting.attendee.connected': 'Conectado ao Attendee',
+  'dsh-live-voice.meeting.attendee.connecting': 'Abrindo receptor…',
+  'dsh-live-voice.meeting.attendee.connection': 'Configurações de conexão',
+  'dsh-live-voice.meeting.attendee.controlExpired':
+    'O controle do bot expirou. Ele pode continuar na reunião; verifique no Attendee.',
+  'dsh-live-voice.meeting.attendee.controlReleased':
+    'Controle descartado, sem solicitar saída. Confira o bot no Attendee.',
+  'dsh-live-voice.meeting.attendee.controlUnavailable':
+    'Controle do bot indisponível. O estado da reunião é desconhecido; verifique no Attendee.',
+  'dsh-live-voice.meeting.attendee.controlUnknown':
+    'Estado do bot desconhecido. Verifique no Attendee antes de criar outro bot.',
+  'dsh-live-voice.meeting.attendee.copy': 'Copiar',
+  'dsh-live-voice.meeting.attendee.credentialCancel': "Cancelar",
+  'dsh-live-voice.meeting.attendee.credentialChecking': "Verificando chave de API salva",
+  'dsh-live-voice.meeting.attendee.credentialHelp': "Conectar salva a chave digitada para esta origem da API e a reutiliza depois. O host a armazena em texto simples num arquivo 0600, sem criptografia do sistema. Ela é compartilhada pelos navegadores autenticados deste host e nunca retorna ao navegador. Removê-la não encerra o controle atual do bot.",
+  'dsh-live-voice.meeting.attendee.credentialInvalid': "O armazenamento de chaves é inválido. Repare ou remova o arquivo de credenciais do host antes de tentar novamente.",
+  'dsh-live-voice.meeting.attendee.credentialMissing': "Nenhuma chave de API está configurada para esta origem. Digite-a uma vez e conecte.",
+  'dsh-live-voice.meeting.attendee.credentialNotSaved': "Chave de API não configurada neste host",
+  'dsh-live-voice.meeting.attendee.credentialRemove': "Remover chave de API salva",
+  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "Remover chave salva",
+  'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "Remover a chave salva desta origem? A recepção e o controle do bot atuais mantêm a credencial em uso; isso não solicita saída.",
+  'dsh-live-voice.meeting.attendee.credentialSaved': "Chave de API configurada neste host",
+  'dsh-live-voice.meeting.attendee.credentialUnavailable': "O armazenamento de chaves está indisponível. Verifique as permissões do host e tente novamente.",
+  'dsh-live-voice.meeting.attendee.currentBot': 'Último bot conhecido',
+  'dsh-live-voice.meeting.attendee.defaultBotName': 'Nome padrão do bot',
+  'dsh-live-voice.meeting.attendee.departureRequested':
+    'Saída solicitada; a remoção da reunião não está confirmada.',
+  'dsh-live-voice.meeting.attendee.failed':
+    'Receptor interrompido. Verifique TLS, credenciais, participantes, limites e motor de reconhecimento antes de reconectar.',
+  'dsh-live-voice.meeting.attendee.help':
+    'Conecte ao Attendee local, cole o link da reunião, escolha o nome do bot e solicite a entrada. Os participantes aparecem aqui com barras de áudio independentes. Exige STT HTTP ou local no navegador, não reconhecimento nativo. A chave não é salva. A gravação segue suas configurações.',
+  'dsh-live-voice.meeting.attendee.ingressUrl': 'URL WSS confiável do receptor',
+  'dsh-live-voice.meeting.attendee.invalidMeeting': 'Informe um link válido do Google Meet.',
+  'dsh-live-voice.meeting.attendee.join': 'Entrar na reunião',
+  'dsh-live-voice.meeting.attendee.joinFailed':
+    'O resultado da entrada pode ser desconhecido. Confira no Attendee antes de reconectar ou criar outro bot.',
+  'dsh-live-voice.meeting.attendee.joinHelp':
+    'Cria um bot com o nome escolhido e o destino de áudio. O organizador pode precisar admitir o bot. Desconectar o DSH não retira o bot: use Sair da reunião.',
+  'dsh-live-voice.meeting.attendee.joining': 'Solicitando entrada…',
+  'dsh-live-voice.meeting.attendee.leave': 'Sair da reunião',
+  'dsh-live-voice.meeting.attendee.leaveFailed':
+    'Não foi possível confirmar a solicitação de saída. O bot pode permanecer; tente Sair da reunião novamente ou confira no Attendee.',
+  'dsh-live-voice.meeting.attendee.leaving': 'Solicitando saída…',
+  'dsh-live-voice.meeting.attendee.meetingUrl': 'Link do Google Meet',
+  'dsh-live-voice.meeting.attendee.noParticipants': 'Aguardando identificação dos participantes',
+  'dsh-live-voice.meeting.attendee.participant': 'Participante {number}',
+  'dsh-live-voice.meeting.attendee.participants': 'Participantes da reunião',
+  'dsh-live-voice.meeting.attendee.receiverInactive': 'Receptor de áudio desconectado',
+  'dsh-live-voice.meeting.attendee.receiverUrl': 'URL do receptor (secreta)',
+  'dsh-live-voice.meeting.attendee.recognitionRequired':
+    'Escolha Whisper HTTP, Qwen HTTP ou um modelo STT local no navegador nas Configurações antes de conectar.',
+  'dsh-live-voice.meeting.attendee.relayUnavailable':
+    'A ponte de áudio do Compose está indisponível. Suba o Attendee com o complemento de áudio DSH e conecte novamente.',
+  'dsh-live-voice.meeting.attendee.releaseControl': 'Descartar controle do bot…',
+  'dsh-live-voice.meeting.attendee.releaseWarning':
+    'Descartar o controle não retira o bot da reunião. Você perderá a ação Sair por aqui. Continue somente após conferir no Attendee.',
+  'dsh-live-voice.meeting.attendee.settingsHelp':
+    "Configure aqui a origem local da API. Digite a chave do projeto uma vez e conecte; as próximas conexões reutilizam a chave salva no host para essa origem. Use o campo de mensagem para entrar na reunião.",
+  'dsh-live-voice.meeting.attendee.start': 'Conectar ao Attendee',
+  'dsh-live-voice.meeting.attendee.stop': 'Desconectar do Attendee',
+  'dsh-live-voice.meeting.attendee.title': 'Áudio por participante (Attendee · experimental)',
+  'dsh-live-voice.meeting.attendee.tlsNeeded':
+    'O DSH ainda não tem receptor WSS confiável. Configure HTTPS ou um proxy WSS confiável na conexão avançada antes de entrar.',
+  'dsh-live-voice.meeting.attendee.waiting':
+    'Receptor aberto; configure um novo bot com a URL abaixo.',
   'dsh-live-voice.meeting.browserLocalUnavailable':
     'O reconhecimento local do navegador está indisponível para este idioma. Instale o pacote de idioma ou desative explicitamente o processamento somente local nas Configurações para permitir o serviço do navegador.',
   'dsh-live-voice.meeting.browserSharedUnsupported':
@@ -110,11 +187,13 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.help':
     'Fontes independentes; as transcrições ficam no composer até você enviá-las manualmente.',
   'dsh-live-voice.meeting.inactive': 'Inativo',
+  'dsh-live-voice.meeting.joinMeet': 'Entrar no Google Meet · experimental',
   'dsh-live-voice.meeting.listening': 'Ouvindo',
   'dsh-live-voice.meeting.microphone': 'Microfone',
   'dsh-live-voice.meeting.noAudio':
     'Nenhum áudio foi compartilhado. Ative o áudio na janela de compartilhamento.',
   'dsh-live-voice.meeting.processing': 'Transcrevendo…',
+  'dsh-live-voice.meeting.shareTab': 'Compartilhar áudio de uma aba',
   'dsh-live-voice.meeting.shared': 'Áudio compartilhado',
   'dsh-live-voice.meeting.start': 'Iniciar fonte',
   'dsh-live-voice.meeting.startShared': 'Iniciar compartilhamento de áudio',
@@ -360,7 +439,7 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.recording.error.failed':
     'Não foi possível salvar a gravação. A captura foi interrompida para evitar perda silenciosa de dados.',
   'dsh-live-voice.recording.keepPrevious.help':
-    'Mantém de 1 a 100 gravações comuns concluídas por tipo de fonte: um grupo de microfone e outro de reunião/áudio compartilhado. Padrão: 1 de microfone + 1 de reunião. Protegidas/favoritas não contam. Gravações ativas permanecem até serem encerradas e então contam nesse total, sem uma gravação anterior extra.',
+    "Mantenha de 1 a 100 capturas comuns por tipo de fonte; no Attendee, N grupos de reunião mais recentes pela atividade de captura, com todos os participantes e trechos enquanto o grupo for retido. Gravações ativas, escritas pendentes e estrelas protegem o grupo inteiro sem ocupar a quantidade comum. Silêncio entre trechos não significa fim da chamada nem reserva uma vaga: uma reunião mais nova pode expirar um grupo antigo silencioso. Microfone e áudio compartilhado legados mantêm N capturas por tipo. A quota ou remoção de armazenamento pelo navegador ainda pode limitar a disponibilidade.",
   'dsh-live-voice.recording.keepPrevious.label': 'Gravações mantidas por tipo de fonte',
   'dsh-live-voice.recording.managementHelp':
     'O gerenciamento das sessões salvas — navegação, reprodução, revisão de transcrições, exportação e exclusão — exige o plugin opcional dsh-live-voice-debugger. Use Diagnósticos abaixo para instalá-lo. A gravação em si não exige o depurador.',

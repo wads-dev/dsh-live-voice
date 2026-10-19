@@ -100,6 +100,82 @@ const hi: LiveVoiceTranslation = {
     'इस प्रोफ़ाइल या DSH संस्करण में इंस्टॉलेशन उपलब्ध नहीं है। DSH प्लगइन प्रबंधक का उपयोग करें।',
   'dsh-live-voice.debugger.uncertain':
     'इंस्टॉलेशन का परिणाम अज्ञात है। आगे बढ़ने से पहले DSH प्लगइन प्रबंधक देखें; यहाँ दोबारा प्रयास नहीं होगा।',
+  'dsh-live-voice.meeting.actions': 'बैठक की कार्रवाइयाँ',
+  'dsh-live-voice.meeting.attendee.admissionUnknown': 'बैठक में प्रवेश की पुष्टि नहीं हुई है।',
+  'dsh-live-voice.meeting.attendee.advanced': 'उन्नत कनेक्शन',
+  'dsh-live-voice.meeting.attendee.aliasHelp':
+    'उपनाम केवल इस कनेक्शन और आगे के पाठ के लिए हैं। बैठक में लोगों के नाम नहीं बदलते।',
+  'dsh-live-voice.meeting.attendee.apiKey': "API कुंजी",
+  'dsh-live-voice.meeting.attendee.apiUrl': 'स्थानीय Attendee API URL',
+  'dsh-live-voice.meeting.attendee.automaticReceiver': 'DSH द्वारा पहचाना गया रिसीवर',
+  'dsh-live-voice.meeting.attendee.botId': 'बॉट ID (वैकल्पिक; पहला बॉट जोड़ा जाता है)',
+  'dsh-live-voice.meeting.attendee.botName': 'बैठक में बॉट का नाम',
+  'dsh-live-voice.meeting.attendee.configureConnection': 'Attendee कनेक्शन कॉन्फ़िगर करें',
+  'dsh-live-voice.meeting.attendee.confirmRelease': 'बैठक छोड़े बिना नियंत्रण छोड़ें',
+  'dsh-live-voice.meeting.attendee.connected': 'Attendee से जुड़ा',
+  'dsh-live-voice.meeting.attendee.connecting': 'रिसीवर खुल रहा है…',
+  'dsh-live-voice.meeting.attendee.connection': 'कनेक्शन सेटिंग',
+  'dsh-live-voice.meeting.attendee.controlExpired':
+    'बॉट नियंत्रण समाप्त हो गया। बॉट बैठक में रह सकता है; Attendee जाँचें।',
+  'dsh-live-voice.meeting.attendee.controlReleased':
+    'नियंत्रण छोड़ा गया, बैठक छोड़ने का अनुरोध नहीं किया गया। Attendee में बॉट जाँचें।',
+  'dsh-live-voice.meeting.attendee.controlUnavailable':
+    'बॉट नियंत्रण उपलब्ध नहीं है। बैठक की स्थिति अज्ञात है; Attendee जाँचें।',
+  'dsh-live-voice.meeting.attendee.controlUnknown':
+    'बॉट की स्थिति अज्ञात है। दूसरा बॉट बनाने से पहले Attendee जाँचें।',
+  'dsh-live-voice.meeting.attendee.copy': 'कॉपी करें',
+  'dsh-live-voice.meeting.attendee.credentialCancel': "रद्द करें",
+  'dsh-live-voice.meeting.attendee.credentialChecking': "सहेजी गई API कुंजी जाँची जा रही है",
+  'dsh-live-voice.meeting.attendee.credentialHelp': "कनेक्ट दर्ज की गई कुंजी को इस API मूल के लिए सहेजता और अगली बार उपयोग करता है। होस्ट इसे 0600 फ़ाइल में सादे पाठ में रखता है, OS एन्क्रिप्शन नहीं है। इस होस्ट के प्रमाणित ब्राउज़र इसे साझा करते हैं; कुंजी कभी ब्राउज़र को वापस नहीं मिलती। इसे हटाने से वर्तमान बॉट नियंत्रण समाप्त नहीं होता।",
+  'dsh-live-voice.meeting.attendee.credentialInvalid': "कुंजी संग्रहण अमान्य है। फिर प्रयास करने से पहले होस्ट की क्रेडेंशियल फ़ाइल सुधारें या हटाएँ।",
+  'dsh-live-voice.meeting.attendee.credentialMissing': "इस API मूल के लिए कुंजी सेट नहीं है। एक बार दर्ज करके कनेक्ट करें।",
+  'dsh-live-voice.meeting.attendee.credentialNotSaved': "इस होस्ट पर API कुंजी सेट नहीं है",
+  'dsh-live-voice.meeting.attendee.credentialRemove': "सहेजी API कुंजी हटाएँ",
+  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "सहेजी कुंजी हटाएँ",
+  'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "इस मूल की सहेजी कुंजी हटाएँ? वर्तमान रिसेप्शन और बॉट नियंत्रण अपने मौजूदा क्रेडेंशियल रखते हैं; इससे प्रस्थान नहीं माँगा जाता।",
+  'dsh-live-voice.meeting.attendee.credentialSaved': "इस होस्ट पर API कुंजी सेट है",
+  'dsh-live-voice.meeting.attendee.credentialUnavailable': "कुंजी संग्रहण उपलब्ध नहीं है। होस्ट की अनुमतियाँ जाँचकर फिर प्रयास करें।",
+  'dsh-live-voice.meeting.attendee.currentBot': 'अंतिम ज्ञात बॉट',
+  'dsh-live-voice.meeting.attendee.defaultBotName': 'बॉट का डिफ़ॉल्ट नाम',
+  'dsh-live-voice.meeting.attendee.departureRequested':
+    'छोड़ने का अनुरोध किया गया; बैठक से हटने की पुष्टि नहीं हुई है।',
+  'dsh-live-voice.meeting.attendee.failed':
+    'रिसीवर रुक गया। TLS, कुंजी, प्रतिभागी, सीमाएँ और पहचान इंजन जाँचकर पुनः कनेक्ट करें।',
+  'dsh-live-voice.meeting.attendee.help':
+    'स्थानीय Attendee कनेक्ट करें, बैठक लिंक डालें, बॉट का नाम चुनें और प्रवेश माँगें। प्रतिभागी अलग ऑडियो बार के साथ यहाँ दिखते हैं। HTTP या ब्राउज़र-स्थानीय STT आवश्यक है, मूल ब्राउज़र पहचान नहीं। कुंजी सहेजी नहीं जाती। रिकॉर्डिंग आपकी सेटिंग के अनुसार है।',
+  'dsh-live-voice.meeting.attendee.ingressUrl': 'विश्वसनीय WSS रिसीवर URL',
+  'dsh-live-voice.meeting.attendee.invalidMeeting': 'मान्य Google Meet लिंक दर्ज करें।',
+  'dsh-live-voice.meeting.attendee.join': 'बैठक में शामिल हों',
+  'dsh-live-voice.meeting.attendee.joinFailed':
+    'परिणाम अज्ञात हो सकता है। दोबारा कनेक्ट करने या नया बॉट बनाने से पहले Attendee जाँचें।',
+  'dsh-live-voice.meeting.attendee.joinHelp':
+    'चुने गए नाम और ऑडियो गंतव्य वाला बॉट बनाता है। आयोजक को प्रवेश देना पड़ सकता है। DSH डिस्कनेक्ट करने से बॉट नहीं निकलता; बैठक छोड़ें का उपयोग करें।',
+  'dsh-live-voice.meeting.attendee.joining': 'प्रवेश का अनुरोध…',
+  'dsh-live-voice.meeting.attendee.leave': 'बैठक छोड़ें',
+  'dsh-live-voice.meeting.attendee.leaveFailed':
+    'छोड़ने के अनुरोध की पुष्टि नहीं हुई। बॉट रह सकता है; बैठक छोड़ें फिर आज़माएँ या Attendee जाँचें।',
+  'dsh-live-voice.meeting.attendee.leaving': 'छोड़ने का अनुरोध…',
+  'dsh-live-voice.meeting.attendee.meetingUrl': 'Google Meet लिंक',
+  'dsh-live-voice.meeting.attendee.noParticipants': 'प्रतिभागियों की पहचान की प्रतीक्षा',
+  'dsh-live-voice.meeting.attendee.participant': 'प्रतिभागी {number}',
+  'dsh-live-voice.meeting.attendee.participants': 'बैठक के प्रतिभागी',
+  'dsh-live-voice.meeting.attendee.receiverInactive': 'ऑडियो रिसीवर डिस्कनेक्ट है',
+  'dsh-live-voice.meeting.attendee.receiverUrl': 'रिसीवर URL (गुप्त)',
+  'dsh-live-voice.meeting.attendee.recognitionRequired':
+    'कनेक्ट करने से पहले सेटिंग्स में Whisper HTTP, Qwen HTTP या ब्राउज़र-स्थानीय STT मॉडल चुनें।',
+  'dsh-live-voice.meeting.attendee.relayUnavailable':
+    'Compose ऑडियो ब्रिज उपलब्ध नहीं है। DSH ऑडियो ओवरराइड के साथ Attendee शुरू करें और फिर कनेक्ट करें।',
+  'dsh-live-voice.meeting.attendee.releaseControl': 'बॉट नियंत्रण छोड़ें…',
+  'dsh-live-voice.meeting.attendee.releaseWarning':
+    'नियंत्रण छोड़ने से बॉट बैठक से नहीं निकलता। यहाँ छोड़ें कार्रवाई उपलब्ध नहीं रहेगी। Attendee जाँचने के बाद ही जारी रखें।',
+  'dsh-live-voice.meeting.attendee.settingsHelp':
+    "यहाँ स्थानीय API मूल सेट करें। परियोजना कुंजी एक बार दर्ज करके कनेक्ट करें; अगली बार इसी मूल के लिए होस्ट पर सहेजी कुंजी उपयोग होगी। बैठक में शामिल होने के लिए संदेश क्षेत्र का उपयोग करें।",
+  'dsh-live-voice.meeting.attendee.start': 'Attendee से कनेक्ट करें',
+  'dsh-live-voice.meeting.attendee.stop': 'Attendee से डिस्कनेक्ट करें',
+  'dsh-live-voice.meeting.attendee.title': 'प्रति प्रतिभागी ऑडियो (Attendee · प्रायोगिक)',
+  'dsh-live-voice.meeting.attendee.tlsNeeded':
+    'DSH में अभी विश्वसनीय WSS रिसीवर नहीं है। शामिल होने से पहले उन्नत कनेक्शन में HTTPS या विश्वसनीय WSS प्रॉक्सी सेट करें।',
+  'dsh-live-voice.meeting.attendee.waiting': 'रिसीवर खुला है; नीचे के URL से नया बॉट बनाएँ।',
   'dsh-live-voice.meeting.browserLocalUnavailable':
     'इस भाषा के लिए ब्राउज़र की स्थानीय पहचान उपलब्ध नहीं है। भाषा पैक इंस्टॉल करें या ब्राउज़र सेवा की अनुमति देने के लिए सेटिंग्स में केवल स्थानीय प्रोसेसिंग स्पष्ट रूप से बंद करें।',
   'dsh-live-voice.meeting.browserSharedUnsupported':
@@ -107,10 +183,12 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.failed': 'पहचान विफल हुई।',
   'dsh-live-voice.meeting.help': 'स्वतंत्र स्रोत; संपादक से लिप्यंतरण स्वयं भेजें।',
   'dsh-live-voice.meeting.inactive': 'निष्क्रिय',
+  'dsh-live-voice.meeting.joinMeet': 'Google Meet में शामिल हों · प्रायोगिक',
   'dsh-live-voice.meeting.listening': 'सुन रहा है',
   'dsh-live-voice.meeting.microphone': 'माइक्रोफ़ोन',
   'dsh-live-voice.meeting.noAudio': 'कोई ऑडियो साझा नहीं हुआ। साझाकरण संवाद में ऑडियो चालू करें।',
   'dsh-live-voice.meeting.processing': 'लिप्यंतरण…',
+  'dsh-live-voice.meeting.shareTab': 'टैब का ऑडियो साझा करें',
   'dsh-live-voice.meeting.shared': 'साझा ऑडियो',
   'dsh-live-voice.meeting.start': 'स्रोत शुरू करें',
   'dsh-live-voice.meeting.startShared': 'ऑडियो साझा करना शुरू करें',
@@ -353,7 +431,7 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.recording.error.failed':
     'रिकॉर्डिंग सहेजी नहीं जा सकी। बिना सूचना डेटा खोने से बचाने के लिए कैप्चर रोक दिया गया।',
   'dsh-live-voice.recording.keepPrevious.help':
-    'प्रति स्रोत प्रकार 1–100 सामान्य पूरी हो चुकी रिकॉर्डिंग रखें: माइक्रोफ़ोन का एक समूह और मीटिंग/साझा ऑडियो का एक समूह। डिफ़ॉल्ट: 1 माइक्रोफ़ोन + 1 मीटिंग। सुरक्षित/तारांकित रिकॉर्डिंग नहीं गिनी जातीं। सक्रिय रिकॉर्डिंग बंद होने तक रहती हैं, फिर इसी कुल सीमा में गिनी जाती हैं; कोई अतिरिक्त पिछली रिकॉर्डिंग नहीं रखी जाती।',
+    "प्रति स्रोत प्रकार 1–100 सामान्य कैप्चर रखें; Attendee में कैप्चर गतिविधि के अनुसार नवीनतम N बैठक समूह रखे जाते हैं, और समूह रखे जाने तक सभी प्रतिभागी और ऑडियो बर्स्ट साथ रहते हैं। सक्रिय लेखक, लंबित लिखाइयाँ और स्टार पूरे समूह की रक्षा करते हैं और सामान्य सीमा में नहीं गिने जाते। बर्स्ट के बीच मौन का अर्थ कॉल समाप्त होना या स्थान सुरक्षित होना नहीं है: नई बैठक पुराने शांत समूह को हटा सकती है। पुराने माइक्रोफ़ोन/साझा ऑडियो रिकॉर्डिंग में प्रति प्रकार N कैप्चर रखे जाते हैं। ब्राउज़र कोटा या संग्रहण हटाना उपलब्धता सीमित कर सकता है।",
   'dsh-live-voice.recording.keepPrevious.label': 'प्रति स्रोत प्रकार रखी गई रिकॉर्डिंग',
   'dsh-live-voice.recording.managementHelp':
     'सहेजे सत्रों को ब्राउज़ करने, सुनने, ट्रांसक्रिप्शन देखने, निर्यात करने और हटाने के लिए वैकल्पिक dsh-live-voice-debugger प्लगइन चाहिए। नीचे डायग्नोस्टिक्स से इंस्टॉल करें। रिकॉर्डिंग के लिए डीबगर आवश्यक नहीं है।',

@@ -4,6 +4,7 @@ import type {
   RecordingWriter,
   RecordingAttempt,
   RecordingPin,
+  RecordingParticipant,
 } from './types.js';
 import type { SileroVadOptions, SileroVadStream } from '../recognition/vad/SileroVadRuntime.js';
 type CaptureHandle = { finish(): Promise<void>; release(): void };
@@ -28,7 +29,11 @@ interface RecognitionCallbacks {
   onProcessingChange?(state: Processing): void;
 }
 interface RecordingEngine {
-  meter: { context: AudioContext; source: AudioNode };
+  meter: {
+    context: AudioContext;
+    source: AudioNode;
+    subscribePcm?(listener: (pcm: Float32Array, rate: number) => void): () => void;
+  };
   g: { fetch: typeof fetch };
   recordings: RecordingRepository;
   route: string;
@@ -56,6 +61,7 @@ interface RecordingEngine {
   inputSource?: 'microphone' | 'shared';
   sourceId?: string;
   sourceLabel?: string;
+  recordingParticipant?: RecordingParticipant;
   recordingErrorMessage(error: unknown): string;
   vadErrorMessage(error: unknown): string;
   vadFactory(options: SileroVadOptions): SileroVadStream;
@@ -120,6 +126,7 @@ export async function startRecordingRecognition(
       sourceId: engine.sourceId ?? 'microphone',
       kind: engine.inputSource ?? 'microphone',
       label: engine.sourceLabel ?? engine.inputSource ?? 'microphone',
+      ...(engine.recordingParticipant ? { participant: engine.recordingParticipant } : {}),
       sampleRate: rate,
       policy,
       configuration: {
@@ -465,7 +472,39 @@ export async function startRecordingRecognition(
     });
     session.vad = vad;
     try {
-      const attached = await engine.vadCapture(
+      const capturePcm = engine.meter.subscribePcm
+        ? async (_context, _source, stream, onPcm) => {
+            const current = () =>
+              token === vadGeneration && valid() && !stopping && !session.finished;
+            const unsubscribe = engine.meter.subscribePcm((pcm, sampleRate) => {
+              if (!current()) return;
+              // Keep the original sample line for recording/STT; adapt only VAD input.
+              onPcm?.(pcm, sampleRate);
+              const repeat = sampleRate === 8000 ? 2 : 1;
+              const blockSize = Math.floor((sampleRate * repeat) / 4);
+              for (let at = 0; current() && at < pcm.length; at += blockSize / repeat) {
+                const block = pcm.subarray(at, at + blockSize / repeat);
+                if (repeat === 1) stream.ingest(block, sampleRate);
+                else {
+                  const upsampled = new Float32Array(block.length * 2);
+                  for (let i = 0; i < block.length; i++) {
+                    upsampled[i * 2] = block[i];
+                    upsampled[i * 2 + 1] = block[i];
+                  }
+                  stream.ingest(upsampled, 16000);
+                }
+              }
+            });
+            return {
+              release: unsubscribe,
+              finish: async () => {
+                unsubscribe();
+                await stream.flush();
+              },
+            };
+          }
+        : engine.vadCapture;
+      const attached = await capturePcm(
         engine.meter.context,
         engine.meter.source,
         vad,
@@ -593,6 +632,16 @@ export async function startRecordingRecognition(
   try {
     if (capture.silero) {
       await retrySilero();
+    } else if (engine.meter.subscribePcm) {
+      const unsubscribe = engine.meter.subscribePcm((pcm, sampleRate) => {
+        ingest(pcm, sampleRate);
+        const rms = Math.sqrt(pcm.reduce((n, x) => n + x * x, 0) / pcm.length);
+        if (captureValid()) {
+          detector.frame(rms > 0.012 ? 1 : 0, pcm.length);
+          checkLiveSplit();
+        }
+      });
+      session.capture = { release: unsubscribe, finish: async () => unsubscribe() };
     } else {
       const processor = engine.meter.context.createScriptProcessor(4096, 1, 1);
       const gain = engine.meter.context.createGain();

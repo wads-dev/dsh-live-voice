@@ -1,6 +1,7 @@
 import type { RecordingsTranslation } from './base.js';
 const translation = {
   active: 'Recording',
+  aliasAtCapture: 'Alias at capture',
   allSources: 'All sources',
   assistantEnd: 'Assistant playback ended',
   assistantPause: 'Assistant playback paused',
@@ -36,6 +37,7 @@ const translation = {
   interrupted: 'Interrupted',
   loadError: 'Unable to load recording sessions. Try refreshing.',
   loading: 'Loading recordings…',
+  meetingId: 'Meeting ID',
   memory: 'Memory only',
   microphone: 'Microphone',
   name: 'Session name',
@@ -43,6 +45,10 @@ const translation = {
     'Unable to save the name. Star the session and use a single line of at most 120 characters.',
   noAttempts: 'No transcription attempts yet.',
   open: 'Open segment',
+  originalName: 'Original name at capture',
+  participant: 'Participant',
+  participantDetails: 'Participant identity at capture',
+  participantId: 'Participant ID',
   pending: 'Pending',
   persistent: 'Saved locally',
   pinConfirmed: 'Confirmed at',

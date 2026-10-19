@@ -14,6 +14,7 @@ import { wavToM4aAac } from '../../modules/speak/engines/audio/M4aAacTranscoder.
 import { SayEngine } from '../../modules/speak/engines/say/SaySpeakingEngine.js';
 import { createSettingsStore } from '../../modules/settings/models/settingsHost.js';
 import { registerSettingsRoute } from './registerRoutes.js';
+import { registerAttendeeRoutes } from './attendeeRoutes.js';
 import { registerVadAssetRoutes } from './vadAssets.js';
 import { registerBrowserAsrAssets } from './browserAsrAssets.js';
 
@@ -152,6 +153,8 @@ export function apply(
   } = {},
 ) {
   registerSettingsRoute(ctx, settingsStore);
+  if (typeof ctx.inject === 'function')
+    ctx.inject(['webServer'], (webCtx) => registerAttendeeRoutes(webCtx));
   registerVadAssetRoutes(ctx);
   registerBrowserAsrAssets(ctx);
   ctx.systemPrompt.variable('live_voice_context', (assemblyContext) =>

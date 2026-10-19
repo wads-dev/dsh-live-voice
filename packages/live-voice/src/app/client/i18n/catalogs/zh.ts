@@ -93,6 +93,81 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.debugger.unavailable': '此配置或 DSH 版本无法在此安装。请使用 DSH 插件管理器。',
   'dsh-live-voice.debugger.uncertain':
     '安装结果未知。继续前请检查 DSH 插件管理器；此处不会重试安装。',
+  'dsh-live-voice.meeting.actions': '会议操作',
+  'dsh-live-voice.meeting.attendee.admissionUnknown': '尚未确认获准加入会议。',
+  'dsh-live-voice.meeting.attendee.advanced': '高级连接',
+  'dsh-live-voice.meeting.attendee.aliasHelp':
+    '别名仅用于本次连接和之后的转录文本，不会修改会议中的姓名。',
+  'dsh-live-voice.meeting.attendee.apiKey': "API 密钥",
+  'dsh-live-voice.meeting.attendee.apiUrl': '本地 Attendee API 地址',
+  'dsh-live-voice.meeting.attendee.automaticReceiver': 'DSH 检测到的接收器',
+  'dsh-live-voice.meeting.attendee.botId': '机器人 ID（可选；绑定首个机器人）',
+  'dsh-live-voice.meeting.attendee.botName': '会议中的机器人名称',
+  'dsh-live-voice.meeting.attendee.configureConnection': '配置 Attendee 连接',
+  'dsh-live-voice.meeting.attendee.confirmRelease': '放弃控制但不离开会议',
+  'dsh-live-voice.meeting.attendee.connected': '已连接到 Attendee',
+  'dsh-live-voice.meeting.attendee.connecting': '正在打开接收器…',
+  'dsh-live-voice.meeting.attendee.connection': '连接设置',
+  'dsh-live-voice.meeting.attendee.controlExpired':
+    '机器人控制已过期。机器人可能仍在会议中，请检查 Attendee。',
+  'dsh-live-voice.meeting.attendee.controlReleased':
+    '已放弃控制，并未请求离开会议。请在 Attendee 中检查机器人。',
+  'dsh-live-voice.meeting.attendee.controlUnavailable':
+    '无法控制机器人。会议状态未知，请检查 Attendee。',
+  'dsh-live-voice.meeting.attendee.controlUnknown':
+    '机器人状态未知。创建其他机器人前请检查 Attendee。',
+  'dsh-live-voice.meeting.attendee.copy': '复制',
+  'dsh-live-voice.meeting.attendee.credentialCancel': "取消",
+  'dsh-live-voice.meeting.attendee.credentialChecking': "正在检查已保存的 API 密钥",
+  'dsh-live-voice.meeting.attendee.credentialHelp': "连接会为此 API 来源保存输入的密钥，并在下次复用。主机将其以明文存储在权限为 0600 的文件中，不使用系统加密存储。使用此主机的已认证浏览器共享该配置，密钥不会返回浏览器。删除密钥不会结束现有机器人控制。",
+  'dsh-live-voice.meeting.attendee.credentialInvalid': "密钥存储无效。请修复或删除主机凭据文件后重试。",
+  'dsh-live-voice.meeting.attendee.credentialMissing': "此 API 来源尚未配置密钥。输入一次并连接即可。",
+  'dsh-live-voice.meeting.attendee.credentialNotSaved': "此主机尚未配置 API 密钥",
+  'dsh-live-voice.meeting.attendee.credentialRemove': "删除已保存的 API 密钥",
+  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "删除已保存的密钥",
+  'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "删除此来源的已保存密钥？当前接收和机器人控制仍使用原有凭据；此操作不会请求离会。",
+  'dsh-live-voice.meeting.attendee.credentialSaved': "此主机已配置 API 密钥",
+  'dsh-live-voice.meeting.attendee.credentialUnavailable': "密钥存储不可用。请检查主机权限后重试。",
+  'dsh-live-voice.meeting.attendee.currentBot': '上次已知的机器人',
+  'dsh-live-voice.meeting.attendee.defaultBotName': '默认机器人名称',
+  'dsh-live-voice.meeting.attendee.departureRequested': '已请求离开，但尚未确认已移出会议。',
+  'dsh-live-voice.meeting.attendee.failed':
+    '接收器已停止。请检查 TLS、密钥、参与者、限制和识别引擎后重新连接。',
+  'dsh-live-voice.meeting.attendee.help':
+    '连接本地 Attendee，粘贴会议链接，选择机器人名称并请求加入。参与者和各自独立的音频条会显示在此处。需要 HTTP 或浏览器本地 STT，不支持原生浏览器识别。密钥不会保存，录制遵循录制设置。',
+  'dsh-live-voice.meeting.attendee.ingressUrl': '可信 WSS 接收地址',
+  'dsh-live-voice.meeting.attendee.invalidMeeting': '请输入有效的 Google Meet 链接。',
+  'dsh-live-voice.meeting.attendee.join': '加入会议',
+  'dsh-live-voice.meeting.attendee.joinFailed':
+    '加入结果可能未知。重新连接或创建新机器人前，请先检查 Attendee。',
+  'dsh-live-voice.meeting.attendee.joinHelp':
+    '使用所选名称和音频地址创建机器人。组织者可能需要批准加入。断开 DSH 不会移除机器人，请使用离开会议。',
+  'dsh-live-voice.meeting.attendee.joining': '正在请求加入…',
+  'dsh-live-voice.meeting.attendee.leave': '离开会议',
+  'dsh-live-voice.meeting.attendee.leaveFailed':
+    '无法确认离开请求。机器人可能仍在会议中，请重试离开会议或检查 Attendee。',
+  'dsh-live-voice.meeting.attendee.leaving': '正在请求离开…',
+  'dsh-live-voice.meeting.attendee.meetingUrl': 'Google Meet 链接',
+  'dsh-live-voice.meeting.attendee.noParticipants': '等待识别参与者',
+  'dsh-live-voice.meeting.attendee.participant': '参与者 {number}',
+  'dsh-live-voice.meeting.attendee.participants': '会议参与者',
+  'dsh-live-voice.meeting.attendee.receiverInactive': '音频接收器已断开',
+  'dsh-live-voice.meeting.attendee.receiverUrl': '接收地址（保密）',
+  'dsh-live-voice.meeting.attendee.recognitionRequired':
+    '连接前请在设置中选择 Whisper HTTP、Qwen HTTP 或浏览器本地 STT 模型。',
+  'dsh-live-voice.meeting.attendee.relayUnavailable':
+    'Compose 音频桥接不可用。请使用 DSH 音频覆盖配置启动 Attendee，然后重新连接。',
+  'dsh-live-voice.meeting.attendee.releaseControl': '放弃机器人控制…',
+  'dsh-live-voice.meeting.attendee.releaseWarning':
+    '放弃控制不会将机器人移出会议。此处将无法再执行离开操作。请先检查 Attendee 再继续。',
+  'dsh-live-voice.meeting.attendee.settingsHelp':
+    "在此配置本地 API 来源。输入项目密钥一次并连接；后续连接会复用主机为该来源保存的密钥。请从消息输入区加入会议。",
+  'dsh-live-voice.meeting.attendee.start': '连接到 Attendee',
+  'dsh-live-voice.meeting.attendee.stop': '断开 Attendee',
+  'dsh-live-voice.meeting.attendee.title': '按参与者接收音频（Attendee · 实验性）',
+  'dsh-live-voice.meeting.attendee.tlsNeeded':
+    'DSH 尚无可信的 WSS 接收器。加入前请在高级连接中配置 HTTPS 或可信 WSS 代理。',
+  'dsh-live-voice.meeting.attendee.waiting': '接收器已打开；请用下方地址配置新机器人。',
   'dsh-live-voice.meeting.browserLocalUnavailable':
     '此语言的浏览器本地识别不可用。请安装语言包，或在设置中明确关闭仅本地处理，以允许浏览器服务识别。',
   'dsh-live-voice.meeting.browserSharedUnsupported':
@@ -100,10 +175,12 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.failed': '语音识别失败。',
   'dsh-live-voice.meeting.help': '独立来源；请从编辑器手动发送转写内容。',
   'dsh-live-voice.meeting.inactive': '未启用',
+  'dsh-live-voice.meeting.joinMeet': '加入 Google Meet · 实验性',
   'dsh-live-voice.meeting.listening': '正在聆听',
   'dsh-live-voice.meeting.microphone': '麦克风',
   'dsh-live-voice.meeting.noAudio': '未共享音频。请在共享对话框中启用音频。',
   'dsh-live-voice.meeting.processing': '正在转写…',
+  'dsh-live-voice.meeting.shareTab': '共享标签页音频',
   'dsh-live-voice.meeting.shared': '共享音频',
   'dsh-live-voice.meeting.start': '启动来源',
   'dsh-live-voice.meeting.startShared': '开始共享音频',
@@ -323,7 +400,7 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.recording.enabled.label': '保存可恢复录音',
   'dsh-live-voice.recording.error.failed': '无法保存录音。采集已停止，以避免无提示的数据丢失。',
   'dsh-live-voice.recording.keepPrevious.help':
-    '按来源类型保留 1–100 条已完成的普通录音：麦克风为一组，会议/共享音频为另一组。默认保留 1 条麦克风录音 + 1 条会议录音。受保护/星标录音不计入限额。正在录制的音频会保留到结束，之后计入此总数，不额外保留一条历史录音。',
+    '每种来源类型保留 1–100 个普通采集；Attendee 按采集活动的新近程度保留 N 个会议组，保留期间包含该组所有参与者和音频片段。活动写入器、待处理写入和星标会保护整个会议组，且不占用普通保留名额。片段间的静音不表示通话已结束，也不会永久占位：较新的会议可能使较旧的静默组过期。旧版麦克风/共享音频按每种类型保留 N 次采集。浏览器配额或存储清理仍可能影响可用性。',
   'dsh-live-voice.recording.keepPrevious.label': '按来源类型保留的录音数量',
   'dsh-live-voice.recording.managementHelp':
     '浏览、播放、查看转录、导出和删除已保存的会话需要可选的 dsh-live-voice-debugger 插件。请使用下方的“诊断”安装。录音本身无需调试器。',

@@ -157,7 +157,11 @@ export class WhisperHttpRecognitionEngine {
       }
     }
     if (signal?.aborted || this.startGeneration !== startGeneration) throw abortError();
-    if (!context || !source || (!silero && typeof context.createScriptProcessor !== 'function'))
+    if (
+      !context ||
+      !source ||
+      (!silero && !this.meter.subscribePcm && typeof context.createScriptProcessor !== 'function')
+    )
       throw new Error('This browser cannot capture PCM audio for Whisper HTTP.');
     const recording = await startRecordingRecognition(
       this,

@@ -1,6 +1,7 @@
 import type { RecordingsTranslation } from './base.js';
 const translation = {
   active: 'Enregistrement',
+  aliasAtCapture: 'Alias à la capture',
   allSources: 'Toutes les sources',
   assistantEnd: 'Lecture de l’assistant terminée',
   assistantPause: 'Lecture de l’assistant en pause',
@@ -36,6 +37,7 @@ const translation = {
   interrupted: 'Interrompu',
   loadError: 'Impossible de charger les enregistrements. Actualisez la liste.',
   loading: 'Chargement des enregistrements…',
+  meetingId: 'ID de réunion',
   memory: 'En mémoire uniquement',
   microphone: 'Microphone',
   name: 'Nom de la session',
@@ -43,6 +45,10 @@ const translation = {
     'Impossible d’enregistrer le nom. Marquez la session d’une étoile et utilisez une ligne de 120 caractères maximum.',
   noAttempts: 'Aucune tentative de transcription.',
   open: 'Segment ouvert',
+  originalName: 'Nom original à la capture',
+  participant: 'Participant',
+  participantDetails: 'Identité du participant à la capture',
+  participantId: 'ID du participant',
   pending: 'En attente',
   persistent: 'Sauvegardé localement',
   pinConfirmed: 'Confirmé à',

@@ -1,5 +1,6 @@
 export type RecordingsTranslation = {
   active: string;
+  aliasAtCapture: string;
   allSources: string;
   assistantEnd: string;
   assistantPause: string;
@@ -33,12 +34,17 @@ export type RecordingsTranslation = {
   interrupted: string;
   loadError: string;
   loading: string;
+  meetingId: string;
   memory: string;
   microphone: string;
   name: string;
   nameError: string;
   noAttempts: string;
   open: string;
+  originalName: string;
+  participant: string;
+  participantDetails: string;
+  participantId: string;
   pending: string;
   persistent: string;
   pinConfirmed: string;

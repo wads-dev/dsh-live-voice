@@ -18,6 +18,7 @@ export interface PageStore {
   nextPage(id: string, start: number, end: number): Promise<AudioPage | null>;
   audioBytes(id: string): Promise<number>;
   remove(id: string): Promise<void>;
+  removeGroup(groupId: string, expectedIds: string[]): Promise<boolean>;
   close(): void;
 }
 export function storageError(error: unknown): RecordingRepositoryError {
@@ -28,6 +29,29 @@ export function storageError(error: unknown): RecordingRepositoryError {
     quota ? 'quota-exceeded' : 'storage-failed',
     quota ? 'Browser recording storage quota was exceeded.' : 'Browser recording storage failed.',
     { cause: error },
+  );
+}
+/** Fail closed if a group changed or any member became protected since selection. */
+export function removableGroup(
+  sessions: StoredSession[],
+  groupId: string,
+  expectedIds: string[],
+): boolean {
+  const members = sessions.filter(
+    (s) => s.participant?.provider === 'attendee' && s.participant.groupId === groupId,
+  );
+  const ids = new Set(expectedIds);
+  return (
+    ids.size > 0 &&
+    ids.size === expectedIds.length &&
+    members.length === ids.size &&
+    members.every(
+      (s) =>
+        ids.has(s.id) &&
+        !s.starred &&
+        s.state !== 'recording' &&
+        !s.attempts.some((a) => a.status === 'pending'),
+    )
   );
 }
 export async function openRecordingStore(): Promise<PageStore> {
@@ -180,6 +204,33 @@ export async function openRecordingStore(): Promise<PageStore> {
           } else result(undefined);
         };
       }),
+    removeGroup: (groupId, expectedIds) =>
+      transact('readwrite', (tx, result, fail) => {
+        const sessions = tx.objectStore('sessions');
+        const request = sessions.getAll();
+        request.onsuccess = () => {
+          try {
+            if (!removableGroup(request.result, groupId, expectedIds)) {
+              result(false);
+              return;
+            }
+            const ids = new Set(expectedIds);
+            for (const id of ids) sessions.delete(id);
+            const pages = tx.objectStore('pages').openCursor();
+            pages.onsuccess = () => {
+              const cursor = pages.result;
+              if (!cursor) {
+                result(true);
+                return;
+              }
+              if (ids.has(cursor.value.recordingId)) cursor.delete();
+              cursor.continue();
+            };
+          } catch (error) {
+            fail(error);
+          }
+        };
+      }),
     close: () => db.close(),
   };
 }
@@ -229,6 +280,16 @@ export function createMemoryStore(maxBytes = 32 * 1024 * 1024): PageStore {
       for (const page of pages.get(id) ?? []) used -= size(page);
       pages.delete(id);
       sessions.delete(id);
+    },
+    removeGroup: async (groupId, expectedIds) => {
+      if (!removableGroup([...sessions.values()], groupId, expectedIds)) return false;
+      // No await between revalidation and deletion: one indivisible memory-store mutation.
+      for (const id of expectedIds) {
+        for (const page of pages.get(id) ?? []) used -= size(page);
+        pages.delete(id);
+        sessions.delete(id);
+      }
+      return true;
     },
     close: () => {
       sessions.clear();

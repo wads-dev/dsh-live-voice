@@ -521,7 +521,7 @@ test('Qwen speech output exposes and persists the selected preset voice', async 
   }
 });
 
-test('recording settings default on, preserve explicit opt-out and explain per-type totals', async () => {
+test('recording settings default on, preserve explicit opt-out and explain activity-group versus legacy retention', async () => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost' });
   const previous = { window: globalThis.window, document: globalThis.document };
   globalThis.window = dom.window;
@@ -548,10 +548,14 @@ test('recording settings default on, preserve explicit opt-out and explain per-t
     assert.equal(retained.disabled, false);
     assert.match(document.body.textContent, /On by default/);
     assert.match(document.body.textContent, /Turn off to opt out/);
-    assert.match(document.body.textContent, /1 microphone \+ 1 meeting/);
-    assert.match(document.body.textContent, /Protected\/starred recordings do not count/);
-    assert.match(document.body.textContent, /remain until closed/);
-    assert.match(document.body.textContent, /not an extra previous recording/);
+    assert.match(document.body.textContent, /Keep 1–100 ordinary captures per source type/);
+    assert.match(document.body.textContent, /Attendee keeps N meeting groups, newest by capture activity/);
+    assert.match(document.body.textContent, /every participant and burst while that group is retained/);
+    assert.match(document.body.textContent, /Active writers, pending writes and stars protect the whole meeting group without consuming an ordinary slot/);
+    assert.match(document.body.textContent, /Silence between bursts does not mean the call ended or reserve its place/);
+    assert.match(document.body.textContent, /a newer meeting may expire an older quiet group/);
+    assert.match(document.body.textContent, /Legacy microphone.shared recordings keep N captures per type/);
+    assert.match(document.body.textContent, /Browser quota or storage eviction can still limit availability/);
     assert.match(document.body.textContent, /browser profile and site/);
     assert.match(document.body.textContent, /lossy compression/);
     assert.match(document.body.textContent, /consent/);

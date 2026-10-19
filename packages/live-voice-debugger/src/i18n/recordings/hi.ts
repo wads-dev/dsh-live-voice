@@ -1,6 +1,7 @@
 import type { RecordingsTranslation } from './base.js';
 const translation = {
   active: 'रिकॉर्डिंग जारी',
+  aliasAtCapture: 'कैप्चर के समय उपनाम',
   allSources: 'सभी स्रोत',
   assistantEnd: 'सहायक का प्लेबैक समाप्त',
   assistantPause: 'सहायक का प्लेबैक रुका',
@@ -36,6 +37,7 @@ const translation = {
   interrupted: 'बाधित',
   loadError: 'रिकॉर्डिंग सत्र लोड नहीं हो सके। रीफ़्रेश करें।',
   loading: 'रिकॉर्डिंग लोड हो रही हैं…',
+  meetingId: 'मीटिंग आईडी',
   memory: 'केवल मेमोरी में',
   microphone: 'माइक्रोफ़ोन',
   name: 'सत्र का नाम',
@@ -43,6 +45,10 @@ const translation = {
     'नाम सहेजा नहीं जा सका। सत्र पर तारा लगाएँ और अधिकतम 120 अक्षरों की एक पंक्ति का उपयोग करें।',
   noAttempts: 'अभी कोई ट्रांसक्रिप्शन प्रयास नहीं है।',
   open: 'खुला खंड',
+  originalName: 'कैप्चर के समय मूल नाम',
+  participant: 'प्रतिभागी',
+  participantDetails: 'कैप्चर के समय प्रतिभागी की पहचान',
+  participantId: 'प्रतिभागी आईडी',
   pending: 'लंबित',
   persistent: 'स्थानीय रूप से सहेजा',
   pinConfirmed: 'पुष्टि समय',

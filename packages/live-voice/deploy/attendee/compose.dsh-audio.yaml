@@ -1,0 +1,54 @@
+# Add after Attendee base + ARM64/FakeCloud overrides. No host process or public port.
+x-bridge-image: &bridge-image
+  image: ${DSH_ATTENDEE_IMAGE:-attendee-local:arm64}
+  entrypoint: []
+services:
+  dsh-audio-init:
+    <<: *bridge-image
+    user: "0:0"
+    command: ["python", "/dsh/audio_bridge.py", "--init"]
+    volumes:
+      - ${DSH_LIVE_VOICE_DEPLOY:-../packages/live-voice/deploy/attendee}/audio_bridge.py:/dsh/audio_bridge.py:ro
+      - dsh-audio-public:/bridge-public
+      - dsh-audio-private:/bridge-private
+    network_mode: none
+    restart: "no"
+  dsh-audio-bridge:
+    <<: *bridge-image
+    user: "0:0"
+    command: ["python", "/dsh/audio_bridge.py"]
+    depends_on:
+      dsh-audio-init:
+        condition: service_completed_successfully
+    volumes:
+      - ${DSH_LIVE_VOICE_DEPLOY:-../packages/live-voice/deploy/attendee}/audio_bridge.py:/dsh/audio_bridge.py:ro
+      - dsh-audio-public:/bridge-public:ro
+      - dsh-audio-private:/bridge-private:ro
+    ports:
+      - "127.0.0.1:18765:18765"
+      - "127.0.0.1:18766:18766"
+    networks:
+      - attendee_network
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18766/v1/descriptor', timeout=2).close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  attendee-worker-local:
+    image: ${DSH_ATTENDEE_IMAGE:-attendee-local:arm64}
+    environment:
+      SSL_CERT_FILE: /dsh-audio-public/ca-bundle.pem
+    volumes:
+      - dsh-audio-public:/dsh-audio-public:ro
+    depends_on:
+      dsh-audio-bridge:
+        condition: service_healthy
+volumes:
+  dsh-audio-public:
+  dsh-audio-private:

@@ -89,6 +89,8 @@ test('catalogs preserve placeholders and contain no unreviewed English copies', 
       'dsh-live-voice.speak.qwen.name',
     ]),
     fr: new Set([
+      // Participant is also the correct French noun.
+      'dsh-live-voice.meeting.attendee.participant',
       'dsh-live-voice.debugger.label',
       'dsh-live-voice.recognition.microphone.label',
       'dsh-live-voice.settings.tabs.conversation',
