@@ -113,7 +113,9 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.botId': 'ID do bot (opcional; vincula o primeiro bot)',
   'dsh-live-voice.meeting.attendee.botName': 'Nome do bot na reunião',
   'dsh-live-voice.meeting.attendee.configureConnection': 'Configurar conexão do Attendee',
+  'dsh-live-voice.meeting.attendee.configureInSettings': "Configure o Google Meet em Configurações → Voz ao Vivo → Conversa → Modo reunião.",
   'dsh-live-voice.meeting.attendee.confirmRelease': 'Descartar controle sem sair',
+  'dsh-live-voice.meeting.attendee.connectMeeting': "Conectar",
   'dsh-live-voice.meeting.attendee.connected': 'Conectado ao Attendee',
   'dsh-live-voice.meeting.attendee.connecting': 'Abrindo receptor…',
   'dsh-live-voice.meeting.attendee.connection': 'Configurações de conexão',
@@ -128,19 +130,24 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.copy': 'Copiar',
   'dsh-live-voice.meeting.attendee.credentialCancel': "Cancelar",
   'dsh-live-voice.meeting.attendee.credentialChecking': "Verificando chave de API salva",
-  'dsh-live-voice.meeting.attendee.credentialHelp': "Conectar salva a chave digitada para esta origem da API e a reutiliza depois. O host a armazena em texto simples num arquivo 0600, sem criptografia do sistema. Ela é compartilhada pelos navegadores autenticados deste host e nunca retorna ao navegador. Removê-la não encerra o controle atual do bot.",
+  'dsh-live-voice.meeting.attendee.credentialHelp':
+    "Salvar guarda a chave desta origem da API no host em arquivo de texto simples 0600, sem criptografia do sistema. Navegadores autenticados desse host compartilham a configuração; o segredo nunca retorna. Substituir ou remover não encerra o controle atual do bot.",
   'dsh-live-voice.meeting.attendee.credentialInvalid': "O armazenamento de chaves é inválido. Repare ou remova o arquivo de credenciais do host antes de tentar novamente.",
   'dsh-live-voice.meeting.attendee.credentialMissing': "Nenhuma chave de API está configurada para esta origem. Digite-a uma vez e conecte.",
   'dsh-live-voice.meeting.attendee.credentialNotSaved': "Chave de API não configurada neste host",
   'dsh-live-voice.meeting.attendee.credentialRemove': "Remover chave de API salva",
   'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "Remover chave salva",
   'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "Remover a chave salva desta origem? A recepção e o controle do bot atuais mantêm a credencial em uso; isso não solicita saída.",
+  'dsh-live-voice.meeting.attendee.credentialReplace': "Substituir chave de API",
+  'dsh-live-voice.meeting.attendee.credentialSave': "Salvar chave de API",
   'dsh-live-voice.meeting.attendee.credentialSaved': "Chave de API configurada neste host",
   'dsh-live-voice.meeting.attendee.credentialUnavailable': "O armazenamento de chaves está indisponível. Verifique as permissões do host e tente novamente.",
   'dsh-live-voice.meeting.attendee.currentBot': 'Último bot conhecido',
   'dsh-live-voice.meeting.attendee.defaultBotName': 'Nome padrão do bot',
   'dsh-live-voice.meeting.attendee.departureRequested':
     'Saída solicitada; a remoção da reunião não está confirmada.',
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': "Desconectar",
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "Desconectado localmente. Não foi possível confirmar a saída remota; confira a reunião antes de conectar novamente.",
   'dsh-live-voice.meeting.attendee.failed':
     'Receptor interrompido. Verifique TLS, credenciais, participantes, limites e motor de reconhecimento antes de reconectar.',
   'dsh-live-voice.meeting.attendee.help':
@@ -171,7 +178,7 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     'Descartar o controle não retira o bot da reunião. Você perderá a ação Sair por aqui. Continue somente após conferir no Attendee.',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "Configure aqui a origem local da API. Digite a chave do projeto uma vez e conecte; as próximas conexões reutilizam a chave salva no host para essa origem. Use o campo de mensagem para entrar na reunião.",
+    "Salve aqui a chave do projeto uma vez. O menu da reunião usa a chave salva automaticamente; apenas Conectar explicitamente inicia a recepção e solicita entrada.",
   'dsh-live-voice.meeting.attendee.start': 'Conectar ao Attendee',
   'dsh-live-voice.meeting.attendee.stop': 'Desconectar do Attendee',
   'dsh-live-voice.meeting.attendee.title': 'Áudio por participante (Attendee · experimental)',

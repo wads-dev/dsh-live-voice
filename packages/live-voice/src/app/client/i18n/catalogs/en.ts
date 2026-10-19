@@ -112,7 +112,9 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.botId': 'Bot ID (optional; first bot is bound)',
   'dsh-live-voice.meeting.attendee.botName': 'Bot name in the meeting',
   'dsh-live-voice.meeting.attendee.configureConnection': 'Configure Attendee connection',
+  'dsh-live-voice.meeting.attendee.configureInSettings': "Configure Google Meet in Settings → Live Voice → Conversation → Meeting mode.",
   'dsh-live-voice.meeting.attendee.confirmRelease': 'Discard control without leaving',
+  'dsh-live-voice.meeting.attendee.connectMeeting': "Connect",
   'dsh-live-voice.meeting.attendee.connected': 'Connected to Attendee',
   'dsh-live-voice.meeting.attendee.connecting': 'Opening receiver…',
   'dsh-live-voice.meeting.attendee.connection': 'Connection settings',
@@ -127,19 +129,24 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.copy': 'Copy',
   'dsh-live-voice.meeting.attendee.credentialCancel': "Cancel",
   'dsh-live-voice.meeting.attendee.credentialChecking': "Checking saved API key",
-  'dsh-live-voice.meeting.attendee.credentialHelp': "Connect saves a typed key for this API origin and reuses it next time. The host stores it as plaintext in a 0600 file, not OS-encrypted storage. It is shared by authenticated browsers using this host and never returned to the browser. Removing it does not end an existing bot lease.",
+  'dsh-live-voice.meeting.attendee.credentialHelp':
+    "Save stores the key for this API origin on the host in a plaintext 0600 file, not OS-encrypted storage. Authenticated browsers of this host share it; the secret is never returned. Replacing or removing it does not end an existing bot lease.",
   'dsh-live-voice.meeting.attendee.credentialInvalid': "Saved-key storage is invalid. Repair or remove the host credential file before retrying.",
   'dsh-live-voice.meeting.attendee.credentialMissing': "No API key is configured for this API origin. Enter it once and Connect.",
   'dsh-live-voice.meeting.attendee.credentialNotSaved': "API key not configured on this host",
   'dsh-live-voice.meeting.attendee.credentialRemove': "Remove saved API key",
   'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "Remove saved key",
   'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "Remove this origin’s saved key? Existing reception and bot control keep their current credential; this does not request departure.",
+  'dsh-live-voice.meeting.attendee.credentialReplace': "Replace API key",
+  'dsh-live-voice.meeting.attendee.credentialSave': "Save API key",
   'dsh-live-voice.meeting.attendee.credentialSaved': "API key configured on this host",
   'dsh-live-voice.meeting.attendee.credentialUnavailable': "Saved-key storage is unavailable. Check host permissions and try again.",
   'dsh-live-voice.meeting.attendee.currentBot': 'Last known bot',
   'dsh-live-voice.meeting.attendee.defaultBotName': 'Default bot name',
   'dsh-live-voice.meeting.attendee.departureRequested':
     'Departure requested; removal from the meeting is not confirmed.',
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': "Disconnect meeting",
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "Disconnected locally. Remote departure could not be confirmed; check the meeting before connecting again.",
   'dsh-live-voice.meeting.attendee.failed':
     'Receiver stopped. Check TLS, API credentials, participants, stream limits and recognition engine, then reconnect.',
   'dsh-live-voice.meeting.attendee.help':
@@ -170,7 +177,7 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     'Discarding control does not remove the bot from the meeting. You will lose the Leave action here. Continue only after checking Attendee.',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "Configure the local API origin here. Enter the project API key once and Connect; later connections reuse the key saved on the host for that origin. Use the composer to join a meeting.",
+    "Save the project API key here once. The meeting menu uses the saved key automatically; only its explicit Connect action starts reception and requests entry.",
   'dsh-live-voice.meeting.attendee.start': 'Connect to Attendee',
   'dsh-live-voice.meeting.attendee.stop': 'Disconnect from Attendee',
   'dsh-live-voice.meeting.attendee.title': 'Audio by participant (Attendee · experimental)',

@@ -123,6 +123,56 @@ export function registerAttendeeRoutes(
               : await credentials.remove(origin);
           return Response.json({ ok: true, value }, { headers });
         }
+        if (p.action === 'disconnect') {
+          if (!ownsControl(p.owner))
+            return Response.json(
+              { ok: false, error: { code: 'ownership' } },
+              { status: 403, headers },
+            );
+          const c = control;
+          if (!c.disconnectPromise) {
+            if (!c.botId && hub.session?.botId) c.botId = hub.session.botId;
+            const api = c.api;
+            clear(); // Stop the receiver immediately, without revoking the API closure needed for leave.
+            c.disconnectPromise = (async () => {
+              const abort = new AbortController();
+              let timer;
+              let leaveRequested = false;
+              let warning = null;
+              const timeout = new Promise((_, reject) => {
+                timer = setTimeout(() => {
+                  abort.abort();
+                  reject(Error('disconnect-timeout'));
+                }, 3000);
+              });
+              try {
+                await Promise.race([
+                  (async () => {
+                    let id = c.botId;
+                    if (!id && c.joinPromise) {
+                      const result = await c.joinPromise;
+                      if (/^bot_[a-zA-Z0-9]{1,100}$/.test(result?.id)) id = result.id;
+                    }
+                    abort.signal.throwIfAborted();
+                    if (id) {
+                      await api('bots/' + id + '/leave', { method: 'POST', signal: abort.signal });
+                      leaveRequested = true;
+                    } else if (c.joining || c.joinUncertain) warning = 'control-unknown';
+                  })(),
+                  timeout,
+                ]);
+              } catch {
+                warning = c.botId ? 'leave-failed' : 'control-unknown';
+              } finally {
+                clearTimeout(timer);
+                abort.abort();
+                if (control === c) release();
+              }
+              return { disconnected: true, leaveRequested, warning };
+            })();
+          }
+          return Response.json({ ok: true, value: await c.disconnectPromise }, { headers });
+        }
         if (['close', 'release'].includes(p.action)) {
           if (!ownsControl(p.owner))
             return Response.json(
@@ -191,7 +241,7 @@ export function registerAttendeeRoutes(
           c.joining = true;
           try {
             // Never retry: a timed-out POST may already have created a real bot.
-            const result = await c.api('bots', {
+            c.joinPromise = c.api('bots', {
               method: 'POST',
               signal: c.abort.signal,
               body: JSON.stringify({
@@ -204,6 +254,7 @@ export function registerAttendeeRoutes(
                 },
               }),
             });
+            const result = await c.joinPromise;
             if (
               !/^bot_[a-zA-Z0-9]{1,100}$/.test(result?.id) ||
               control !== c ||

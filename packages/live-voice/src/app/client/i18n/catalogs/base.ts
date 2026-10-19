@@ -87,7 +87,9 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.meeting.attendee.botId': string;
   'dsh-live-voice.meeting.attendee.botName': string;
   'dsh-live-voice.meeting.attendee.configureConnection': string;
+  'dsh-live-voice.meeting.attendee.configureInSettings': string;
   'dsh-live-voice.meeting.attendee.confirmRelease': string;
+  'dsh-live-voice.meeting.attendee.connectMeeting': string;
   'dsh-live-voice.meeting.attendee.connected': string;
   'dsh-live-voice.meeting.attendee.connecting': string;
   'dsh-live-voice.meeting.attendee.connection': string;
@@ -105,11 +107,15 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.meeting.attendee.credentialRemove': string;
   'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': string;
   'dsh-live-voice.meeting.attendee.credentialRemoveWarning': string;
+  'dsh-live-voice.meeting.attendee.credentialReplace': string;
+  'dsh-live-voice.meeting.attendee.credentialSave': string;
   'dsh-live-voice.meeting.attendee.credentialSaved': string;
   'dsh-live-voice.meeting.attendee.credentialUnavailable': string;
   'dsh-live-voice.meeting.attendee.currentBot': string;
   'dsh-live-voice.meeting.attendee.defaultBotName': string;
   'dsh-live-voice.meeting.attendee.departureRequested': string;
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': string;
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': string;
   'dsh-live-voice.meeting.attendee.failed': string;
   'dsh-live-voice.meeting.attendee.help': string;
   'dsh-live-voice.meeting.attendee.ingressUrl': string;

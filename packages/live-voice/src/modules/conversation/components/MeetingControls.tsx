@@ -3,12 +3,7 @@ import { useLanguage } from '../../../app/client/i18n/index.js';
 import { IconButton } from '../../../shared/design-system/index.js';
 import { ConversationStatusBar } from './ConversationStatusBar.js';
 import { ContextPopover } from '../../../shared/design-system/feedback/ContextPopover.js';
-import {
-  AttendeeControls,
-  AttendeeControlFeedback,
-  AttendeeBotStatus,
-  AttendeeConnectionDialog,
-} from './AttendeeControls.js';
+import { AttendeeControls } from './AttendeeControls.js';
 export function MeetingToggle({ meeting, onToggle, controller }: any) {
   const { scoped: language } = useLanguage((ctx) => ctx.meeting);
   const copy = language as any;
@@ -22,36 +17,44 @@ export function MeetingToggle({ meeting, onToggle, controller }: any) {
     controller?.getSnapshot || (() => null),
   );
   const [showMeet, setShowMeet] = React.useState(false);
-  const [joinDraft, setJoinDraft] = React.useState(null);
-  const [connectionOpen, setConnectionOpen] = React.useState(false);
-  const [popoverVersion, setPopoverVersion] = React.useState(0);
-  const triggerId = React.useId();
-  const restoreFocus = React.useRef(false);
-  React.useLayoutEffect(() => {
-    if (!connectionOpen && restoreFocus.current) {
-      restoreFocus.current = false;
-      document.getElementById(triggerId)?.focus();
-    }
-  }, [connectionOpen, triggerId]);
-  const configure = () => {
-    setPopoverVersion((value) => value + 1); // Unmount only the quick panel, never its client.
-    setConnectionOpen(true);
-  };
   const sharedActive = Boolean(state.shared.listening || state.shared.starting);
+  const hasMeeting = Boolean(
+    attendee?.hasBotControl ||
+    attendee?.botId ||
+    attendee?.joining ||
+    attendee?.joinUncertain ||
+    attendee?.leaveRequested ||
+    attendee?.active ||
+    attendee?.starting ||
+    attendee?.leaving,
+  );
+  const feedbackKey = {
+    'leave-failed': 'leaveFailed',
+    'control-unavailable': 'controlUnavailable',
+    'control-expired': 'controlExpired',
+    'control-released': 'controlReleased',
+    'control-unknown': 'controlUnknown',
+  }[attendee?.controlError];
+  const feedback =
+    attendee?.error ||
+    (feedbackKey
+      ? copy.attendee[feedbackKey]()
+      : attendee?.joinUncertain
+        ? copy.attendee.joinFailed()
+        : '');
   const active =
     sharedActive || Boolean(attendee?.active || attendee?.starting || attendee?.hasBotControl);
   return (
     <>
       <ContextPopover
-        key={popoverVersion}
         label={copy.actions()}
         openOnClick
         trigger={
           <IconButton
-            id={triggerId}
             icon={active ? 'meeting' : 'meetingOff'}
-            label={copy.title()}
-            title={copy.actions()}
+            label={feedback ? `${copy.title()}: ${feedback}` : copy.title()}
+            title={feedback ? `${copy.actions()}: ${feedback}` : copy.actions()}
+            data-meeting-error={feedback ? 'true' : undefined}
             className="dlv-composer-toggle"
             data-toggle-active={String(active)}
           />
@@ -63,40 +66,27 @@ export function MeetingToggle({ meeting, onToggle, controller }: any) {
           </button>
           {meeting.attendee && voice && (
             <>
-              <button
-                type="button"
-                className="dlv-meeting-menu-action"
-                aria-expanded={showMeet}
-                onClick={() => setShowMeet(!showMeet)}
-              >
-                {copy.joinMeet()}
-              </button>
-              {showMeet && (
+              {!hasMeeting && (
+                <button
+                  type="button"
+                  className="dlv-meeting-menu-action"
+                  aria-expanded={showMeet}
+                  onClick={() => setShowMeet(!showMeet)}
+                >
+                  {copy.joinMeet()}
+                </button>
+              )}
+              {(hasMeeting || showMeet || Boolean(feedback)) && (
                 <AttendeeControls
                   client={meeting.attendee}
                   settings={voice.settings}
-                  onConfigure={configure}
-                  draft={joinDraft}
-                  onDraftChange={setJoinDraft}
+                  onDisconnect={() => setShowMeet(true)}
                 />
               )}
             </>
           )}
         </div>
       </ContextPopover>
-      {connectionOpen && voice && (
-        <AttendeeConnectionDialog
-          client={meeting.attendee}
-          settings={voice.settings}
-          updateSettings={
-            controller.updateSettings ? (patch) => controller.updateSettings(patch) : undefined
-          }
-          onClose={() => {
-            restoreFocus.current = true;
-            setConnectionOpen(false);
-          }}
-        />
-      )}
     </>
   );
 }
@@ -109,34 +99,12 @@ export function MeetingBars({ meeting }: any) {
   );
   const rows = attendee?.participants || [];
   const value = state.shared;
-  if (
-    !value.listening &&
-    !value.starting &&
-    !value.error &&
-    !rows.length &&
-    !attendee?.error &&
-    !attendee?.hasBotControl &&
-    !attendee?.controlError
-  )
+  if (!value.listening && !value.starting && !value.error && !rows.some((row) => row.blocks))
     return null;
   const label = (copy as any).shared();
   const input = meeting.input('shared');
   return (
     <div className="dlv-meeting-bars">
-      {attendee?.hasBotControl && attendee?.botId && (
-        <div className="dlv-meeting-summary">
-          <AttendeeBotStatus state={attendee} />
-          <button
-            type="button"
-            disabled={attendee.leaving}
-            onClick={() => void meeting.attendee.leave()}
-          >
-            {(copy as any).attendee[attendee.leaving ? 'leaving' : 'leave']()}
-          </button>
-        </div>
-      )}
-      {attendee && <AttendeeControlFeedback state={attendee} />}
-      {attendee?.error && <div role="alert">{attendee.error}</div>}
       {rows
         .filter((row) => row.blocks)
         .map((row) => (

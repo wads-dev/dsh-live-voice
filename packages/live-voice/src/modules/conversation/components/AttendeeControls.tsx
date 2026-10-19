@@ -1,7 +1,6 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { useLanguage } from '../../../app/client/i18n/index.js';
-import { Hint, SettingsSubcard, IconButton } from '../../../shared/design-system/index.js';
+import { Hint, SettingsSubcard, PillButton } from '../../../shared/design-system/index.js';
 import { DraftField } from '../../../shared/design-system/forms/DraftField.js';
 
 function useAttendeeAction(a: any) {
@@ -76,7 +75,7 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
       ++request.current;
     };
   }, [client]);
-  const credentialAction = async (operation: () => Promise<any>, connecting = false) => {
+  const credentialAction = async (operation: () => Promise<any>, saving = false) => {
     if (pending.current || originEditingRef.current || credential === null) return;
     pending.current = true;
     setCredentialBusy(true);
@@ -86,13 +85,13 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
     } catch (error) {
       if (alive.current)
         setCredentialError(
-          connecting && !String(error?.message).startsWith('credential-')
+          saving && !String(error?.message).startsWith('credential-')
             ? a.failed()
             : credentialFailure(error),
         );
     } finally {
       if (alive.current) {
-        if (connecting) setKey('');
+        if (saving) setKey('');
         setConfirmRemove(false);
         await refreshCredential(true);
         if (alive.current) setCredentialBusy(false);
@@ -100,10 +99,8 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
       pending.current = false;
     }
   };
-  const { error, invoke } = useAttendeeAction(a);
-  const busy = s.active || s.starting;
+  const busy = s.starting;
   const unresolved = s.hasBotControl || s.joinUncertain;
-  const nativeRecognition = settings.recognitionEngine === 'browser';
   return (
     <section className="dlv-attendee-connection">
       <Hint label={a.connection()}>{a.settingsHelp()}</Hint>
@@ -151,7 +148,7 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
       </output>
       <Hint label={a.apiKey()}>{a.credentialHelp()}</Hint>
       {credentialError && <div role="alert">{credentialError}</div>}
-      {!busy && !unresolved && (
+      {
         <>
           <label>
             {a.apiKey()}
@@ -164,35 +161,18 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
               onInput={(e) => setKey(e.currentTarget.value)}
             />
           </label>
-          <button
-            type="button"
-            disabled={
-              credential === null ||
-              originEditing ||
-              credentialBusy ||
-              (!key.trim() && !credential) ||
-              nativeRecognition
-            }
+          <PillButton
+            disabled={credential === null || originEditing || credentialBusy || !key.trim()}
             onClick={() =>
-              void credentialAction(
-                () =>
-                  client.start({
-                    apiUrl: settings.attendeeApiUrl,
-                    ingressUrl: settings.attendeeIngressUrl,
-                    botId: settings.attendeeBotId,
-                    ...(key.trim() ? { apiKey: key } : {}),
-                    verify: true,
-                  }),
-                true,
-              )
+              void credentialAction(() => client.saveCredential(settings.attendeeApiUrl, key), true)
             }
           >
-            {a.start()}
-          </button>
+            {credential ? a.credentialReplace() : a.credentialSave()}
+          </PillButton>
         </>
-      )}
+      }
       {credential && !originEditing && !confirmRemove && (
-        <button
+        <PillButton
           type="button"
           disabled={credentialBusy}
           onClick={() => {
@@ -200,12 +180,12 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
           }}
         >
           {a.credentialRemove()}
-        </button>
+        </PillButton>
       )}
       {confirmRemove && !originEditing && (
         <div role="group" aria-label={a.credentialRemove()}>
           <div role="alert">{a.credentialRemoveWarning()}</div>
-          <button
+          <PillButton
             type="button"
             disabled={credentialBusy}
             onClick={() =>
@@ -213,24 +193,16 @@ function AttendeeConnectionForm({ client, settings, updateSettings }: any) {
             }
           >
             {a.credentialRemoveConfirm()}
-          </button>
-          <button type="button" disabled={credentialBusy} onClick={() => setConfirmRemove(false)}>
+          </PillButton>
+          <PillButton
+            type="button"
+            disabled={credentialBusy}
+            onClick={() => setConfirmRemove(false)}
+          >
             {a.credentialCancel()}
-          </button>
+          </PillButton>
         </div>
       )}
-      <output role="status">
-        {s.starting ? a.connecting() : s.active ? a.connected() : a.receiverInactive()}
-      </output>
-      {s.active && (
-        <button type="button" onClick={() => invoke(() => client.stop())}>
-          {a.stop()}
-        </button>
-      )}
-      {nativeRecognition && <div role="alert">{a.recognitionRequired()}</div>}
-      {s.tlsRequired && <div role="alert">{a.tlsNeeded()}</div>}
-      {(s.error || error) && <div role="alert">{s.error || error}</div>}
-      <AttendeeControlFeedback state={s} />
     </section>
   );
 }
@@ -264,46 +236,6 @@ export function AttendeeSettings({ client, settings, updateSettings }: any) {
   );
 }
 
-/** Native local dialog, separate from the quick popover; closing never disposes the client. */
-export function AttendeeConnectionDialog({ client, settings, updateSettings, onClose }: any) {
-  const { scoped: copy } = useLanguage((ctx) => ctx.meeting);
-  const { scoped: commons } = useLanguage((ctx) => ctx.commons);
-  const a = (copy as any).attendee;
-  const dialog = React.useRef<HTMLDialogElement>(null);
-  const titleId = React.useId();
-  React.useLayoutEffect(() => {
-    const node = dialog.current;
-    if (!node) return;
-    node.showModal();
-    node.querySelector<HTMLElement>('input:not(:disabled),button')?.focus();
-    return () => {
-      if (node.open) node.close();
-    };
-  }, []);
-  return createPortal(
-    <dialog
-      ref={dialog}
-      className="dlv-attendee-dialog dlv-settings"
-      aria-labelledby={titleId}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-    >
-      <header>
-        <h3 id={titleId}>{a.connection()}</h3>
-        <IconButton icon="close" label={(commons as any).dismiss()} onClick={onClose} />
-      </header>
-      <AttendeeConnectionSettings
-        client={client}
-        settings={settings}
-        updateSettings={updateSettings}
-      />
-    </dialog>,
-    document.body,
-  );
-}
-
 export function AttendeeBotStatus({ state }: any) {
   const { scoped: copy } = useLanguage((ctx) => ctx.meeting);
   const a = (copy as any).attendee;
@@ -331,39 +263,48 @@ export function AttendeeControlFeedback({ state }: any) {
 }
 
 /** Compact explicit join UI. No API key or receiver controls belong to the quick menu. */
-export function AttendeeControls({ client, settings, onConfigure, draft, onDraftChange }: any) {
+export function AttendeeControls({ client, settings, onDisconnect }: any) {
   const { scoped: copy } = useLanguage((ctx) => ctx.meeting);
-  const { scoped: commons } = useLanguage((ctx) => ctx.commons);
   const a = (copy as any).attendee;
   const s = React.useSyncExternalStore(client.subscribe, client.getSnapshot) as any;
-  const [localDraft, setLocalDraft] = React.useState({
-    meetingUrl: '',
-    botName: settings.attendeeBotName,
-  });
-  const { meetingUrl, botName } = draft || localDraft;
-  const changeDraft = (patch) => {
-    const next = { ...(draft || localDraft), ...patch };
-    if (onDraftChange) onDraftChange(next);
-    else setLocalDraft(next);
-  };
-  const [confirmRelease, setConfirmRelease] = React.useState(false);
+  const [meetingUrl, setMeetingUrl] = React.useState('');
   const { error, invoke } = useAttendeeAction(a);
-  const unresolved = s.hasBotControl || s.joinUncertain;
+  const hasMeeting = Boolean(
+    s.active ||
+    s.starting ||
+    s.hasBotControl ||
+    s.botId ||
+    s.joining ||
+    s.joinUncertain ||
+    s.leaveRequested ||
+    s.leaving,
+  );
+  const disconnecting = React.useRef(false);
+  const disconnect = () => {
+    if (disconnecting.current) return;
+    disconnecting.current = true;
+    onDisconnect?.();
+    invoke(async () => {
+      try {
+        await client.disconnectMeeting();
+      } finally {
+        disconnecting.current = false;
+      }
+    });
+  };
   const nativeRecognition = settings.recognitionEngine === 'browser';
   const submitting = React.useRef(false);
   const canJoin =
-    s.active &&
-    meetingUrl.trim() &&
-    botName.trim() &&
-    !s.joining &&
-    !s.tlsRequired &&
-    !nativeRecognition;
+    meetingUrl.trim() && !s.starting && !s.joining && !s.tlsRequired && !nativeRecognition;
   const submit = () => {
     if (!canJoin || submitting.current) return;
     submitting.current = true;
     invoke(async () => {
       try {
-        await client.join(meetingUrl, botName);
+        await client.connectMeeting(meetingUrl, settings.attendeeBotName, {
+          apiUrl: settings.attendeeApiUrl,
+          ingressUrl: settings.attendeeIngressUrl,
+        });
       } finally {
         submitting.current = false;
       }
@@ -371,7 +312,7 @@ export function AttendeeControls({ client, settings, onConfigure, draft, onDraft
   };
   return (
     <section className="dlv-attendee-controls dlv-attendee-quick" aria-label={a.title()}>
-      {!s.botId && !s.joinUncertain && (
+      {!hasMeeting && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -385,64 +326,29 @@ export function AttendeeControls({ client, settings, onConfigure, draft, onDraft
             value={meetingUrl}
             maxLength={2048}
             disabled={s.joining}
-            onInput={(e) => changeDraft({ meetingUrl: e.currentTarget.value })}
+            onInput={(e) => setMeetingUrl(e.currentTarget.value)}
           />
-          <div className="dlv-meeting-join-row">
-            <input
-              aria-label={a.botName()}
-              placeholder={a.botName()}
-              value={botName}
-              maxLength={80}
-              disabled={s.joining}
-              onInput={(e) => changeDraft({ botName: e.currentTarget.value })}
-            />
-            <IconButton icon="settings" label={a.configureConnection()} onClick={onConfigure} />
-            <IconButton
-              type="submit"
-              icon="send"
-              label={s.joining ? a.joining() : a.join()}
-              disabled={!canJoin}
-            />
-          </div>
+          <PillButton type="submit" disabled={!canJoin}>
+            {s.starting || s.joining ? a.connecting() : a.connectMeeting()}
+          </PillButton>
         </form>
       )}
       {nativeRecognition && <div role="alert">{a.recognitionRequired()}</div>}
       {s.tlsRequired && <div role="alert">{a.tlsNeeded()}</div>}
       {s.joinUncertain && <div role="alert">{a.joinFailed()}</div>}
-      <AttendeeBotStatus state={s} />
-      {s.hasBotControl && s.botId && (
-        <button type="button" disabled={s.leaving} onClick={() => invoke(() => client.leave())}>
-          {s.leaving ? a.leaving() : a.leave()}
-        </button>
-      )}
-      <AttendeeControlFeedback state={s} />
-      {unresolved && !confirmRelease && (
-        <button
-          type="button"
-          disabled={s.joining || s.leaving}
-          onClick={() => setConfirmRelease(true)}
-        >
-          {a.releaseControl()}
-        </button>
-      )}
-      {confirmRelease && (
-        <div className="dlv-meeting-confirm" role="group" aria-label={a.releaseControl()}>
-          <div role="alert">{a.releaseWarning()}</div>
-          <button
-            type="button"
-            disabled={s.joining || s.leaving}
-            onClick={() => {
-              invoke(() => client.releaseControl());
-              setConfirmRelease(false);
-            }}
+      {hasMeeting && <strong className="dlv-meeting-active-title">{a.title()}</strong>}
+      <div className="dlv-meeting-active-summary">
+        <AttendeeBotStatus state={s} />
+        {hasMeeting && (
+          <PillButton
+            style={{ width: 'auto', height: 'auto', borderRadius: 8, minHeight: 34 }}
+            onClick={disconnect}
           >
-            {a.confirmRelease()}
-          </button>
-          <button type="button" onClick={() => setConfirmRelease(false)}>
-            {(commons as any).update.cancel()}
-          </button>
-        </div>
-      )}
+            {a.disconnectMeeting()}
+          </PillButton>
+        )}
+      </div>
+      {hasMeeting && <AttendeeControlFeedback state={s} />}
       {!!s.participants.length && (
         <SettingsSubcard title={a.participants()} open={false}>
           {s.participants.map((participant) => (
@@ -457,7 +363,14 @@ export function AttendeeControls({ client, settings, onConfigure, draft, onDraft
           <Hint label={a.participants()}>{a.aliasHelp()}</Hint>
         </SettingsSubcard>
       )}
-      {(s.error || error) && <div role="alert">{s.error || error}</div>}
+      {(s.error || error) && (
+        <div role="alert">
+          {s.error || error}{' '}
+          {[a.credentialMissing(), a.credentialInvalid(), a.credentialUnavailable()].includes(
+            s.error || error,
+          ) && a.configureInSettings()}
+        </div>
+      )}
     </section>
   );
 }

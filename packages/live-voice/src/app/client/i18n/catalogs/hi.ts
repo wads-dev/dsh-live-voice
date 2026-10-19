@@ -111,7 +111,9 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.botId': 'बॉट ID (वैकल्पिक; पहला बॉट जोड़ा जाता है)',
   'dsh-live-voice.meeting.attendee.botName': 'बैठक में बॉट का नाम',
   'dsh-live-voice.meeting.attendee.configureConnection': 'Attendee कनेक्शन कॉन्फ़िगर करें',
+  'dsh-live-voice.meeting.attendee.configureInSettings': "Google Meet को सेटिंग्स → लाइव वॉइस → वार्तालाप → मीटिंग मोड में सेट करें।",
   'dsh-live-voice.meeting.attendee.confirmRelease': 'बैठक छोड़े बिना नियंत्रण छोड़ें',
+  'dsh-live-voice.meeting.attendee.connectMeeting': "कनेक्ट करें",
   'dsh-live-voice.meeting.attendee.connected': 'Attendee से जुड़ा',
   'dsh-live-voice.meeting.attendee.connecting': 'रिसीवर खुल रहा है…',
   'dsh-live-voice.meeting.attendee.connection': 'कनेक्शन सेटिंग',
@@ -126,19 +128,24 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.copy': 'कॉपी करें',
   'dsh-live-voice.meeting.attendee.credentialCancel': "रद्द करें",
   'dsh-live-voice.meeting.attendee.credentialChecking': "सहेजी गई API कुंजी जाँची जा रही है",
-  'dsh-live-voice.meeting.attendee.credentialHelp': "कनेक्ट दर्ज की गई कुंजी को इस API मूल के लिए सहेजता और अगली बार उपयोग करता है। होस्ट इसे 0600 फ़ाइल में सादे पाठ में रखता है, OS एन्क्रिप्शन नहीं है। इस होस्ट के प्रमाणित ब्राउज़र इसे साझा करते हैं; कुंजी कभी ब्राउज़र को वापस नहीं मिलती। इसे हटाने से वर्तमान बॉट नियंत्रण समाप्त नहीं होता।",
+  'dsh-live-voice.meeting.attendee.credentialHelp':
+    "सहेजें इस API मूल की कुंजी होस्ट पर सादे पाठ वाली 0600 फ़ाइल में रखता है, OS एन्क्रिप्शन नहीं है। इस होस्ट के प्रमाणित ब्राउज़र इसे साझा करते हैं; रहस्य कभी वापस नहीं मिलता। बदलने या हटाने से वर्तमान बॉट नियंत्रण समाप्त नहीं होता।",
   'dsh-live-voice.meeting.attendee.credentialInvalid': "कुंजी संग्रहण अमान्य है। फिर प्रयास करने से पहले होस्ट की क्रेडेंशियल फ़ाइल सुधारें या हटाएँ।",
   'dsh-live-voice.meeting.attendee.credentialMissing': "इस API मूल के लिए कुंजी सेट नहीं है। एक बार दर्ज करके कनेक्ट करें।",
   'dsh-live-voice.meeting.attendee.credentialNotSaved': "इस होस्ट पर API कुंजी सेट नहीं है",
   'dsh-live-voice.meeting.attendee.credentialRemove': "सहेजी API कुंजी हटाएँ",
   'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "सहेजी कुंजी हटाएँ",
   'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "इस मूल की सहेजी कुंजी हटाएँ? वर्तमान रिसेप्शन और बॉट नियंत्रण अपने मौजूदा क्रेडेंशियल रखते हैं; इससे प्रस्थान नहीं माँगा जाता।",
+  'dsh-live-voice.meeting.attendee.credentialReplace': "API कुंजी बदलें",
+  'dsh-live-voice.meeting.attendee.credentialSave': "API कुंजी सहेजें",
   'dsh-live-voice.meeting.attendee.credentialSaved': "इस होस्ट पर API कुंजी सेट है",
   'dsh-live-voice.meeting.attendee.credentialUnavailable': "कुंजी संग्रहण उपलब्ध नहीं है। होस्ट की अनुमतियाँ जाँचकर फिर प्रयास करें।",
   'dsh-live-voice.meeting.attendee.currentBot': 'अंतिम ज्ञात बॉट',
   'dsh-live-voice.meeting.attendee.defaultBotName': 'बॉट का डिफ़ॉल्ट नाम',
   'dsh-live-voice.meeting.attendee.departureRequested':
     'छोड़ने का अनुरोध किया गया; बैठक से हटने की पुष्टि नहीं हुई है।',
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': "मीटिंग डिस्कनेक्ट करें",
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "स्थानीय रूप से डिस्कनेक्ट किया गया। दूरस्थ प्रस्थान की पुष्टि नहीं हो सकी; फिर कनेक्ट करने से पहले मीटिंग जाँचें।",
   'dsh-live-voice.meeting.attendee.failed':
     'रिसीवर रुक गया। TLS, कुंजी, प्रतिभागी, सीमाएँ और पहचान इंजन जाँचकर पुनः कनेक्ट करें।',
   'dsh-live-voice.meeting.attendee.help':
@@ -169,7 +176,7 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     'नियंत्रण छोड़ने से बॉट बैठक से नहीं निकलता। यहाँ छोड़ें कार्रवाई उपलब्ध नहीं रहेगी। Attendee जाँचने के बाद ही जारी रखें।',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "यहाँ स्थानीय API मूल सेट करें। परियोजना कुंजी एक बार दर्ज करके कनेक्ट करें; अगली बार इसी मूल के लिए होस्ट पर सहेजी कुंजी उपयोग होगी। बैठक में शामिल होने के लिए संदेश क्षेत्र का उपयोग करें।",
+    "परियोजना कुंजी यहाँ एक बार सहेजें। मीटिंग मेनू सहेजी कुंजी स्वतः उपयोग करता है; केवल स्पष्ट कनेक्ट कार्रवाई रिसेप्शन शुरू करती और प्रवेश माँगती है।",
   'dsh-live-voice.meeting.attendee.start': 'Attendee से कनेक्ट करें',
   'dsh-live-voice.meeting.attendee.stop': 'Attendee से डिस्कनेक्ट करें',
   'dsh-live-voice.meeting.attendee.title': 'प्रति प्रतिभागी ऑडियो (Attendee · प्रायोगिक)',

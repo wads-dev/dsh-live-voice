@@ -104,7 +104,9 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.botId': '机器人 ID（可选；绑定首个机器人）',
   'dsh-live-voice.meeting.attendee.botName': '会议中的机器人名称',
   'dsh-live-voice.meeting.attendee.configureConnection': '配置 Attendee 连接',
+  'dsh-live-voice.meeting.attendee.configureInSettings': "请在设置 → 实时语音 → 对话 → 会议模式中配置 Google Meet。",
   'dsh-live-voice.meeting.attendee.confirmRelease': '放弃控制但不离开会议',
+  'dsh-live-voice.meeting.attendee.connectMeeting': "连接",
   'dsh-live-voice.meeting.attendee.connected': '已连接到 Attendee',
   'dsh-live-voice.meeting.attendee.connecting': '正在打开接收器…',
   'dsh-live-voice.meeting.attendee.connection': '连接设置',
@@ -119,18 +121,23 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.copy': '复制',
   'dsh-live-voice.meeting.attendee.credentialCancel': "取消",
   'dsh-live-voice.meeting.attendee.credentialChecking': "正在检查已保存的 API 密钥",
-  'dsh-live-voice.meeting.attendee.credentialHelp': "连接会为此 API 来源保存输入的密钥，并在下次复用。主机将其以明文存储在权限为 0600 的文件中，不使用系统加密存储。使用此主机的已认证浏览器共享该配置，密钥不会返回浏览器。删除密钥不会结束现有机器人控制。",
+  'dsh-live-voice.meeting.attendee.credentialHelp':
+    "保存会将此 API 来源的密钥以明文存储在主机的 0600 文件中，不使用系统加密存储。该主机的已认证浏览器共享配置，密钥不会返回浏览器。替换或删除不会结束现有机器人控制。",
   'dsh-live-voice.meeting.attendee.credentialInvalid': "密钥存储无效。请修复或删除主机凭据文件后重试。",
   'dsh-live-voice.meeting.attendee.credentialMissing': "此 API 来源尚未配置密钥。输入一次并连接即可。",
   'dsh-live-voice.meeting.attendee.credentialNotSaved': "此主机尚未配置 API 密钥",
   'dsh-live-voice.meeting.attendee.credentialRemove': "删除已保存的 API 密钥",
   'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "删除已保存的密钥",
   'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "删除此来源的已保存密钥？当前接收和机器人控制仍使用原有凭据；此操作不会请求离会。",
+  'dsh-live-voice.meeting.attendee.credentialReplace': "替换 API 密钥",
+  'dsh-live-voice.meeting.attendee.credentialSave': "保存 API 密钥",
   'dsh-live-voice.meeting.attendee.credentialSaved': "此主机已配置 API 密钥",
   'dsh-live-voice.meeting.attendee.credentialUnavailable': "密钥存储不可用。请检查主机权限后重试。",
   'dsh-live-voice.meeting.attendee.currentBot': '上次已知的机器人',
   'dsh-live-voice.meeting.attendee.defaultBotName': '默认机器人名称',
   'dsh-live-voice.meeting.attendee.departureRequested': '已请求离开，但尚未确认已移出会议。',
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': "断开会议",
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "已在本地断开。无法确认远端离会；再次连接前请检查会议。",
   'dsh-live-voice.meeting.attendee.failed':
     '接收器已停止。请检查 TLS、密钥、参与者、限制和识别引擎后重新连接。',
   'dsh-live-voice.meeting.attendee.help':
@@ -161,7 +168,7 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     '放弃控制不会将机器人移出会议。此处将无法再执行离开操作。请先检查 Attendee 再继续。',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "在此配置本地 API 来源。输入项目密钥一次并连接；后续连接会复用主机为该来源保存的密钥。请从消息输入区加入会议。",
+    "在此保存项目密钥一次。会议菜单会自动使用已保存的密钥；只有明确点击连接才会启动接收并请求入会。",
   'dsh-live-voice.meeting.attendee.start': '连接到 Attendee',
   'dsh-live-voice.meeting.attendee.stop': '断开 Attendee',
   'dsh-live-voice.meeting.attendee.title': '按参与者接收音频（Attendee · 实验性）',

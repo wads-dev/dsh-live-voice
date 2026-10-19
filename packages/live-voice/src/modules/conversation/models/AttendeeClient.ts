@@ -195,6 +195,73 @@ export class AttendeeClient {
       this.controlReading = false;
     }
   }
+  /** Explicit one-click disconnect: local idle is immediate, remote leave is bounded best effort. */
+  disconnectMeeting() {
+    if (this.disconnectingMeeting) return this.disconnectingMeeting;
+    const owner = this.owner;
+    this.owner = null;
+    this.receiverApiOrigin = null;
+    this.connectingMeeting = null;
+    ++this.controlRevision;
+    this.commandAbort?.abort();
+    this.controlAbort?.abort();
+    clearInterval(this.controlTimer);
+    const cleanup = this.stop(); // Null owner means audio teardown cannot publish an old control tombstone.
+    const generation = this.generation;
+    this.explicitDisconnectGeneration = generation;
+    this.patch({
+      active: false,
+      starting: false,
+      error: null,
+      ingestUrl: '',
+      participants: [],
+      botId: '',
+      botState: '',
+      hasBotControl: false,
+      joining: false,
+      joinUncertain: false,
+      leaving: false,
+      leaveRequested: false,
+      controlExpiresAt: 0,
+      controlError: null,
+      tlsRequired: false,
+      receiverUrl: '',
+    });
+    const previous = this.stopping;
+    const remote = owner
+      ? (async () => {
+          let timer;
+          const abort = new AbortController();
+          try {
+            const timeout = new Promise((_, reject) => {
+              timer = setTimeout(() => {
+                abort.abort();
+                reject(Error('disconnect-timeout'));
+              }, 3500);
+            });
+            const result = await Promise.race([
+              this.request({ action: 'disconnect', owner }, abort.signal),
+              timeout,
+            ]);
+            if (result.warning && generation === this.generation && !this.owner && !this.disposed)
+              this.patch({ error: this.t('disconnectUnconfirmed') });
+          } catch {
+            if (generation === this.generation && !this.owner && !this.disposed)
+              this.patch({ error: this.t('disconnectUnconfirmed') });
+          } finally {
+            clearTimeout(timer);
+            abort.abort();
+          }
+        })()
+      : Promise.resolve();
+    const operation = Promise.allSettled([previous, cleanup, remote]).then(() => {});
+    this.stopping = operation;
+    this.disconnectingMeeting = operation;
+    void operation.finally(() => {
+      if (this.disconnectingMeeting === operation) this.disconnectingMeeting = null;
+    });
+    return operation;
+  }
   async releaseControl() {
     const owner = this.owner;
     this.commandAbort?.abort();
@@ -250,6 +317,112 @@ export class AttendeeClient {
       });
     })();
     return this.disposing;
+  }
+  /** One explicit action prepares a saved-key receiver and creates at most one meeting bot. */
+  async connectMeeting(meetingUrl, botName, config = {}) {
+    if (this.disposed || this.connectingMeeting) return;
+    let meeting, apiOrigin, name;
+    try {
+      meeting = new URL(meetingUrl);
+      if (
+        meeting.protocol !== 'https:' ||
+        meeting.hostname !== 'meet.google.com' ||
+        meeting.port ||
+        !/^\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(meeting.pathname) ||
+        meeting.username ||
+        meeting.password ||
+        typeof botName !== 'string' ||
+        !botName.trim() ||
+        botName.length > 80 ||
+        /[\x00-\x1f]/.test(botName)
+      )
+        throw Error();
+      name = botName.trim();
+    } catch {
+      this.patch({ error: this.t('invalidMeeting') });
+      return;
+    }
+    try {
+      const api = new URL(config.apiUrl);
+      if (
+        !['http:', 'https:'].includes(api.protocol) ||
+        !['localhost', '127.0.0.1', '[::1]'].includes(api.hostname) ||
+        api.username ||
+        api.password ||
+        api.search ||
+        api.hash ||
+        !['', '/'].includes(api.pathname)
+      )
+        throw Error();
+      apiOrigin = api.origin;
+    } catch {
+      this.patch({ error: this.t('failed') });
+      return;
+    }
+    if (
+      !this.owner &&
+      !this.snapshot.active &&
+      !this.snapshot.starting &&
+      !this.snapshot.hasBotControl &&
+      !this.snapshot.botId &&
+      !this.snapshot.joining &&
+      !this.snapshot.joinUncertain &&
+      !this.snapshot.leaving &&
+      !this.snapshot.leaveRequested
+    )
+      this.patch({ controlError: null });
+    const blocked = () =>
+      this.snapshot.botId ||
+      this.snapshot.joinUncertain ||
+      this.snapshot.joining ||
+      this.snapshot.leaving ||
+      this.snapshot.leaveRequested ||
+      this.snapshot.controlError;
+    if (
+      blocked() ||
+      this.snapshot.starting ||
+      (!this.snapshot.active && this.snapshot.hasBotControl)
+    ) {
+      this.patch({ error: this.t('joinFailed') });
+      return;
+    }
+    if (
+      this.snapshot.active &&
+      (!this.owner || !this.snapshot.hasBotControl || this.receiverApiOrigin !== apiOrigin)
+    ) {
+      this.patch({ error: this.t('joinFailed') });
+      return;
+    }
+    const attempt = {};
+    this.connectingMeeting = attempt;
+    this.patch({ error: null });
+    try {
+      let generation = this.generation;
+      if (!this.snapshot.active) {
+        const preparing = this.start({
+          apiUrl: apiOrigin,
+          ingressUrl: config.ingressUrl,
+          relayUrl: config.relayUrl,
+          verify: true,
+        });
+        generation = this.generation; // start synchronously invalidates its previous receiver generation.
+        await preparing;
+      }
+      if (
+        this.disposed ||
+        this.connectingMeeting !== attempt ||
+        generation !== this.generation ||
+        !this.snapshot.active ||
+        !this.owner ||
+        !this.snapshot.hasBotControl ||
+        this.snapshot.error ||
+        blocked()
+      )
+        return;
+      await this.join(meeting.origin + meeting.pathname, name);
+    } finally {
+      if (this.connectingMeeting === attempt) this.connectingMeeting = null;
+    }
   }
   async join(meetingUrl, botName) {
     if (!this.owner || this.snapshot.joining || this.snapshot.joinUncertain || this.snapshot.botId)
@@ -334,7 +507,7 @@ export class AttendeeClient {
           { action: hasBot || this.disposed ? 'release' : 'close', owner: value.owner },
           AbortSignal.timeout(3000),
         );
-        if (hasBot && !this.owner)
+        if (hasBot && !this.owner && !(this.explicitDisconnectGeneration > generation))
           this.patch({
             botId: value.botId || '',
             botState: value.botState || '',
@@ -343,6 +516,7 @@ export class AttendeeClient {
         return;
       }
       this.owner = value.owner;
+      this.receiverApiOrigin = new URL(config.apiUrl).origin;
       this.applyControl({ ...value, hasBotControl: true });
       this.watchControl();
       this.cursor = 0;

@@ -140,7 +140,17 @@ test('Attendee configuration hides connection details while composer operations 
   assert.match(styles, /@media\(max-width:480px\)\{[^\n]*\.dlv-pill\{flex-wrap:wrap\}/);
   assert.equal(document.body.textContent.includes('token=secret'), false);
   assert.equal(document.querySelector('input[readonly]'), null);
-  assert.ok(document.querySelector('[aria-label="Join meeting"]'));
+  assert.ok(
+    [...document.querySelectorAll('button')].some(
+      (button) => button.textContent === 'Disconnect meeting',
+    ),
+  );
+  await act(async () =>
+    meeting.attendee.patch({ active: false, starting: false, hasBotControl: false, botId: '' }),
+  );
+  assert.ok(
+    [...document.querySelectorAll('button')].some((button) => button.textContent === 'Connect'),
+  );
   assert.ok(document.body.textContent.includes('Meeting participants'));
   assert.equal(
     [...document.querySelectorAll('input')].filter((input) =>
@@ -149,7 +159,7 @@ test('Attendee configuration hides connection details while composer operations 
     3,
   );
   const joins = [];
-  meeting.attendee.join = async (...args) => joins.push(args);
+  meeting.attendee.connectMeeting = async (url, name) => joins.push([url, name]);
   const link = document.querySelector('input[type=url]');
   await act(async () => {
     Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(
@@ -159,7 +169,7 @@ test('Attendee configuration hides connection details while composer operations 
     link.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   });
   const join = [...document.querySelectorAll('button')].find(
-    (button) => button.getAttribute('aria-label') === 'Join meeting',
+    (button) => button.textContent === 'Connect',
   );
   await act(async () => join.click());
   assert.deepEqual(joins, [['https://meet.google.com/abc-defg-hij', 'DSH Live Voice']]);

@@ -117,7 +117,9 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.botId': 'ID du bot (facultatif ; lie le premier)',
   'dsh-live-voice.meeting.attendee.botName': 'Nom du bot dans la réunion',
   'dsh-live-voice.meeting.attendee.configureConnection': 'Configurer la connexion Attendee',
+  'dsh-live-voice.meeting.attendee.configureInSettings': "Configurez Google Meet dans Paramètres → Voix en direct → Conversation → Mode réunion.",
   'dsh-live-voice.meeting.attendee.confirmRelease': 'Abandonner le contrôle sans quitter',
+  'dsh-live-voice.meeting.attendee.connectMeeting': "Connecter",
   'dsh-live-voice.meeting.attendee.connected': 'Connecté à Attendee',
   'dsh-live-voice.meeting.attendee.connecting': 'Ouverture du récepteur…',
   'dsh-live-voice.meeting.attendee.connection': 'Paramètres de connexion',
@@ -132,19 +134,24 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.copy': 'Copier',
   'dsh-live-voice.meeting.attendee.credentialCancel': "Annuler",
   'dsh-live-voice.meeting.attendee.credentialChecking': "Vérification de la clé API enregistrée",
-  'dsh-live-voice.meeting.attendee.credentialHelp': "Connecter enregistre la clé saisie pour cette origine API et la réutilise ensuite. L’hôte la stocke en clair dans un fichier 0600, sans chiffrement du système. Elle est partagée par les navigateurs authentifiés de cet hôte et jamais renvoyée au navigateur. La supprimer ne termine pas le contrôle actuel du bot.",
+  'dsh-live-voice.meeting.attendee.credentialHelp':
+    "Enregistrer stocke la clé de cette origine sur l’hôte en clair dans un fichier 0600, sans chiffrement du système. Elle est partagée par les navigateurs authentifiés de cet hôte ; le secret n’est jamais renvoyé. Remplacer ou supprimer la clé ne termine pas le contrôle actuel du bot.",
   'dsh-live-voice.meeting.attendee.credentialInvalid': "Le stockage des clés est invalide. Réparez ou supprimez le fichier des identifiants du serveur avant de réessayer.",
   'dsh-live-voice.meeting.attendee.credentialMissing': "Aucune clé API pour cette origine. Saisissez-la une fois puis connectez-vous.",
   'dsh-live-voice.meeting.attendee.credentialNotSaved': "Clé API non configurée sur cet hôte",
   'dsh-live-voice.meeting.attendee.credentialRemove': "Supprimer la clé API enregistrée",
   'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "Supprimer la clé enregistrée",
   'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "Supprimer la clé de cette origine ? La réception et le contrôle actuels gardent leur identifiant ; cela ne demande pas le départ.",
+  'dsh-live-voice.meeting.attendee.credentialReplace': "Remplacer la clé API",
+  'dsh-live-voice.meeting.attendee.credentialSave': "Enregistrer la clé API",
   'dsh-live-voice.meeting.attendee.credentialSaved': "Clé API configurée sur cet hôte",
   'dsh-live-voice.meeting.attendee.credentialUnavailable': "Le stockage des clés est indisponible. Vérifiez les permissions de l’hôte et réessayez.",
   'dsh-live-voice.meeting.attendee.currentBot': 'Dernier bot connu',
   'dsh-live-voice.meeting.attendee.defaultBotName': 'Nom du bot par défaut',
   'dsh-live-voice.meeting.attendee.departureRequested':
     'Départ demandé ; le retrait de la réunion n’est pas confirmé.',
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': "Déconnecter la réunion",
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "Déconnexion locale effectuée. Le départ distant n’a pas pu être confirmé ; vérifiez la réunion avant de reconnecter.",
   'dsh-live-voice.meeting.attendee.failed':
     'Récepteur arrêté. Vérifiez TLS, identifiants, participants, limites et moteur de reconnaissance avant de reconnecter.',
   'dsh-live-voice.meeting.attendee.help':
@@ -175,7 +182,7 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     'Abandonner le contrôle ne retire pas le bot de la réunion. L’action Quitter ne sera plus disponible ici. Continuez uniquement après vérification dans Attendee.',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "Configurez ici l’origine API locale. Saisissez la clé du projet une fois puis connectez-vous ; les prochaines connexions réutilisent la clé enregistrée sur l’hôte pour cette origine. Rejoignez la réunion depuis le champ de message.",
+    "Enregistrez ici la clé du projet une fois. Le menu utilise automatiquement la clé enregistrée ; seule l’action explicite Connecter démarre la réception et demande l’entrée.",
   'dsh-live-voice.meeting.attendee.start': 'Connecter à Attendee',
   'dsh-live-voice.meeting.attendee.stop': 'Déconnecter d’Attendee',
   'dsh-live-voice.meeting.attendee.title': 'Audio par personne (Attendee · expérimental)',
