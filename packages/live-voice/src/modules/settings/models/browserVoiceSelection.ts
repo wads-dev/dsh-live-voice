@@ -1,3 +1,5 @@
+import { defaultQwenVoice } from '../../core/settings.js';
+
 /** Settings policy for the local voices exposed by BrowserSpeakingEngine. */
 export interface BrowserVoice {
   readonly name: string;
@@ -68,6 +70,19 @@ export function speechEngineSelectionPatch(
   voices: readonly BrowserVoice[],
   browserLanguage?: string,
 ): { engine: string; voice?: string } {
+  if (nextEngine !== currentEngine) {
+    if (nextEngine === 'chatterbox-http') return { engine: nextEngine, voice: '' };
+    if (currentEngine === 'chatterbox-http')
+      return {
+        engine: nextEngine,
+        voice:
+          nextEngine === 'qwen-http'
+            ? defaultQwenVoice
+            : nextEngine === 'browser'
+              ? (preferredBrowserVoice(voices, browserLanguage) ?? '')
+              : '',
+      };
+  }
   const voice =
     nextEngine === 'browser' && currentEngine !== 'browser'
       ? preferredBrowserVoice(voices, browserLanguage)

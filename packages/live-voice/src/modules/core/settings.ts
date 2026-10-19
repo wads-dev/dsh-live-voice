@@ -165,7 +165,7 @@ export const voiceDetectionSilenceMs = (settings) =>
 export function normalizeSettings(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
-    engine: ['browser', 'say', 'qwen-http'].includes(source.engine)
+    engine: ['browser', 'say', 'qwen-http', 'chatterbox-http'].includes(source.engine)
       ? source.engine
       : defaultSettings.engine,
     recognitionEngine: [

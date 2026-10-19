@@ -231,8 +231,8 @@ for (const hostPlatform of ['darwin', 'linux', 'win32']) {
       assert.deepEqual(
         [...select.options].map((option) => option.value),
         hostPlatform === 'darwin'
-          ? ['say', 'browser', 'qwen-http']
-          : ['browser', 'qwen-http', 'say'],
+          ? ['say', 'browser', 'qwen-http', 'chatterbox-http']
+          : ['browser', 'qwen-http', 'say', 'chatterbox-http'],
       );
       assert.equal(
         [...select.options].some((option) => option.disabled),
@@ -295,4 +295,25 @@ test('selecting unavailable Qwen exposes an editable endpoint without requiring 
       (status) => status.textContent === 'Qwen service is stopped',
     ),
   );
+});
+
+test('Chatterbox loads only the voice catalog and preserves missing preferences', async (t) => {
+  const requests = [];
+  const id = 'a'.repeat(24);
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    requests.push({ url, ...options });
+    assert.equal(url, '/api/dsh-live-voice/chatterbox/voices');
+    return Response.json({ ok: true, value: [{ id, name: 'Authorized reference' }] });
+  });
+  const { calls, render } = setup(t, SpeechEngineSettings);
+  await render({ ...defaultSettings, engine: 'chatterbox-http', voice: 'missing' });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  const select = document.querySelectorAll('select')[1];
+  assert.equal(select.value, 'missing');
+  assert.equal(calls.length, 0, 'discovery never rewrites preferences');
+  assert.equal(requests.length, 1);
+  await selectEngine(select, id);
+  assert.deepEqual(calls, [{ voice: id }]);
 });

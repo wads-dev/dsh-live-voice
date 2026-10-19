@@ -15,6 +15,7 @@ import { SayEngine } from '../../modules/speak/engines/say/SaySpeakingEngine.js'
 import { createSettingsStore } from '../../modules/settings/models/settingsHost.js';
 import { registerSettingsRoute } from './registerRoutes.js';
 import { registerAttendeeRoutes } from './attendeeRoutes.js';
+import { registerChatterboxRoutes } from './chatterboxRoutes.js';
 import { registerVadAssetRoutes } from './vadAssets.js';
 import { registerBrowserAsrAssets } from './browserAsrAssets.js';
 
@@ -153,6 +154,7 @@ export function apply(
   } = {},
 ) {
   registerSettingsRoute(ctx, settingsStore);
+  registerChatterboxRoutes(ctx, { encode: encodeHostSpeech });
   if (typeof ctx.inject === 'function')
     ctx.inject(['webServer'], (webCtx) => registerAttendeeRoutes(webCtx));
   registerVadAssetRoutes(ctx);

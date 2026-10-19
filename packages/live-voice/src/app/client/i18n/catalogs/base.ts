@@ -403,6 +403,14 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.speak.captions.position': string;
   'dsh-live-voice.speak.captions.progress': string;
   'dsh-live-voice.speak.captions.title': string;
+  'dsh-live-voice.speak.chatterbox.empty': string;
+  'dsh-live-voice.speak.chatterbox.help': string;
+  'dsh-live-voice.speak.chatterbox.label': string;
+  'dsh-live-voice.speak.chatterbox.loading': string;
+  'dsh-live-voice.speak.chatterbox.missingVoice': string;
+  'dsh-live-voice.speak.chatterbox.refresh': string;
+  'dsh-live-voice.speak.chatterbox.unavailable': string;
+  'dsh-live-voice.speak.chatterbox.voice': string;
   'dsh-live-voice.speak.engine.label': string;
   'dsh-live-voice.speak.engine.playbackHelp': string;
   'dsh-live-voice.speak.filters.code.enabled': string;

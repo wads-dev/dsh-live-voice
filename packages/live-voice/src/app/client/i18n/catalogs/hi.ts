@@ -536,9 +536,19 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.speak.captions.position': 'वाणी खंड {index} / {total}',
   'dsh-live-voice.speak.captions.progress': 'अनुमानित वाणी प्रगति',
   'dsh-live-voice.speak.captions.title': 'वाणी और लाइव कैप्शन',
+  'dsh-live-voice.speak.chatterbox.empty': 'कोई वॉइस संदर्भ नहीं मिला।',
+  'dsh-live-voice.speak.chatterbox.help':
+    'संदर्भ स्थानीय Chatterbox सेवा से आते हैं। अधिकृत रिकॉर्डिंग वॉइस फ़ोल्डर में जोड़ें और रीफ़्रेश करें। PT-BR संश्लेषण; गति मौजूदा प्लेयर से नियंत्रित होती है।',
+  'dsh-live-voice.speak.chatterbox.label': 'Chatterbox · स्थानीय MLX सर्वर',
+  'dsh-live-voice.speak.chatterbox.loading': 'वॉइस संदर्भ लोड हो रहे हैं…',
+  'dsh-live-voice.speak.chatterbox.missingVoice': 'सहेजी गई वॉइस मौजूदा सूची में नहीं है',
+  'dsh-live-voice.speak.chatterbox.refresh': 'वॉइस रीफ़्रेश करें',
+  'dsh-live-voice.speak.chatterbox.unavailable':
+    'Chatterbox उपलब्ध नहीं है। स्थानीय सेवा शुरू करके रीफ़्रेश करें।',
+  'dsh-live-voice.speak.chatterbox.voice': 'वॉइस संदर्भ',
   'dsh-live-voice.speak.engine.label': 'वाक् संश्लेषण इंजन',
   'dsh-live-voice.speak.engine.playbackHelp':
-    'Qwen और macOS say DSH होस्ट पर आवाज़ बनाते हैं; कॉम्पैक्ट AAC/M4A ऑडियो इस ब्राउज़र में चलता है। ब्राउज़र स्पीच इसी डिवाइस पर बनती और चलती है।',
+    'Qwen, Chatterbox और macOS say DSH होस्ट पर आवाज़ बनाते हैं; कॉम्पैक्ट AAC/M4A ऑडियो इस ब्राउज़र में चलता है। ब्राउज़र स्पीच इसी डिवाइस पर बनती और चलती है।',
   'dsh-live-voice.speak.filters.code.enabled':
     'पढ़कर सुनाने से पहले Markdown कोड ब्लॉक फ़िल्टर करें',
   'dsh-live-voice.speak.filters.code.maxLines': 'अधिकतम इतनी पंक्तियों वाले कोड ब्लॉक पढ़ें',

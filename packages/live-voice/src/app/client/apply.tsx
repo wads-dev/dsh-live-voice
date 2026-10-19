@@ -33,6 +33,7 @@ import {
   BrowserSpeakingEngine,
   HostAudioSpeakingEngine,
   QwenHttpSpeakingEngine,
+  ChatterboxSpeakingEngine,
 } from '../../modules/speak/index.js';
 import { createLiveVoiceSettings } from '../../modules/settings/index.js';
 import {
@@ -71,7 +72,9 @@ export function apply(ctx) {
   let preferencesLoaded = false;
   const settingsControllers = new Set();
   let disposed = false;
-  const recordings = createRecordingRepository(undefined, () => recordingTranscriber(preferences.getSnapshot()));
+  const recordings = createRecordingRepository(undefined, () =>
+    recordingTranscriber(preferences.getSnapshot()),
+  );
   const recordingTimeline = () => {
     const append = recordings.timeline();
     return (kind, details) => {
@@ -560,7 +563,12 @@ export function apply(ctx) {
       recordingTimeline,
       persistSettings: (next) => savePreferences(entry.controller, next),
       recognition,
-      engines: { browser: engineBrowser, say: engineSay, 'qwen-http': engineQwen },
+      engines: {
+        browser: engineBrowser,
+        say: engineSay,
+        'qwen-http': engineQwen,
+        'chatterbox-http': new ChatterboxSpeakingEngine({ lang: settings.lang }),
+      },
       meter,
       composer: {
         getDraft: () => entry.draft,
@@ -773,6 +781,7 @@ export function apply(ctx) {
       publishVoiceContext(entry);
       engineBrowser.lang = controller.getSnapshot().settings.lang;
       engineQwen.lang = controller.getSnapshot().settings.lang;
+      controller.engines['chatterbox-http'].lang = controller.getSnapshot().settings.lang;
       run(controller, controller.refreshCapabilities({ localOnly: true }));
     };
     controller.updateSettings = (next) => {
@@ -1024,7 +1033,11 @@ export function apply(ctx) {
     useComposer(entry, props);
     return entry ? (
       <div className="dlv-composer-toggles">
-        <MeetingToggle meeting={entry.meeting} onToggle={entry.toggleMeetingSource} controller={entry.controller} />
+        <MeetingToggle
+          meeting={entry.meeting}
+          onToggle={entry.toggleMeetingSource}
+          controller={entry.controller}
+        />
         <ConversationControls controller={entry.controller} />
       </div>
     ) : null;
@@ -1050,6 +1063,7 @@ export function apply(ctx) {
             playbackRate: (rate) => rate,
           }),
           'qwen-http': qwen,
+          'chatterbox-http': new ChatterboxSpeakingEngine({ lang: settings.lang }),
         },
         meter,
         composer: { getDraft: () => '', setDraft: () => {} },
@@ -1086,6 +1100,7 @@ export function apply(ctx) {
         update(next);
         browser.lang = c.getSnapshot().settings.lang;
         qwen.lang = c.getSnapshot().settings.lang;
+        c.engines['chatterbox-http'].lang = c.getSnapshot().settings.lang;
         const settings = c.getSnapshot().settings;
         if (changesRecognition(next)) c.replaceRecognition(recognitionFor(settings, c.meter));
         const saved = savePreferences(c, next);

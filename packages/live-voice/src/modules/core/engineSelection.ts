@@ -8,8 +8,8 @@ export const recognitionEngineOrder = Object.freeze([
 ]);
 export function speakingEngineOrder(hostPlatform?: string) {
   return hostPlatform === 'darwin'
-    ? ['say', 'browser', 'qwen-http']
-    : ['browser', 'qwen-http', 'say'];
+    ? ['say', 'browser', 'qwen-http', 'chatterbox-http']
+    : ['browser', 'qwen-http', 'say', 'chatterbox-http'];
 }
 export function defaultSpeakingEngine(hostPlatform?: string) {
   return speakingEngineOrder(hostPlatform)[0];

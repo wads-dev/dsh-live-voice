@@ -64,7 +64,7 @@ test('shared API route adapter validates envelopes and disposes every registrati
       },
     },
   );
-  assert.equal(routes.size, 29 + Object.keys(VAD_ASSET_TYPES).length);
+  assert.equal(routes.size, 32 + Object.keys(VAD_ASSET_TYPES).length);
   assert.equal(contexts.length, 1);
   assert.equal(contexts[0].text, '{{live_voice_context}}');
   assert.equal(variables.get('live_voice_context')({ agent: { sessionId: 'one' } }), '');

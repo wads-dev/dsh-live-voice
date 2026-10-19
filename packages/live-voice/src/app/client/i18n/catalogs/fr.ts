@@ -563,9 +563,20 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.speak.captions.position': 'Segment vocal {index} sur {total}',
   'dsh-live-voice.speak.captions.progress': 'Progression vocale approximative',
   'dsh-live-voice.speak.captions.title': 'Voix et sous-titres en direct',
+  'dsh-live-voice.speak.chatterbox.empty': 'Aucune référence vocale trouvée.',
+  'dsh-live-voice.speak.chatterbox.help':
+    'Les références proviennent du service Chatterbox local. Ajoutez des enregistrements autorisés au dossier des voix, puis actualisez. Synthèse PT-BR ; vitesse réglée par le lecteur existant.',
+  'dsh-live-voice.speak.chatterbox.label': 'Chatterbox · serveur MLX local',
+  'dsh-live-voice.speak.chatterbox.loading': 'Chargement des références vocales…',
+  'dsh-live-voice.speak.chatterbox.missingVoice':
+    'La voix enregistrée ne figure pas dans le catalogue actuel',
+  'dsh-live-voice.speak.chatterbox.refresh': 'Actualiser les voix',
+  'dsh-live-voice.speak.chatterbox.unavailable':
+    'Chatterbox est indisponible. Démarrez le service local et actualisez.',
+  'dsh-live-voice.speak.chatterbox.voice': 'Référence vocale',
   'dsh-live-voice.speak.engine.label': 'Moteur de synthèse vocale',
   'dsh-live-voice.speak.engine.playbackHelp':
-    'Qwen et macOS say synthétisent sur l’hôte DSH ; l’audio AAC/M4A compact est lu dans ce navigateur. La synthèse vocale du navigateur est générée et lue sur cet appareil.',
+    'Qwen, Chatterbox et macOS say synthétisent sur l’hôte DSH ; l’audio AAC/M4A compact est lu dans ce navigateur. La synthèse vocale du navigateur est générée et lue sur cet appareil.',
   'dsh-live-voice.speak.filters.code.enabled':
     'Filtrer les blocs de code Markdown avant la lecture vocale',
   'dsh-live-voice.speak.filters.code.maxLines': 'Nombre maximal de lignes des blocs de code à lire',

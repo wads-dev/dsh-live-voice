@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChatterboxVoiceSettings } from '../../../speak/chatterbox/ChatterboxVoiceSettings.js';
 import {
   preferredBrowserVoice,
   groupBrowserVoices,
@@ -45,6 +46,7 @@ export function SpeechEngineSettings({
             say: (speak as any).macos.label(),
             browser: (speak as any).browser.label(),
             'qwen-http': (speak as any).qwen.label(),
+            'chatterbox-http': (speak as any).chatterbox.label(),
           }[value],
         }))}
         onChange={(event) => {
@@ -82,6 +84,9 @@ export function SpeechEngineSettings({
           options={qwenVoices}
           onChange={(event) => updateSettings({ voice: event.target.value })}
         />
+      )}
+      {engine === 'chatterbox-http' && (
+        <ChatterboxVoiceSettings settings={settings} updateSettings={updateSettings} />
       )}
       <label>
         {(speak as any).volume.label()} ({Math.round((settings.volume ?? 1) * 100)}%)

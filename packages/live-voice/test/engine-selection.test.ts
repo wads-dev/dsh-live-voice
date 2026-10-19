@@ -16,7 +16,7 @@ for (const platform of ['darwin', 'linux', 'win32', undefined]) {
     const mac = platform === 'darwin';
     assert.deepEqual(
       speakingEngineOrder(platform),
-      mac ? ['say', 'browser', 'qwen-http'] : ['browser', 'qwen-http', 'say'],
+      mac ? ['say', 'browser', 'qwen-http', 'chatterbox-http'] : ['browser', 'qwen-http', 'say', 'chatterbox-http'],
     );
     assert.equal(defaultSpeakingEngine(platform), mac ? 'say' : 'browser');
     assert.deepEqual(recognitionEngineOrder, [

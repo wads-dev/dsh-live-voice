@@ -546,9 +546,19 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.speak.captions.position': 'Trecho de fala {index} de {total}',
   'dsh-live-voice.speak.captions.progress': 'Progresso aproximado da fala',
   'dsh-live-voice.speak.captions.title': 'Fala e legendas ao vivo',
+  'dsh-live-voice.speak.chatterbox.empty': 'Nenhuma referência de voz encontrada.',
+  'dsh-live-voice.speak.chatterbox.help':
+    'As referências vêm do serviço Chatterbox local. Adicione gravações autorizadas à pasta de vozes e atualize. Síntese PT-BR; a velocidade usa o player existente.',
+  'dsh-live-voice.speak.chatterbox.label': 'Chatterbox · servidor MLX local',
+  'dsh-live-voice.speak.chatterbox.loading': 'Carregando referências de voz…',
+  'dsh-live-voice.speak.chatterbox.missingVoice': 'A voz salva não está no catálogo atual',
+  'dsh-live-voice.speak.chatterbox.refresh': 'Atualizar vozes',
+  'dsh-live-voice.speak.chatterbox.unavailable':
+    'Chatterbox indisponível. Inicie o serviço local e atualize.',
+  'dsh-live-voice.speak.chatterbox.voice': 'Referência de voz',
   'dsh-live-voice.speak.engine.label': 'Mecanismo de fala',
   'dsh-live-voice.speak.engine.playbackHelp':
-    'Qwen e macOS say sintetizam no host do DSH; o áudio AAC/M4A compacto é reproduzido neste navegador. A fala do navegador é sintetizada e reproduzida neste dispositivo.',
+    'Qwen, Chatterbox e macOS say sintetizam no host do DSH; o áudio AAC/M4A compacto é reproduzido neste navegador. A fala do navegador é sintetizada e reproduzida neste dispositivo.',
   'dsh-live-voice.speak.filters.code.enabled': 'Filtrar blocos de código Markdown antes de falar',
   'dsh-live-voice.speak.filters.code.maxLines':
     'Ler blocos de código até esta quantidade de linhas',

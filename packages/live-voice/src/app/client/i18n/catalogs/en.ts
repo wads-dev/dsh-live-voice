@@ -536,9 +536,19 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.speak.captions.position': 'Speech segment {index} of {total}',
   'dsh-live-voice.speak.captions.progress': 'Approximate speech progress',
   'dsh-live-voice.speak.captions.title': 'Speech and live captions',
+  'dsh-live-voice.speak.chatterbox.empty': 'No voice references found.',
+  'dsh-live-voice.speak.chatterbox.help':
+    'References come from the local Chatterbox service. Add authorized recordings to its voices folder, then refresh. PT-BR synthesis; playback speed uses the existing player.',
+  'dsh-live-voice.speak.chatterbox.label': 'Chatterbox · local MLX server',
+  'dsh-live-voice.speak.chatterbox.loading': 'Loading voice references…',
+  'dsh-live-voice.speak.chatterbox.missingVoice': 'Saved voice is not in the current catalog',
+  'dsh-live-voice.speak.chatterbox.refresh': 'Refresh voices',
+  'dsh-live-voice.speak.chatterbox.unavailable':
+    'Chatterbox is unavailable. Start the local service and refresh.',
+  'dsh-live-voice.speak.chatterbox.voice': 'Voice reference',
   'dsh-live-voice.speak.engine.label': 'Speech engine',
   'dsh-live-voice.speak.engine.playbackHelp':
-    'Qwen and macOS say synthesize on the DSH host; compact AAC/M4A audio plays in this browser. Browser speech synthesizes and plays on this device.',
+    'Qwen, Chatterbox and macOS say synthesize on the DSH host; compact AAC/M4A audio plays in this browser. Browser speech synthesizes and plays on this device.',
   'dsh-live-voice.speak.filters.code.enabled': 'Filter Markdown code blocks before speaking',
   'dsh-live-voice.speak.filters.code.maxLines': 'Read code blocks up to this many lines',
   'dsh-live-voice.speak.filters.code.notice': 'Look at the code in our conversation',
