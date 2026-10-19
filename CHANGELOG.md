@@ -15,6 +15,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 ### Improvements
 
 - Retain compact HTTP transcription-request measurements per attempt: actual prepared WAV size, input/output sample counts and rates, duration, language, preparation time and response status. Inspect and export these alongside expected ranges without storing duplicate audio; older attempts remain explicitly unmeasured. These measurements do not claim server receipt or full model processing.
+- Known limitation — Qwen HTTP automatic language detection can return only the beginning of a complete audio segment. This was reproduced with the local ominix-api service using the same 23.136-second WAV: automatic language returned a truncated transcript, while explicit Portuguese returned the remaining speech in repeated paired tests. Workaround: select the spoken language explicitly and retry the saved segment. The internal server/model cause is still under investigation; this is not a fixed issue or evidence that VAD cut the audio.
 - Use compact, accessible play icons in debugger segment rows and download an individual speech or silence segment as WAV. Retranscribe finished speech using current Qwen HTTP or Whisper HTTP settings while preserving earlier attempts and leaving the composer unchanged.
 
 ### Fixes
