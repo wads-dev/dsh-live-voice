@@ -112,9 +112,9 @@ const translation = {
   requestUnknown: 'Non enregistré / indisponible',
   retranscribe: 'Retranscrire',
   retranscribeError:
-    'Impossible de retranscrire. Terminez la capture et sélectionnez Qwen HTTP ou Whisper HTTP dans les paramètres de reconnaissance.',
+    'Impossible de retranscrire. Terminez la capture, puis vérifiez le moteur de reconnaissance sélectionné, le modèle téléchargé et la compatibilité du navigateur.',
   retranscribeHelp:
-    'Retranscrit cette parole avec les paramètres actuels Qwen HTTP ou Whisper HTTP et au moins 800 ms de contexte. Ajoute un essai à l’historique sans modifier le champ de saisie.',
+    'Réessayez la parole sauvegardée avec les paramètres actuels Qwen/Whisper HTTP, Whisper · Browser ou Qwen · Browser et au moins 800 ms de contexte. Téléchargez les modèles locaux du navigateur dans les paramètres au préalable ; les essais ne téléchargent jamais de modèles et ne basculent pas vers HTTP. Browser natif exige une prise en charge sûre et vérifiée des pistes audio externes ; aucun recours au microphone. Ajoute uniquement un essai à l’historique, sans modifier la saisie ni exécuter de commandes.',
   retranscribing: 'Retranscription du segment…',
   saveName: 'Enregistrer le nom',
   saved: 'Audio sauvegardé',

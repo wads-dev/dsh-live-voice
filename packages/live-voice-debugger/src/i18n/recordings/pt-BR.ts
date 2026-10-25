@@ -111,9 +111,9 @@ const translation = {
   requestUnknown: 'Não registrado / indisponível',
   retranscribe: 'Transcrever novamente',
   retranscribeError:
-    'Não foi possível transcrever novamente. Encerre a captura e selecione Qwen HTTP ou Whisper HTTP nas configurações de reconhecimento.',
+    'Não foi possível transcrever novamente. Encerre a captura e verifique o mecanismo de reconhecimento selecionado, o modelo baixado e o suporte do navegador.',
   retranscribeHelp:
-    'Transcreve esta fala com as configurações atuais do Qwen HTTP ou Whisper HTTP e contexto mínimo de 800 ms. Adiciona uma tentativa ao histórico sem alterar o compositor.',
+    'Tenta transcrever a fala salva com as configurações atuais de Qwen/Whisper HTTP, Whisper · Browser ou Qwen · Browser e contexto mínimo de 800 ms. Baixe primeiro os modelos locais do navegador nas Configurações; novas tentativas nunca baixam modelos nem recorrem ao HTTP. Browser nativo exige suporte seguro verificado a faixas de áudio externas; nunca recorre ao microfone. Apenas adiciona ao histórico; não altera o compositor nem executa comandos.',
   retranscribing: 'Transcrevendo segmento novamente…',
   saveName: 'Salvar nome',
   saved: 'Áudio salvo',

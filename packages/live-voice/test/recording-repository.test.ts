@@ -6,6 +6,7 @@ import {
 } from '../src/modules/recording/repository.js';
 import { createMemoryStore } from '../src/modules/recording/storage.js';
 import type { AudioPage } from '../src/modules/recording/codec.js';
+import { recordingTranscriber } from '../src/modules/recognition/recordingTranscriber.js';
 
 // Fake codecs exercise repository ownership/persistence boundaries, not Opus fidelity.
 function fakeCodecs() {
@@ -550,6 +551,84 @@ test('archive retranscription preserves attempts and audio, rejects active/silen
     codecs.restore();
   }
 });
+
+for (const engine of ['whisper-browser', 'qwen-browser', 'browser']) {
+  test(
+    'archive repository retries ' + engine + ' and appends audit without changing saved audio',
+    async () => {
+      const codecs = fakeCodecs();
+      let fail = false;
+      const recognize = async () => {
+        if (fail) throw new Error('engine-unavailable');
+        return 'reprocessed speech';
+      };
+      const repository = createRecordingRepository(undefined, () =>
+        recordingTranscriber(
+          {
+            recognitionEngine: engine,
+            recognitionLang: 'pt-BR',
+            browserWhisperModel: 'whisper-tiny',
+            browserQwenModel: 'qwen-0.6b',
+          },
+          undefined,
+          {
+            createLocalModels: () => ({
+              refresh: async () => {},
+              prepare: async () => {},
+              transcribe: recognize,
+              dispose() {},
+            }),
+            transcribeBrowser: recognize,
+          },
+        ),
+      );
+      try {
+        const writer = await repository.begin(input());
+        await writer.append(new Float32Array(64000));
+        await writer.pin('silence-start', 0, 0);
+        const speech = await writer.pin('speech-start', 16000, 18000);
+        await writer.pin('silence-start', 48000, 50000);
+        await writer.attempt({
+          id: 'original',
+          segmentId: speech.id,
+          engine: 'whisper-http',
+          startSample: 3200,
+          endSample: 60800,
+          createdAt: new Date().toISOString(),
+          status: 'success',
+          text: 'original speech',
+        });
+        await writer.finish();
+        const before = await repository.get(writer.session.id);
+        await repository.retranscribe!(writer.session.id, speech.id);
+        const after = await repository.get(writer.session.id);
+        assert.deepEqual(after?.attempts[0], before?.attempts[0]);
+        assert.equal(after?.attempts.at(-1)?.text, 'reprocessed speech');
+        assert.equal(
+          after?.attempts.at(-1)?.engine,
+          engine === 'browser'
+            ? 'browser'
+            : 'browser-local/' + (engine === 'whisper-browser' ? 'whisper-tiny' : 'qwen-0.6b'),
+        );
+        assert.equal(after?.attempts.at(-1)?.request, undefined);
+        assert.deepEqual(after?.pins, before?.pins);
+        assert.equal(after?.audioBytes, before?.audioBytes);
+        fail = true;
+        await assert.rejects(
+          repository.retranscribe!(writer.session.id, speech.id),
+          /engine-unavailable/,
+        );
+        const failed = await repository.get(writer.session.id);
+        assert.equal(failed?.attempts.length, 3);
+        assert.equal(failed?.attempts.at(-1)?.status, 'error');
+        assert.deepEqual(failed?.attempts.slice(0, 2), after?.attempts);
+      } finally {
+        await repository.dispose();
+        codecs.restore();
+      }
+    },
+  );
+}
 
 test('orphaned archive retry recovers without changing completed capture and respects live locks', async () => {
   const descriptors = ['indexedDB', 'navigator'].map((k) =>

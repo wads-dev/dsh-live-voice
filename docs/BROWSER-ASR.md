@@ -21,6 +21,12 @@ All Whisper selections are multilingual models, not `.en` variants. Automatic la
 
 Microphone and meeting audio reuse the existing recording-owned capture, VAD pins, range queue, transcript audit, and stop/cancellation lifecycle. Inference is serialized across sources and segments are bounded below 30 seconds. Stop terminates cancelled worker work; no partial late transcript is inserted. Word-aligned timestamps are not claimed.
 
+## Retry saved speech
+
+In the optional debugger’s **Recordings** tab, finish capture and choose **Transcribe again** on a saved speech segment. The retry uses the current engine, model, language and WebGPU/WASM selection, not the recording’s original recognition settings. Download the selected **Whisper · Browser** or **Qwen · Browser** model in Speech recognition settings first. Archive retries use only cached model files: they never download missing weights or silently fall back to HTTP. Missing models or unsupported runtimes report an error; check the selected engine/model and browser capabilities before retrying. Long saved segments are processed in bounded 25-second windows with 1.6 seconds of shared boundary context so no audio tail is discarded. Boundary words may repeat; the retry does not infer word alignment or silently remove repeated speech.
+
+**Qwen HTTP** and **Whisper HTTP** remain supported. Native **Browser SpeechRecognition** can process existing saved segments only when safe external-audio-track support is verified, respecting local/remote-processing policy and language-pack requirements. Unsupported external audio fails explicitly and never falls back to the microphone. This does not add recording to native Browser live capture: original live speech is still not saved. Retries include at least 800 ms of available boundary context, preserve earlier attempts, and never edit the composer or execute voice commands.
+
 ## Runtime diagnostics
 
 The optional debugger adds a **Runtimes** tab once a model load has been attempted, including loading, failed and released models. It displays the pinned model/revision, encoder/decoder precision, requested WebGPU/WASM provider, worker liveness, runtime versions and identity, load round-trip/worker timings, last inference duration, audio duration and processing/audio ratio, queues, completed/failed counts, and the last 100 content-free lifecycle events. WebGPU initialization is not per-operator GPU profiling.

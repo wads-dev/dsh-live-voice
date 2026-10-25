@@ -111,9 +111,9 @@ const translation = {
   requestUnknown: 'Not recorded / unavailable',
   retranscribe: 'Transcribe again',
   retranscribeError:
-    'Unable to transcribe again. Finish capture and select Qwen HTTP or Whisper HTTP in recognition settings.',
+    'Unable to transcribe again. Finish capture, then check the selected recognition engine, downloaded model and browser support.',
   retranscribeHelp:
-    'Transcribe this speech again with the current Qwen HTTP or Whisper HTTP settings and 800 ms minimum context. Adds an attempt to history only; never changes the composer.',
+    'Retry saved speech with current Qwen/Whisper HTTP, Whisper · Browser or Qwen · Browser settings and at least 800 ms of context. Download browser-local models in Settings first; retries never download models or fall back to HTTP. Native Browser requires verified safe external-audio-track support; never falls back to the microphone. Adds history only; never changes the composer or runs commands.',
   retranscribing: 'Transcribing segment again…',
   saveName: 'Save name',
   saved: 'Saved audio',

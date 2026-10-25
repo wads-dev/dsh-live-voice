@@ -108,9 +108,9 @@ const translation = {
   requestStatus: 'HTTP 响应状态',
   requestUnknown: '未记录 / 不可用',
   retranscribe: '重新转录',
-  retranscribeError: '无法重新转录。请结束采集，并在语音识别设置中选择 Qwen HTTP 或 Whisper HTTP。',
+  retranscribeError: '无法重新转录。请结束采集，并检查所选识别引擎、已下载模型和浏览器支持情况。',
   retranscribeHelp:
-    '使用当前 Qwen HTTP 或 Whisper HTTP 设置及至少 800 毫秒的上下文重新转录此语音。仅向历史记录添加一次尝试，不会修改输入框。',
+    '使用当前 Qwen/Whisper HTTP、Whisper · Browser 或 Qwen · Browser 设置及至少 800 毫秒的上下文重新转录已保存语音。请先在设置中下载浏览器本地模型；重试绝不下载模型或回退到 HTTP。原生 Browser 需要经过验证的安全外部音轨支持，绝不回退到麦克风。仅添加历史尝试，不修改输入框或执行命令。',
   retranscribing: '正在重新转录片段…',
   saveName: '保存名称',
   saved: '已保存音频',

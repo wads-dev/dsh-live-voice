@@ -35,7 +35,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 - Inspect assistant waiting and reasons, playback requests, input-stop request/completion/failure, interruptions and cancellations in a separate event track and timestamped list. Historical sessions gain no invented events.
 - Distinguish event categories with labeled lanes, colors and action symbols. Group nearby events with a count without discarding their real timestamps; activate a marker to highlight every original event in the list.
 - Show immediate, keyboard-accessible event details in a viewport-bounded custom tooltip instead of delayed native titles. Tooltips ignore pointer input so neighboring markers remain reachable; Escape dismisses them.
-- Use compact, accessible play icons in debugger segment rows and download an individual speech or silence segment as WAV. Retranscribe finished speech using current Qwen HTTP or Whisper HTTP settings while preserving earlier attempts and leaving the composer unchanged.
+- Use compact, accessible play icons in debugger segment rows and download an individual speech or silence segment as WAV. Retranscribe finished speech using the selected Qwen HTTP, Whisper HTTP, Whisper · Browser or Qwen · Browser engine, or native Browser SpeechRecognition only when safe external-audio-track support is verified. Browser-local models must already be downloaded; retries never download models, fall back to HTTP or capture the microphone. Preserve earlier attempts and leave the composer unchanged. Native Browser live capture still does not save original speech.
 
 ### Fixes
 
