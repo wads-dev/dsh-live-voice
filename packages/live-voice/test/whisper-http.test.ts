@@ -7,6 +7,7 @@ import {
   WhisperHttpRecognitionEngine,
 } from '../src/modules/recognition/engines/whisper/WhisperRecognitionEngine.ts';
 import {
+  WHISPER_MAX_AUDIO_BYTES,
   resolveWhisperUrl,
   validateMonoPcm16Wav,
   WhisperHttpHost,
@@ -38,6 +39,37 @@ test('Whisper host accepts only loopback and canonical mono PCM16 WAV', () => {
   const broken = wav.slice(0);
   new DataView(broken).setUint32(24, 44100, true);
   assert.throws(() => validateMonoPcm16Wav(broken), /16 kHz/);
+});
+
+test('Whisper accepts and forwards audio above the former 2 MB ceiling', async () => {
+  const wav = encodeMonoPcm16Wav(new Float32Array(16000 * 300), 16000);
+  assert.ok(wav.byteLength > 2_000_000);
+  let forwarded = 0;
+  const host = new WhisperHttpHost({
+    fetchImpl: async (url, options) => {
+      if (String(url).endsWith('/health')) return Response.json({ status: 'ok' });
+      forwarded = options.body.get('file').size;
+      return Response.json({ text: 'long recording' });
+    },
+  });
+  assert.equal((await host.capability()).maxBytes, 100_000_000);
+  assert.deepEqual(await host.transcribe(wav), { text: 'long recording' });
+  assert.equal(forwarded, wav.byteLength);
+});
+
+test('Whisper WAV ceiling accepts exactly 100 MB and rejects larger audio', () => {
+  const header = encodeMonoPcm16Wav(new Float32Array(1), 16000);
+  const wav = new Uint8Array(WHISPER_MAX_AUDIO_BYTES);
+  wav.set(new Uint8Array(header));
+  const view = new DataView(wav.buffer);
+  view.setUint32(4, wav.byteLength - 8, true);
+  view.setUint32(40, wav.byteLength - 44, true);
+  assert.equal(validateMonoPcm16Wav(wav).byteLength, 100_000_000);
+  assert.throws(
+    () => validateMonoPcm16Wav(new Uint8Array(WHISPER_MAX_AUDIO_BYTES + 2)),
+    /oversized/,
+  );
+  assert.throws(() => validateMonoPcm16Wav(wav, { maxBytes: 2_000_000 }), /oversized/);
 });
 
 test('Whisper host posts complete WAV multipart and parses final JSON', async () => {

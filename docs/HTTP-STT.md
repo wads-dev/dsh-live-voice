@@ -177,7 +177,9 @@ Qwen config example:
 { "baseUrl": "http://127.0.0.1:8080/", "timeoutMs": 300000 }
 ~~~
 
-JSON successes use `{ "ok": true, "value": ... }`. Example Whisper capability value: `{ "supported": true, "local": true, "streaming": false, "maxBytes": 2000000 }`. Qwen adds `location: "host"` and model readiness on success. Unavailable capabilities can still return HTTP 200/`ok: true` with `{ "supported": false, "reason": "…" }`: inspect `supported`, not just HTTP status. Invalid config returns 400/`invalid-config`; load/save failures return 500/`config-failed`. A saved configuration replacement aborts the previous adapter's active requests. Saving generic Live Voice preferences alone is not a provider-config update.
+JSON successes use `{ "ok": true, "value": ... }`. Example Whisper capability value: `{ "supported": true, "local": true, "streaming": false, "maxBytes": 100000000 }`. Qwen adds `location: "host"` and model readiness on success. Unavailable capabilities can still return HTTP 200/`ok: true` with `{ "supported": false, "reason": "…" }`: inspect `supported`, not just HTTP status. Invalid config returns 400/`invalid-config`; load/save failures return 500/`config-failed`. A saved configuration replacement aborts the previous adapter's active requests. Saving generic Live Voice preferences alone is not a provider-config update.
+
+Whisper bridge requests accept up to **100 MB (100,000,000 bytes)** of canonical mono 16 kHz PCM16 WAV per request. This is the plugin-side admission ceiling, not a guarantee about the separately configured Whisper service: upstream upload limits, available memory and request timeouts still apply. Larger requests are rejected rather than accepted without a bound.
 
 ## Implementation references
 

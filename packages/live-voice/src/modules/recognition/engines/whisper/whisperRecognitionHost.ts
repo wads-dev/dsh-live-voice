@@ -5,6 +5,9 @@ import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { transcriptionContext } from '../../transcriptionContext.js';
 
+/** Decimal bytes; shared by WAV validation, capability discovery and route admission. */
+export const WHISPER_MAX_AUDIO_BYTES = 100_000_000;
+
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 export function validateWhisperConfig(value) {
   if (!value || typeof value.url !== 'string' || typeof value.healthUrl !== 'string')
@@ -59,7 +62,7 @@ export function resolveWhisperUrl(
     throw new Error('Whisper HTTP URL must be an unauthenticated loopback http URL.');
   return url;
 }
-export function validateMonoPcm16Wav(input, { maxBytes = 2_000_000 } = {}) {
+export function validateMonoPcm16Wav(input, { maxBytes = WHISPER_MAX_AUDIO_BYTES } = {}) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   if (bytes.byteLength < 44 || bytes.byteLength > maxBytes)
     throw new Error('Invalid or oversized WAV recording.');
@@ -109,7 +112,7 @@ export class WhisperHttpHost {
     healthUrl = '/health',
     timeoutMs = 30000,
     fetchImpl = globalThis.fetch,
-    maxBytes = 2_000_000,
+    maxBytes = WHISPER_MAX_AUDIO_BYTES,
     store,
   } = {}) {
     this.config = validateWhisperConfig({ url: resolveWhisperUrl(url).href, healthUrl, timeoutMs });
