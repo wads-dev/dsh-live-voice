@@ -247,7 +247,12 @@ export function createConversationComponents(
     const localizedStatus = resolveConversationStatus(state, remaining, {
       commons: {
         conversation: { idle: () => t('dsh-live-voice.commons.conversation.idle') },
-        status: { ready: () => t('dsh-live-voice.commons.status.ready') },
+        status: Object.fromEntries(
+          ['ready', 'recovering', 'stopped'].map((key) => [
+            key,
+            () => t('dsh-live-voice.commons.status.' + key),
+          ]),
+        ),
       },
       recognition: {
         microphone: { starting: () => t('dsh-live-voice.recognition.microphone.starting') },

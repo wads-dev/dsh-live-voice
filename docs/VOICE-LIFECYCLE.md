@@ -28,6 +28,14 @@ Permission requests, engine starts, transcription requests, synthesis requests, 
 
 Capture, recognition, user speech activity, message delivery, agent generation, synthesis, and playback are related but distinct. Mute is not stop. Pause is not cancel. Stopping speech must not silently stop recognition. Opening or closing microphone conversation mode must not cancel playback, clear captions/history/accepted speech queues, or change manual pause state. Speaker-mode input enablement stays gated until playback completes; explicit Take microphone retains the teardown-before-capture handoff. Automatic assistant speech admits new messages while its toggle is enabled, even when microphone conversation mode is closed. Closing or opening input does not consume unread partial speech or alter playback offsets; the microphone remains closed after playback unless explicitly enabled. First-visit history and delayed historical backfill are baselined rather than spoken. Previously visited sessions preserve their cursors and accept known continuations/newer messages on return; updates outside the committed composer never play in the background or advance parked speech progress. Full End commands and lifecycle disposal release all voice resources.
 
+## Failure isolation and recovery
+
+Assistant speech, microphone transcription and shared-audio transcription are separate failure domains. A recognition failure must not cancel assistant speech or another capture source; a playback failure must not discard accepted transcript or the unread speech queue. Existing speaker echo gates and teardown safety barriers still apply.
+
+Recoverable failures use at most three automatic retries with bounded exponential backoff. Permission denial, unsupported engines/formats and explicit cancellation require user action rather than an automatic loop. Retries must observe current mute/pause intent and must be invalidated by Stop, disposal and superseding operations. A failed teardown never authorizes overlapping replacement resources. Shared recognition recovery borrows the original live capture track and never silently prompts for a new display capture or substitutes the microphone.
+
+Keep the failed speech segment and unread queue for a manual retry after automatic recovery is exhausted. Retrying a segment may repeat speech already heard; this is not sample-accurate continuation. Feedback identifies the affected source, retry attempt and available cause, and distinguishes automatic recovery from a stopped recovery requiring action. Never log audio or transcript content as recovery diagnostics.
+
 ## Turn-taking
 
 - **Speakers:** playback gates recognition/capture so speaker output is not recognized. Manual interruption transfers ownership only after old playback teardown succeeds.

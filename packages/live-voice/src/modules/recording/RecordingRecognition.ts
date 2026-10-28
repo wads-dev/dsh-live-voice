@@ -1,3 +1,4 @@
+import { voiceNetworkFailure } from '../core/networkFailure.js';
 import { transcriptionContextHeader } from '../recognition/transcriptionContext.js';
 import { transcriptionRequestMetadata } from './requestMetadata.js';
 import type {
@@ -365,23 +366,33 @@ export async function startRecordingRecognition(
             attempt.request = transcriptionRequestMetadata(body, pcm.length, rate, lang);
             await writer.attempt(attempt);
             if (!valid()) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
-            const response = await engine.g.fetch(engine.route + '/transcribe', {
-              method: 'POST',
-              headers: {
-                'content-type': 'audio/wav',
-                'x-dlv-client-id': session.operation,
-                'x-dlv-operation-id': attempt.id,
-                'x-dlv-language': lang,
-                ...transcriptionContextHeader(engine.recognitionContext),
-              },
-              credentials: 'same-origin',
-              body,
-              signal: request.signal,
-            });
+            const response = await engine.g
+              .fetch(engine.route + '/transcribe', {
+                method: 'POST',
+                headers: {
+                  'content-type': 'audio/wav',
+                  'x-dlv-client-id': session.operation,
+                  'x-dlv-operation-id': attempt.id,
+                  'x-dlv-language': lang,
+                  ...transcriptionContextHeader(engine.recognitionContext),
+                },
+                credentials: 'same-origin',
+                body,
+                signal: request.signal,
+              })
+              .catch((error) => {
+                throw voiceNetworkFailure(error, request.signal);
+              });
             attempt.request.responseStatus = response.status;
             const json = await response.json();
             if (!response.ok || !json?.ok)
-              throw new Error(json?.error?.message || 'Recognition request failed.');
+              throw Object.assign(
+                new Error(json?.error?.message || 'Recognition request failed.'),
+                {
+                  code: 'http_' + response.status,
+                  retryable: [408, 429].includes(response.status) || response.status >= 500,
+                },
+              );
             text = String(json.value?.text ?? '').trim();
           }
           await writer.attempt({

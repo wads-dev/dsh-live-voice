@@ -356,10 +356,12 @@ function browserMeetingFixture({
   capability = async () => ({ supported: true, externalAudio: true }),
   capture,
   recognize,
+  settings: currentSettings,
 } = {}) {
   const order = [],
     tracks = [],
-    entries = [];
+    entries = [],
+    submissions = [];
   let draft = '';
   const track = {
     kind: 'audio',
@@ -376,14 +378,16 @@ function browserMeetingFixture({
   const stream = { getAudioTracks: () => [track], getTracks: () => [track] };
   const meeting = new MeetingController({
     composer: {
+      submit: (mode) => submissions.push(mode),
       getDraft: () => draft,
       setDraft: (text) => {
         draft = text;
       },
     },
     settings: () => ({
-      recognitionEngine: 'browser',
-      recognitionLang: 'pt-BR',
+      ...currentSettings?.(),
+      recognitionEngine: currentSettings?.().recognitionEngine || 'browser',
+      recognitionLang: currentSettings?.().recognitionLang || 'pt-BR',
       recognitionMinimumWords: 1,
       sendingMode: 'manual',
     }),
@@ -419,7 +423,7 @@ function browserMeetingFixture({
           async start(options) {
             order.push('recognition');
             entry.callbacks = options;
-            assert.equal(entry.meter.stream?.getAudioTracks()[0], track);
+            assert.equal((this.meter || entry.meter).stream?.getAudioTracks()[0], track);
             await recognize?.(options);
           },
           async stop() {
@@ -431,7 +435,7 @@ function browserMeetingFixture({
       return entry;
     },
   });
-  return { meeting, entries, order, stream, track, tracks, draft: () => draft };
+  return { meeting, entries, order, stream, track, tracks, submissions, draft: () => draft };
 }
 
 test('Browser meeting probes capability before capture and recognizes only after its shared track is available', async (t) => {
@@ -551,5 +555,162 @@ test('shared-input silent persistence does not repeatedly restart automatic deli
     cb.onProcessingChange({ pending: i % 2, transcribing: 0, deliveryPending: 0 });
     t.mock.timers.tick(100);
   }
+  assert.deepEqual(f.submissions, ['queue']);
+});
+
+const flushRecovery = () => new Promise((resolve) => setImmediate(resolve));
+const transientRecognitionFailure = () =>
+  Object.assign(new Error('temporary'), { code: 'network' });
+
+test('shared recognition recovers on the retained track with current settings, mute and stale callback protection', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let settings = { recognitionLang: 'pt-BR' };
+  const f = browserMeetingFixture({ settings: () => settings });
+  t.after(() => f.meeting.dispose());
+  await f.meeting.start('shared', Promise.resolve(f.stream));
+  const old = f.entries[0].callbacks;
+  old.onActivity(true);
+  old.onProcessingChange({ pending: 3 });
+  old.onError(transientRecognitionFailure());
+  f.meeting.input().updateSettings({ microphoneEnabled: false });
+  settings = { recognitionLang: 'en-US' };
+  old.onResult({ final: 'obsolete words' });
+  old.onProcessingChange({ pending: 99 });
+  await flushRecovery();
+  assert.equal(f.track.stops, 0);
+  assert.equal(f.meeting.getSnapshot().shared.starting, true);
+  assert.equal(f.meeting.getSnapshot().shared.pending, 0);
+  t.mock.timers.tick(250);
+  await flushRecovery();
+  assert.equal(f.entries.length, 2);
+  assert.equal(f.entries[1].callbacks.lang, 'en-US');
+  assert.equal(f.entries[1].engine.meter, f.entries[0].meter);
+  assert.equal(f.order.filter((step) => step === 'capture').length, 1);
+  assert.equal(f.meeting.input().getSnapshot().muted, true);
+  assert.equal(f.meeting.getSnapshot().shared.error, null);
+  f.entries[1].callbacks.onResult({ final: 'ignored while muted' });
+  assert.equal(f.draft(), '');
+});
+
+test('shared recovery budget does not reset merely because start resolves', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = browserMeetingFixture();
+  t.after(() => f.meeting.dispose());
+  await f.meeting.start('shared', Promise.resolve(f.stream));
+  for (const delay of [250, 500, 1000]) {
+    f.entries.at(-1).callbacks.onError(transientRecognitionFailure());
+    await flushRecovery();
+    t.mock.timers.tick(delay - 1);
+    await flushRecovery();
+    const count = f.entries.length;
+    t.mock.timers.tick(1);
+    await flushRecovery();
+    assert.equal(f.entries.length, count + 1);
+    assert.equal(f.track.stops, 0);
+  }
+  f.entries.at(-1).callbacks.onError(transientRecognitionFailure());
+  await flushRecovery();
+  assert.equal(f.meeting.jobs.size, 0);
+  assert.equal(f.track.readyState, 'ended');
+  t.mock.timers.tick(10000);
+  await flushRecovery();
+  assert.equal(f.entries.length, 4);
+});
+
+test('stop, disposal and ended tracks cancel shared recovery without reacquiring capture', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const action of ['stop', 'dispose', 'track']) {
+    const f = browserMeetingFixture();
+    await f.meeting.start('shared', Promise.resolve(f.stream));
+    const old = f.entries[0].callbacks;
+    old.onError(transientRecognitionFailure());
+    await flushRecovery();
+    if (action === 'track') {
+      f.track.readyState = 'ended';
+      f.tracks[0]();
+    } else if (action === 'stop') await f.meeting.stop('shared');
+    else await f.meeting.dispose();
+    t.mock.timers.tick(10000);
+    await flushRecovery();
+    old.onResult({ final: 'late words' });
+    assert.equal(f.draft(), '');
+    assert.equal(f.entries.length, 1);
+    assert.equal(f.meeting.jobs.size, 0);
+    await f.meeting.dispose();
+  }
+});
+
+test('permanent, unknown and permission errors never retry shared recognition', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const code of [
+    'not-allowed',
+    'service-not-allowed',
+    'language-not-supported',
+    'restart-limit',
+    undefined,
+  ]) {
+    const f = browserMeetingFixture();
+    await f.meeting.start('shared', Promise.resolve(f.stream));
+    f.entries[0].callbacks.onError(Object.assign(new Error('terminal'), { code }));
+    await flushRecovery();
+    t.mock.timers.tick(10000);
+    await flushRecovery();
+    assert.equal(f.entries.length, 1);
+    assert.equal(f.meeting.jobs.size, 0);
+    assert.equal(f.track.readyState, 'ended');
+    await f.meeting.dispose();
+  }
+});
+
+test('composer replacement retains sharing but rejects old recognition and delivery intent', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = browserMeetingFixture();
+  t.after(() => f.meeting.dispose());
+  await f.meeting.start('shared', Promise.resolve(f.stream));
+  const old = f.entries[0].callbacks;
+  f.meeting.composerReplaced();
+  old.onResult({ final: 'previous conversation words' });
+  assert.equal(f.draft(), '');
+  await flushRecovery();
+  t.mock.timers.tick(250);
+  await flushRecovery();
+  assert.equal(f.track.stops, 0);
+  assert.equal(f.entries.length, 2);
+  f.entries[1].callbacks.onResult({ final: 'current conversation words' });
+  assert.equal(f.draft(), 'current conversation words');
+});
+
+test('failed recognition teardown blocks replacement but still releases shared capture', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = browserMeetingFixture();
+  t.after(() => f.meeting.dispose());
+  await f.meeting.start('shared', Promise.resolve(f.stream));
+  f.entries[0].engine.stop = async () => {
+    throw new Error('teardown failed');
+  };
+  f.entries[0].callbacks.onError(transientRecognitionFailure());
+  await flushRecovery();
+  t.mock.timers.tick(10000);
+  await flushRecovery();
+  assert.equal(f.entries.length, 1);
+  assert.equal(f.track.readyState, 'ended');
+});
+
+test('shared recovery parks accepted delivery intent and resumes it only after recognition is ready', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const f = browserMeetingFixture();
+  t.after(() => f.meeting.dispose());
+  await f.meeting.start('shared', Promise.resolve(f.stream));
+  f.meeting.input().updateSettings({ sendingMode: 'queue', autoSendDelaySeconds: 1 });
+  f.entries[0].callbacks.onResult({ final: 'accepted delivery words' });
+  assert.ok(f.meeting.input().getSnapshot().autoSendAt);
+  f.entries[0].callbacks.onError(transientRecognitionFailure());
+  f.meeting.refreshDeliveryReadiness();
+  assert.equal(f.meeting.input().getSnapshot().autoSendAt, null);
+  await flushRecovery();
+  t.mock.timers.tick(250);
+  await flushRecovery();
+  assert.ok(f.meeting.input().getSnapshot().autoSendAt);
+  t.mock.timers.tick(1000);
   assert.deepEqual(f.submissions, ['queue']);
 });

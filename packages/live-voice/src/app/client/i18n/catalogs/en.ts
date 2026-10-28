@@ -28,12 +28,25 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.commons.on': 'on',
   'dsh-live-voice.commons.pluginName': 'Live Voice',
   'dsh-live-voice.commons.queue': 'queue',
+  'dsh-live-voice.commons.recovery.inputAction':
+    'Check permissions, the selected device or engine, then restart this input. Other voice streams remain independent.',
+  'dsh-live-voice.commons.recovery.microphone': 'Microphone transcription',
+  'dsh-live-voice.commons.recovery.retry': 'Retry now',
+  'dsh-live-voice.commons.recovery.retrying':
+    '{source}: retrying ({attempt}/{maxAttempts}). {reason}',
+  'dsh-live-voice.commons.recovery.shared': 'Shared-audio transcription',
+  'dsh-live-voice.commons.recovery.speech': 'Assistant speech',
+  'dsh-live-voice.commons.recovery.speechAction':
+    'The speech queue is retained. Resolve the cause, then Resume to retry or Stop to discard.',
+  'dsh-live-voice.commons.recovery.stopped': '{source}: recovery stopped. {reason}',
   'dsh-live-voice.commons.repository.starLabel': 'Star Us on GitHub',
   'dsh-live-voice.commons.repository.starLink': 'Star DSH Live Voice on GitHub',
   'dsh-live-voice.commons.second': '1 second',
   'dsh-live-voice.commons.seconds': '{seconds} seconds',
   'dsh-live-voice.commons.send': 'SEND',
   'dsh-live-voice.commons.status.ready': 'Voice ready',
+  'dsh-live-voice.commons.status.recovering': 'Recovering recognition',
+  'dsh-live-voice.commons.status.stopped': 'Recognition stopped',
   'dsh-live-voice.commons.systemDefault': 'System default',
   'dsh-live-voice.commons.toggle.offBadge': 'OFF',
   'dsh-live-voice.commons.unknownLanguage': 'unknown language',
@@ -106,15 +119,16 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.advanced': 'Advanced connection',
   'dsh-live-voice.meeting.attendee.aliasHelp':
     'Aliases apply only to this connection and future transcript text. They do not rename people in the meeting.',
-  'dsh-live-voice.meeting.attendee.apiKey': "API key",
+  'dsh-live-voice.meeting.attendee.apiKey': 'API key',
   'dsh-live-voice.meeting.attendee.apiUrl': 'Local Attendee API URL',
   'dsh-live-voice.meeting.attendee.automaticReceiver': 'Receiver detected by DSH',
   'dsh-live-voice.meeting.attendee.botId': 'Bot ID (optional; first bot is bound)',
   'dsh-live-voice.meeting.attendee.botName': 'Bot name in the meeting',
   'dsh-live-voice.meeting.attendee.configureConnection': 'Configure Attendee connection',
-  'dsh-live-voice.meeting.attendee.configureInSettings': "Configure Google Meet in Settings → Live Voice → Conversation → Meeting mode.",
+  'dsh-live-voice.meeting.attendee.configureInSettings':
+    'Configure Google Meet in Settings → Live Voice → Conversation → Meeting mode.',
   'dsh-live-voice.meeting.attendee.confirmRelease': 'Discard control without leaving',
-  'dsh-live-voice.meeting.attendee.connectMeeting': "Connect",
+  'dsh-live-voice.meeting.attendee.connectMeeting': 'Connect',
   'dsh-live-voice.meeting.attendee.connected': 'Connected to Attendee',
   'dsh-live-voice.meeting.attendee.connecting': 'Opening receiver…',
   'dsh-live-voice.meeting.attendee.connection': 'Connection settings',
@@ -127,26 +141,31 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.controlUnknown':
     'Bot state is unknown. Check Attendee before creating another bot.',
   'dsh-live-voice.meeting.attendee.copy': 'Copy',
-  'dsh-live-voice.meeting.attendee.credentialCancel': "Cancel",
-  'dsh-live-voice.meeting.attendee.credentialChecking': "Checking saved API key",
+  'dsh-live-voice.meeting.attendee.credentialCancel': 'Cancel',
+  'dsh-live-voice.meeting.attendee.credentialChecking': 'Checking saved API key',
   'dsh-live-voice.meeting.attendee.credentialHelp':
-    "Save stores the key for this API origin on the host in a plaintext 0600 file, not OS-encrypted storage. Authenticated browsers of this host share it; the secret is never returned. Replacing or removing it does not end an existing bot lease.",
-  'dsh-live-voice.meeting.attendee.credentialInvalid': "Saved-key storage is invalid. Repair or remove the host credential file before retrying.",
-  'dsh-live-voice.meeting.attendee.credentialMissing': "No API key is configured for this API origin. Enter it once and Connect.",
-  'dsh-live-voice.meeting.attendee.credentialNotSaved': "API key not configured on this host",
-  'dsh-live-voice.meeting.attendee.credentialRemove': "Remove saved API key",
-  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "Remove saved key",
-  'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "Remove this origin’s saved key? Existing reception and bot control keep their current credential; this does not request departure.",
-  'dsh-live-voice.meeting.attendee.credentialReplace': "Replace API key",
-  'dsh-live-voice.meeting.attendee.credentialSave': "Save API key",
-  'dsh-live-voice.meeting.attendee.credentialSaved': "API key configured on this host",
-  'dsh-live-voice.meeting.attendee.credentialUnavailable': "Saved-key storage is unavailable. Check host permissions and try again.",
+    'Save stores the key for this API origin on the host in a plaintext 0600 file, not OS-encrypted storage. Authenticated browsers of this host share it; the secret is never returned. Replacing or removing it does not end an existing bot lease.',
+  'dsh-live-voice.meeting.attendee.credentialInvalid':
+    'Saved-key storage is invalid. Repair or remove the host credential file before retrying.',
+  'dsh-live-voice.meeting.attendee.credentialMissing':
+    'No API key is configured for this API origin. Enter it once and Connect.',
+  'dsh-live-voice.meeting.attendee.credentialNotSaved': 'API key not configured on this host',
+  'dsh-live-voice.meeting.attendee.credentialRemove': 'Remove saved API key',
+  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': 'Remove saved key',
+  'dsh-live-voice.meeting.attendee.credentialRemoveWarning':
+    'Remove this origin’s saved key? Existing reception and bot control keep their current credential; this does not request departure.',
+  'dsh-live-voice.meeting.attendee.credentialReplace': 'Replace API key',
+  'dsh-live-voice.meeting.attendee.credentialSave': 'Save API key',
+  'dsh-live-voice.meeting.attendee.credentialSaved': 'API key configured on this host',
+  'dsh-live-voice.meeting.attendee.credentialUnavailable':
+    'Saved-key storage is unavailable. Check host permissions and try again.',
   'dsh-live-voice.meeting.attendee.currentBot': 'Last known bot',
   'dsh-live-voice.meeting.attendee.defaultBotName': 'Default bot name',
   'dsh-live-voice.meeting.attendee.departureRequested':
     'Departure requested; removal from the meeting is not confirmed.',
-  'dsh-live-voice.meeting.attendee.disconnectMeeting': "Disconnect meeting",
-  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "Disconnected locally. Remote departure could not be confirmed; check the meeting before connecting again.",
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': 'Disconnect meeting',
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed':
+    'Disconnected locally. Remote departure could not be confirmed; check the meeting before connecting again.',
   'dsh-live-voice.meeting.attendee.failed':
     'Receiver stopped. Check TLS, API credentials, participants, stream limits and recognition engine, then reconnect.',
   'dsh-live-voice.meeting.attendee.help':
@@ -177,7 +196,7 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     'Discarding control does not remove the bot from the meeting. You will lose the Leave action here. Continue only after checking Attendee.',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "Save the project API key here once. The meeting menu uses the saved key automatically; only its explicit Connect action starts reception and requests entry.",
+    'Save the project API key here once. The meeting menu uses the saved key automatically; only its explicit Connect action starts reception and requests entry.',
   'dsh-live-voice.meeting.attendee.start': 'Connect to Attendee',
   'dsh-live-voice.meeting.attendee.stop': 'Disconnect from Attendee',
   'dsh-live-voice.meeting.attendee.title': 'Audio by participant (Attendee · experimental)',
@@ -438,7 +457,7 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.recording.error.failed':
     'Recording could not be saved. Capture stopped to avoid silent data loss.',
   'dsh-live-voice.recording.keepPrevious.help':
-    "Keep 1–100 ordinary captures per source type; Attendee keeps N meeting groups, newest by capture activity, with every participant and burst while that group is retained. Active writers, pending writes and stars protect the whole meeting group without consuming an ordinary slot. Silence between bursts does not mean the call ended or reserve its place: a newer meeting may expire an older quiet group. Legacy microphone/shared recordings keep N captures per type. Browser quota or storage eviction can still limit availability.",
+    'Keep 1–100 ordinary captures per source type; Attendee keeps N meeting groups, newest by capture activity, with every participant and burst while that group is retained. Active writers, pending writes and stars protect the whole meeting group without consuming an ordinary slot. Silence between bursts does not mean the call ended or reserve its place: a newer meeting may expire an older quiet group. Legacy microphone/shared recordings keep N captures per type. Browser quota or storage eviction can still limit availability.',
   'dsh-live-voice.recording.keepPrevious.label': 'Retained recordings per source type',
   'dsh-live-voice.recording.managementHelp':
     'Managing saved sessions—browsing, playback, reviewing transcripts, export and deletion—requires the optional dsh-live-voice-debugger plugin. Use Diagnostics below to install it. Recording itself does not require the debugger.',

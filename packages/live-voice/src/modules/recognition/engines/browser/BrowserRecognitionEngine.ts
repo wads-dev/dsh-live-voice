@@ -317,7 +317,7 @@ export class BrowserRecognitionEngine {
             new Error(
               'Local browser recognition stopped repeatedly. Restart listening manually or choose another local engine.',
             ),
-            { code: 'restart-limit' },
+            { code: 'restart-limit', retryable: true },
           ),
         );
         return;

@@ -29,12 +29,25 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.commons.on': 'ativada',
   'dsh-live-voice.commons.pluginName': 'Voz ao Vivo',
   'dsh-live-voice.commons.queue': 'fila',
+  'dsh-live-voice.commons.recovery.inputAction':
+    'Verifique as permissões, o dispositivo ou o motor selecionado e reinicie esta entrada. Os outros fluxos de voz permanecem independentes.',
+  'dsh-live-voice.commons.recovery.microphone': 'Transcrição do microfone',
+  'dsh-live-voice.commons.recovery.retry': 'Tentar agora',
+  'dsh-live-voice.commons.recovery.retrying':
+    '{source}: tentando recuperar ({attempt}/{maxAttempts}). {reason}',
+  'dsh-live-voice.commons.recovery.shared': 'Transcrição do áudio compartilhado',
+  'dsh-live-voice.commons.recovery.speech': 'Fala do assistente',
+  'dsh-live-voice.commons.recovery.speechAction':
+    'A fila de fala foi preservada. Resolva a causa e use Retomar para tentar novamente ou Parar para descartar.',
+  'dsh-live-voice.commons.recovery.stopped': '{source}: recuperação interrompida. {reason}',
   'dsh-live-voice.commons.repository.starLabel': 'Dê uma estrela no GitHub',
   'dsh-live-voice.commons.repository.starLink': 'Dar estrela à DSH Voz ao Vivo no GitHub',
   'dsh-live-voice.commons.second': '1 segundo',
   'dsh-live-voice.commons.seconds': '{seconds} segundos',
   'dsh-live-voice.commons.send': 'ENVIAR',
   'dsh-live-voice.commons.status.ready': 'Voz pronta',
+  'dsh-live-voice.commons.status.recovering': 'Recuperando reconhecimento',
+  'dsh-live-voice.commons.status.stopped': 'Reconhecimento interrompido',
   'dsh-live-voice.commons.systemDefault': 'Padrão do sistema',
   'dsh-live-voice.commons.toggle.offBadge': 'DESATIVADO',
   'dsh-live-voice.commons.unknownLanguage': 'idioma desconhecido',
@@ -107,15 +120,16 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.advanced': 'Conexão avançada',
   'dsh-live-voice.meeting.attendee.aliasHelp':
     'Os apelidos valem somente nesta conexão e nos próximos textos transcritos. Não alteram os nomes na reunião.',
-  'dsh-live-voice.meeting.attendee.apiKey': "Chave de API",
+  'dsh-live-voice.meeting.attendee.apiKey': 'Chave de API',
   'dsh-live-voice.meeting.attendee.apiUrl': 'URL da API Attendee local',
   'dsh-live-voice.meeting.attendee.automaticReceiver': 'Receptor detectado pelo DSH',
   'dsh-live-voice.meeting.attendee.botId': 'ID do bot (opcional; vincula o primeiro bot)',
   'dsh-live-voice.meeting.attendee.botName': 'Nome do bot na reunião',
   'dsh-live-voice.meeting.attendee.configureConnection': 'Configurar conexão do Attendee',
-  'dsh-live-voice.meeting.attendee.configureInSettings': "Configure o Google Meet em Configurações → Voz ao Vivo → Conversa → Modo reunião.",
+  'dsh-live-voice.meeting.attendee.configureInSettings':
+    'Configure o Google Meet em Configurações → Voz ao Vivo → Conversa → Modo reunião.',
   'dsh-live-voice.meeting.attendee.confirmRelease': 'Descartar controle sem sair',
-  'dsh-live-voice.meeting.attendee.connectMeeting': "Conectar",
+  'dsh-live-voice.meeting.attendee.connectMeeting': 'Conectar',
   'dsh-live-voice.meeting.attendee.connected': 'Conectado ao Attendee',
   'dsh-live-voice.meeting.attendee.connecting': 'Abrindo receptor…',
   'dsh-live-voice.meeting.attendee.connection': 'Configurações de conexão',
@@ -128,26 +142,31 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.controlUnknown':
     'Estado do bot desconhecido. Verifique no Attendee antes de criar outro bot.',
   'dsh-live-voice.meeting.attendee.copy': 'Copiar',
-  'dsh-live-voice.meeting.attendee.credentialCancel': "Cancelar",
-  'dsh-live-voice.meeting.attendee.credentialChecking': "Verificando chave de API salva",
+  'dsh-live-voice.meeting.attendee.credentialCancel': 'Cancelar',
+  'dsh-live-voice.meeting.attendee.credentialChecking': 'Verificando chave de API salva',
   'dsh-live-voice.meeting.attendee.credentialHelp':
-    "Salvar guarda a chave desta origem da API no host em arquivo de texto simples 0600, sem criptografia do sistema. Navegadores autenticados desse host compartilham a configuração; o segredo nunca retorna. Substituir ou remover não encerra o controle atual do bot.",
-  'dsh-live-voice.meeting.attendee.credentialInvalid': "O armazenamento de chaves é inválido. Repare ou remova o arquivo de credenciais do host antes de tentar novamente.",
-  'dsh-live-voice.meeting.attendee.credentialMissing': "Nenhuma chave de API está configurada para esta origem. Digite-a uma vez e conecte.",
-  'dsh-live-voice.meeting.attendee.credentialNotSaved': "Chave de API não configurada neste host",
-  'dsh-live-voice.meeting.attendee.credentialRemove': "Remover chave de API salva",
-  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': "Remover chave salva",
-  'dsh-live-voice.meeting.attendee.credentialRemoveWarning': "Remover a chave salva desta origem? A recepção e o controle do bot atuais mantêm a credencial em uso; isso não solicita saída.",
-  'dsh-live-voice.meeting.attendee.credentialReplace': "Substituir chave de API",
-  'dsh-live-voice.meeting.attendee.credentialSave': "Salvar chave de API",
-  'dsh-live-voice.meeting.attendee.credentialSaved': "Chave de API configurada neste host",
-  'dsh-live-voice.meeting.attendee.credentialUnavailable': "O armazenamento de chaves está indisponível. Verifique as permissões do host e tente novamente.",
+    'Salvar guarda a chave desta origem da API no host em arquivo de texto simples 0600, sem criptografia do sistema. Navegadores autenticados desse host compartilham a configuração; o segredo nunca retorna. Substituir ou remover não encerra o controle atual do bot.',
+  'dsh-live-voice.meeting.attendee.credentialInvalid':
+    'O armazenamento de chaves é inválido. Repare ou remova o arquivo de credenciais do host antes de tentar novamente.',
+  'dsh-live-voice.meeting.attendee.credentialMissing':
+    'Nenhuma chave de API está configurada para esta origem. Digite-a uma vez e conecte.',
+  'dsh-live-voice.meeting.attendee.credentialNotSaved': 'Chave de API não configurada neste host',
+  'dsh-live-voice.meeting.attendee.credentialRemove': 'Remover chave de API salva',
+  'dsh-live-voice.meeting.attendee.credentialRemoveConfirm': 'Remover chave salva',
+  'dsh-live-voice.meeting.attendee.credentialRemoveWarning':
+    'Remover a chave salva desta origem? A recepção e o controle do bot atuais mantêm a credencial em uso; isso não solicita saída.',
+  'dsh-live-voice.meeting.attendee.credentialReplace': 'Substituir chave de API',
+  'dsh-live-voice.meeting.attendee.credentialSave': 'Salvar chave de API',
+  'dsh-live-voice.meeting.attendee.credentialSaved': 'Chave de API configurada neste host',
+  'dsh-live-voice.meeting.attendee.credentialUnavailable':
+    'O armazenamento de chaves está indisponível. Verifique as permissões do host e tente novamente.',
   'dsh-live-voice.meeting.attendee.currentBot': 'Último bot conhecido',
   'dsh-live-voice.meeting.attendee.defaultBotName': 'Nome padrão do bot',
   'dsh-live-voice.meeting.attendee.departureRequested':
     'Saída solicitada; a remoção da reunião não está confirmada.',
-  'dsh-live-voice.meeting.attendee.disconnectMeeting': "Desconectar",
-  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed': "Desconectado localmente. Não foi possível confirmar a saída remota; confira a reunião antes de conectar novamente.",
+  'dsh-live-voice.meeting.attendee.disconnectMeeting': 'Desconectar',
+  'dsh-live-voice.meeting.attendee.disconnectUnconfirmed':
+    'Desconectado localmente. Não foi possível confirmar a saída remota; confira a reunião antes de conectar novamente.',
   'dsh-live-voice.meeting.attendee.failed':
     'Receptor interrompido. Verifique TLS, credenciais, participantes, limites e motor de reconhecimento antes de reconectar.',
   'dsh-live-voice.meeting.attendee.help':
@@ -178,7 +197,7 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.meeting.attendee.releaseWarning':
     'Descartar o controle não retira o bot da reunião. Você perderá a ação Sair por aqui. Continue somente após conferir no Attendee.',
   'dsh-live-voice.meeting.attendee.settingsHelp':
-    "Salve aqui a chave do projeto uma vez. O menu da reunião usa a chave salva automaticamente; apenas Conectar explicitamente inicia a recepção e solicita entrada.",
+    'Salve aqui a chave do projeto uma vez. O menu da reunião usa a chave salva automaticamente; apenas Conectar explicitamente inicia a recepção e solicita entrada.',
   'dsh-live-voice.meeting.attendee.start': 'Conectar ao Attendee',
   'dsh-live-voice.meeting.attendee.stop': 'Desconectar do Attendee',
   'dsh-live-voice.meeting.attendee.title': 'Áudio por participante (Attendee · experimental)',
@@ -446,7 +465,7 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.recording.error.failed':
     'Não foi possível salvar a gravação. A captura foi interrompida para evitar perda silenciosa de dados.',
   'dsh-live-voice.recording.keepPrevious.help':
-    "Mantenha de 1 a 100 capturas comuns por tipo de fonte; no Attendee, N grupos de reunião mais recentes pela atividade de captura, com todos os participantes e trechos enquanto o grupo for retido. Gravações ativas, escritas pendentes e estrelas protegem o grupo inteiro sem ocupar a quantidade comum. Silêncio entre trechos não significa fim da chamada nem reserva uma vaga: uma reunião mais nova pode expirar um grupo antigo silencioso. Microfone e áudio compartilhado legados mantêm N capturas por tipo. A quota ou remoção de armazenamento pelo navegador ainda pode limitar a disponibilidade.",
+    'Mantenha de 1 a 100 capturas comuns por tipo de fonte; no Attendee, N grupos de reunião mais recentes pela atividade de captura, com todos os participantes e trechos enquanto o grupo for retido. Gravações ativas, escritas pendentes e estrelas protegem o grupo inteiro sem ocupar a quantidade comum. Silêncio entre trechos não significa fim da chamada nem reserva uma vaga: uma reunião mais nova pode expirar um grupo antigo silencioso. Microfone e áudio compartilhado legados mantêm N capturas por tipo. A quota ou remoção de armazenamento pelo navegador ainda pode limitar a disponibilidade.',
   'dsh-live-voice.recording.keepPrevious.label': 'Gravações mantidas por tipo de fonte',
   'dsh-live-voice.recording.managementHelp':
     'O gerenciamento das sessões salvas — navegação, reprodução, revisão de transcrições, exportação e exclusão — exige o plugin opcional dsh-live-voice-debugger. Use Diagnósticos abaixo para instalá-lo. A gravação em si não exige o depurador.',

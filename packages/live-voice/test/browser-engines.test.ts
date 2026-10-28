@@ -403,6 +403,11 @@ test('recognition consecutive no-progress restarts are bounded', async () => {
   }
   assert.equal(fake.instances.filter((r) => r.started).length, 3);
   assert.equal(errors[0].code, 'restart-limit');
+  assert.equal(
+    errors[0].retryable,
+    true,
+    'outer recovery may replace the exhausted native session',
+  );
   assert.deepEqual(delays, [100, 200]);
   assert.equal(results.length, 3);
   assert.equal(engine.active, false);

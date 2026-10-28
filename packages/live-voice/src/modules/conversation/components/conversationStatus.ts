@@ -4,6 +4,13 @@ export function resolveConversationStatus(
   language: any,
 ): string {
   const { commons, recognition, settings } = language;
+  if (state.inputRecovery?.retrying) return commons.status.recovering();
+  if (
+    state.inputRecovery ||
+    state.inputError ||
+    (!state.listening && state.error && !state.speechError)
+  )
+    return commons.status.stopped();
   const requests = state.pendingTranscriptionRequests ?? state.pendingTranscriptions ?? 0;
   if (state.listening && state.muted) return recognition.status.waitingCommand();
   if (state.answeringQuestion && state.recognizing) return recognition.status.answer();

@@ -1,4 +1,5 @@
 import React from 'react';
+import { RecoveryFeedback } from './RecoveryFeedback.js';
 import { useLanguage } from '../../../app/client/i18n/index.js';
 import { ErrorMessage, IconButton, ToggleButton } from '../../../shared/design-system/index.js';
 import { useConversationActions, useConversationController } from '../hooks/index.js';
@@ -151,13 +152,23 @@ export function ConversationStatusBar({
           ) : null}
         </RecognitionBar>
       )}
+      <RecoveryFeedback
+        recovery={state.inputRecovery}
+        detail={state.inputError}
+        source={sourceIcon === 'mic' ? 'microphone' : 'shared'}
+      />
       <ErrorMessage
-        error={error || state.error}
+        error={
+          error ||
+          (state.inputRecovery
+            ? null
+            : state.inputError || (state.speechError ? null : state.error))
+        }
         dismissLabel={(commons as any).dismissError()}
         dismissText={(commons as any).dismiss()}
         onDismiss={() => {
           clearError();
-          controller.clearError();
+          controller.clearError('input');
         }}
       />
     </div>

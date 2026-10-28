@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { MAX_RECOVERY_ATTEMPTS, recoveryDelayMs, isRetryableVoiceError } from './recovery.ts';
 import { TranscriptDraft } from './transcript.ts';
 import { normalizeSettings } from './settings.ts';
 import { SPEECH_QUEUE_PREFETCH_LIMIT } from '../speak/services/speechQueue.js';
@@ -77,6 +78,10 @@ export class VoiceCoordinator {
       paused: false,
       starting: false,
       error: null,
+      inputError: null,
+      speechError: null,
+      inputRecovery: null,
+      speechRecovery: null,
       activeMessageId: null,
       speechLoading: false,
       speechText: null,
@@ -122,11 +127,16 @@ export class VoiceCoordinator {
       }
     }
   }
-  clearError() {
-    if (!this.disposed) this.patch({ error: null });
+  clearError(scope) {
+    if (this.disposed) return;
+    if (scope === 'input' || scope === 'speech') {
+      const other = scope === 'input' ? 'speechError' : 'inputError';
+      this.patch({ [scope + 'Error']: null, error: this.snapshot[other] });
+    } else this.patch({ error: null, inputError: null, speechError: null });
   }
   replaceRecognition(recognition) {
     if (this.disposed || !recognition) return;
+    this._cancelRecovery('input');
     this.recognition = recognition;
     Object.assign(recognition, {
       lang: this.snapshot.settings.recognitionLang,
@@ -160,6 +170,26 @@ export class VoiceCoordinator {
   }
   updateSettings(next) {
     if (this.disposed) return;
+    const inputKeys = [
+      'recognitionEngine',
+      'recognitionLang',
+      'recognitionProcessLocally',
+      'recognitionAutoInstall',
+      'inputDeviceId',
+      'voiceDetectionEngine',
+      'voiceDetectionPreset',
+    ];
+    const speechKeys = ['engine', 'voice', 'lang', 'rate', 'outputDeviceId'];
+    if (
+      inputKeys.some((key) => Object.hasOwn(next, key) && next[key] !== this.snapshot.settings[key])
+    )
+      this._cancelRecovery('input');
+    if (
+      speechKeys.some(
+        (key) => Object.hasOwn(next, key) && next[key] !== this.snapshot.settings[key],
+      )
+    )
+      this._cancelRecovery('speech', true);
     const previousSettings = this.snapshot.settings;
     const settings = normalizeSettings({ ...previousSettings, ...next });
     const speechPreparationChanged = ['engine', 'voice', 'lang', 'rate', 'outputDeviceId'].some(
@@ -274,6 +304,90 @@ export class VoiceCoordinator {
     );
     return caps;
   }
+  _cancelRecovery(kind, park = false) {
+    clearTimeout(this[kind + 'RecoveryTimer']);
+    this[kind + 'RecoveryTimer'] = null;
+    this[kind + 'RecoveryGeneration'] = (this[kind + 'RecoveryGeneration'] || 0) + 1;
+    const recovering = this.snapshot[kind + 'Recovery'];
+    if (kind === 'input') this.inputRecoveryAttempt = 0;
+    if (kind === 'input' && recovering?.retrying) {
+      ++this.epoch;
+      this.inputController?.abort();
+    }
+    const scopedError = this.snapshot[kind + 'Error'];
+    this.patch({
+      [kind + 'Recovery']: null,
+      [kind + 'Error']: null,
+      ...(scopedError && this.snapshot.error === scopedError
+        ? { error: this.snapshot[kind === 'input' ? 'speechError' : 'inputError'] }
+        : {}),
+      ...(park && recovering && this.queue.length ? { paused: true } : {}),
+    });
+  }
+  _recoverInput(error) {
+    const attempt = this.inputRecoveryAttempt || 0;
+    const retry =
+      !this.inputReleaseError && isRetryableVoiceError(error) && attempt < MAX_RECOVERY_ATTEMPTS;
+    const generation = (this.inputRecoveryGeneration || 0) + 1;
+    this.inputRecoveryGeneration = generation;
+    this.inputRecoveryAttempt = retry ? attempt + 1 : attempt;
+    clearTimeout(this.inputRecoveryTimer);
+    ++this.epoch;
+    this.inputController?.abort();
+    this.cancelAutoSend();
+    // A failed recognizer cannot publish activity-end. Release only its silence
+    // barrier so an unrelated speech queue is not stranded at Infinity.
+    this.assistantSpeechNotBefore = this.externalSpeechActive
+      ? Infinity
+      : Date.now() + this.snapshot.settings.assistantSpeechDelaySeconds * 1000;
+    this._cancelAssistantSpeechTimer();
+    this.patch({
+      listening: false,
+      starting: false,
+      recognizing: false,
+      pendingTranscriptions: 0,
+      pendingTranscriptionRequests: 0,
+      pendingDeliveryTranscriptions: 0,
+      inputError: message(error),
+      error: message(error),
+      inputRecovery: {
+        attempt: retry ? attempt + 1 : attempt,
+        maxAttempts: MAX_RECOVERY_ATTEMPTS,
+        retrying: retry,
+        reason: String(error?.code || error?.name || 'input-failure'),
+      },
+    });
+    void this._input(async () => {
+      try {
+        await this._releaseInput();
+        this.inputReleaseError = null;
+      } catch (cleanup) {
+        this.inputReleaseError = cleanup;
+        if (generation === this.inputRecoveryGeneration)
+          this.patch({
+            inputError: message(cleanup),
+            error: message(cleanup),
+            inputRecovery: {
+              ...this.snapshot.inputRecovery,
+              retrying: false,
+              reason: 'teardown-failed',
+            },
+          });
+        return;
+      }
+      this._handleSpeechInterruption(this._speechActivity());
+      this._drain();
+      if (!retry || this.disposed || generation !== this.inputRecoveryGeneration) return;
+      this.inputRecoveryTimer = setTimeout(
+        () => {
+          this.inputRecoveryTimer = null;
+          if (this.disposed || generation !== this.inputRecoveryGeneration) return;
+          void this._startInput(this.snapshot.conversation, Promise.resolve(), true);
+        },
+        recoveryDelayMs(attempt + 1),
+      );
+    });
+  }
   _input(task) {
     const result = this.inputTail.then(task);
     this.inputTail = result.catch(() => {});
@@ -294,7 +408,11 @@ export class VoiceCoordinator {
     const errors = results
       .filter((result) => result.status === 'rejected')
       .map((result) => result.reason);
-    if (errors.length) throw new AggregateError(errors, errors.map(message).join('; '));
+    if (errors.length) {
+      this.inputReleaseError = new AggregateError(errors, errors.map(message).join('; '));
+      throw this.inputReleaseError;
+    }
+    this.inputReleaseError = null;
   }
   startDictation() {
     return this.startListening(false);
@@ -367,8 +485,9 @@ export class VoiceCoordinator {
     const stopped = this.stopSpeech(false);
     return this._startInput(conversation, stopped);
   }
-  _startInput(conversation, prerequisite = Promise.resolve()) {
+  _startInput(conversation, prerequisite = Promise.resolve(), recovering = false) {
     if (this.disposed) return Promise.resolve();
+    if (!recovering) this._cancelRecovery('input');
     const epoch = ++this.epoch;
     this.inputController?.abort();
     const controller = new AbortController();
@@ -456,7 +575,15 @@ export class VoiceCoordinator {
           lang,
           signal: controller.signal,
           onResult: (result) => {
-            if (valid()) this.onResult(result);
+            if (valid()) {
+              this.inputRecoveryAttempt = 0;
+              this.patch({
+                inputRecovery: null,
+                inputError: null,
+                error: this.snapshot.speechError,
+              });
+              this.onResult(result);
+            }
           },
           onProcessingChange: ({ pending = 0, transcribing, deliveryPending } = {}) => {
             if (!valid()) return;
@@ -497,29 +624,37 @@ export class VoiceCoordinator {
           },
           onError: (error) => {
             if (!valid()) return;
-            const ended = this.stopConversationInput();
-            this.patch({ error: message(error) });
-            void ended;
+            this._recoverInput(error);
           },
         });
         if (!valid()) {
           await this._releaseInput();
           return;
         }
-        this.patch({ listening: true, starting: false });
+        this.patch({
+          listening: true,
+          starting: false,
+          inputError: null,
+          inputRecovery: null,
+          error: this.snapshot.speechError,
+        });
         if (this.holdToTalkRelease) void this.releaseHoldToTalk();
         this._drain();
       } catch (error) {
         try {
           await this._releaseInput();
         } catch (cleanup) {
+          this.inputReleaseError = cleanup;
           error = new AggregateError([error, cleanup], message(error) + '; ' + message(cleanup));
         }
         if (valid()) {
+          this._recoverInput(error);
+          /* An established input retains intent; a failed first start remains closed. */
           this.patch({
+            conversation:
+              recovering || this.snapshot.inputRecovery?.retrying ? conversation : false,
             starting: false,
             listening: false,
-            conversation: false,
             recognizing: false,
             error: message(error),
           });
@@ -833,6 +968,7 @@ export class VoiceCoordinator {
     if (this.autoSendIntent != null && draft !== this.autoSendIntent) this.cancelAutoSend();
   }
   stopListening() {
+    this._cancelRecovery('input');
     this.holdToTalkRelease = false;
     this.cancelAutoSend();
     ++this.epoch;
@@ -1025,6 +1161,7 @@ export class VoiceCoordinator {
     this.queue = [];
   }
   async stopSpeech(resumeListening = true) {
+    this._cancelRecovery('speech');
     const timeline = this.activeRecordingTimeline ?? this.recordingSpeechWait?.timeline;
     if (this.snapshot.speaking || this.queue.length || this.recordingSpeechWait)
       timeline?.('assistant-cancel');
@@ -1073,6 +1210,7 @@ export class VoiceCoordinator {
       epoch === this.speechEpoch &&
       !this.disposed &&
       resumeListening &&
+      !this.snapshot.inputRecovery &&
       this.snapshot.conversation &&
       !this.snapshot.listening &&
       !this.snapshot.starting
@@ -1087,7 +1225,7 @@ export class VoiceCoordinator {
   }
   async skipSpeechSegment() {
     if (this.disposed || !this.queue.length) return;
-    if (!this.snapshot.speaking && !this.snapshot.paused) {
+    if (!this.snapshot.speaking && (!this.snapshot.paused || this.snapshot.speechRecovery)) {
       const skipped = this.queue.shift();
       if (!this.speechHistory.includes(skipped)) this.speechHistory.push(skipped);
       this.speechCursor = this.speechHistory.indexOf(skipped);
@@ -1095,6 +1233,7 @@ export class VoiceCoordinator {
     await this._navigateSpeech();
   }
   async _navigateSpeech() {
+    this._cancelRecovery('speech');
     this._cancelInterruptionResume();
     this.interruptionPausedSpeech = false;
     const engine = this.engines[this.snapshot.speechEngine || this.snapshot.settings.engine];
@@ -1121,6 +1260,7 @@ export class VoiceCoordinator {
     return this.engines[this.snapshot.speechEngine]?.getPlaybackProgress?.() ?? null;
   }
   async pauseSpeech(automatic = false) {
+    if (this.snapshot.speechRecovery?.retrying) this._cancelRecovery('speech', true);
     if (!automatic) {
       this._cancelInterruptionResume();
       this.interruptionPausedSpeech = false;
@@ -1162,6 +1302,7 @@ export class VoiceCoordinator {
     this.interruptionPausedSpeech = false;
     if (this.disposed || !this.snapshot.paused) return;
     if (!this.snapshot.speaking) {
+      this._cancelRecovery('speech');
       this.patch({ paused: false });
       this.assistantSpeechNotBefore = 0;
       this._drain();
@@ -1255,8 +1396,12 @@ export class VoiceCoordinator {
     this._resetStaleSpeechItem(item, this._speechPreparationKey());
     item.engine = engine;
     if (!engine) {
-      this.queue = [];
-      this.patch({ error: 'Speech engine unavailable.' });
+      this.queue.unshift(item);
+      this.patch({
+        paused: true,
+        speechError: 'Speech engine unavailable.',
+        error: 'Speech engine unavailable.',
+      });
       return;
     }
     // Reserve playback synchronously so incoming stream chunks cannot overtake gating.
@@ -1327,12 +1472,75 @@ export class VoiceCoordinator {
         this.prefetchItems.delete(queued);
         await engine.playPrepared(prepared, { ...options, retainPrepared: true });
       } else await engine.speak(text, options);
+      if (epoch === this.speechEpoch) {
+        this.patch({ speechRecovery: null, speechError: null, error: this.snapshot.inputError });
+      }
     } catch (error) {
       if (epoch === this.speechEpoch) {
         failed = true;
-        this._suppressPending();
+        if (!this.queue.includes(item)) this.queue.unshift(item);
+        this._cancelSpeechPrefetch();
+        item.prepareError = null;
+        item.preparing = null;
+        item.prepared?.dispose?.();
+        item.prepared = null;
+        const attempt = this.snapshot.speechRecovery?.attempt || 0;
+        const generation = (this.speechRecoveryGeneration || 0) + 1;
+        this.speechRecoveryGeneration = generation;
+        this.patch({
+          speechRecovery: {
+            attempt,
+            maxAttempts: MAX_RECOVERY_ATTEMPTS,
+            retrying: false,
+            reason: 'teardown',
+          },
+        });
+        // Never overlap a replacement with playback whose teardown was not confirmed.
+        let teardownFailed = false;
+        try {
+          await engine.stop();
+        } catch (cleanup) {
+          this.speechStopError = cleanup;
+          error = cleanup;
+          teardownFailed = true;
+        }
+        if (
+          epoch !== this.speechEpoch ||
+          this.disposed ||
+          generation !== this.speechRecoveryGeneration
+        )
+          return;
+        const retry =
+          !teardownFailed &&
+          !this.speechStopError &&
+          !this.inputReleaseError &&
+          !this.snapshot.paused &&
+          isRetryableVoiceError(error) &&
+          attempt < MAX_RECOVERY_ATTEMPTS;
         if (error.name !== 'AbortError') timeline?.('assistant-error');
-        if (error.name !== 'AbortError') this.patch({ error: message(error) });
+        this.patch({
+          speechError: message(error),
+          error: message(error),
+          paused: !retry,
+          speechRecovery: {
+            attempt: retry ? attempt + 1 : attempt,
+            maxAttempts: MAX_RECOVERY_ATTEMPTS,
+            retrying: retry,
+            reason: teardownFailed
+              ? 'teardown-failed'
+              : String(error?.code || error?.name || 'speech-failure'),
+          },
+        });
+        if (retry)
+          this.speechRecoveryTimer = setTimeout(
+            () => {
+              this.speechRecoveryTimer = null;
+              if (this.disposed || generation !== this.speechRecoveryGeneration) return;
+              this.patch({ speechRecovery: { ...this.snapshot.speechRecovery, retrying: false } });
+              this._drain();
+            },
+            recoveryDelayMs(attempt + 1),
+          );
       }
     } finally {
       playbackFinished = true;
@@ -1346,7 +1554,7 @@ export class VoiceCoordinator {
       if (epoch === this.speechEpoch && !this.disposed) {
         this.patch({
           speaking: false,
-          paused: false,
+          paused: failed ? this.snapshot.paused : false,
           activeMessageId: null,
           speechLoading: false,
           speechText: this.queue.length || this.unfinished.has(messageId) ? text : null,
@@ -1354,9 +1562,9 @@ export class VoiceCoordinator {
             this.queue.length || this.unfinished.has(messageId) ? this.snapshot.speechEngine : null,
         });
         if (
-          failed ||
-          (!this.queue.length &&
-            !this.speechHistory.some((item) => !item.manual && this.unfinished.has(item.id)))
+          !failed &&
+          !this.queue.length &&
+          !this.speechHistory.some((item) => !item.manual && this.unfinished.has(item.id))
         )
           this._releaseSpeechHistory();
         this._syncSpeechSegments();
@@ -1366,6 +1574,7 @@ export class VoiceCoordinator {
           this._drain();
         } else if (
           this.snapshot.conversation &&
+          !this.snapshot.inputRecovery &&
           !this.snapshot.listening &&
           !this.snapshot.starting
         )
@@ -1441,6 +1650,8 @@ export class VoiceCoordinator {
     this._auditSpeechWait();
     if (
       this.disposed ||
+      this.snapshot.speechRecovery?.retrying ||
+      this.speechStopError ||
       (this.speechSuspended && !this.queue[0]?.manual) ||
       (!this.snapshot.settings.announceAssistantMessages && !this.queue[0]?.manual) ||
       this.snapshot.speaking ||

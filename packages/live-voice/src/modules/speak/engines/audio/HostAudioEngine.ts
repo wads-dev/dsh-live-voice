@@ -1,5 +1,35 @@
 // @ts-nocheck
+import { voiceNetworkFailure } from '../../../core/networkFailure.js';
 const cancelled = () => Object.assign(new Error('Speech was cancelled.'), { name: 'AbortError' });
+
+/** Technical diagnostics only: no audio URLs, speech text, or device identifiers. */
+export function hostAudioPlaybackError(cause, phase, audio) {
+  const name = typeof cause?.name === 'string' ? cause.name : 'Error';
+  const mediaCode = Number.isInteger(audio?.error?.code) ? audio.error.code : null;
+  const permission = ['NotAllowedError', 'SecurityError', 'PermissionDeniedError'].includes(name);
+  const unsupported = name === 'NotSupportedError' || mediaCode === 4;
+  const category = permission
+    ? 'permission'
+    : unsupported
+      ? 'unsupported'
+      : phase === 'output-routing'
+        ? 'output-routing'
+        : mediaCode
+          ? 'media'
+          : 'playback';
+  const recoverable =
+    !permission &&
+    !unsupported &&
+    (['AbortError', 'NetworkError', 'NotReadableError'].includes(name) ||
+      (phase === 'output-routing' && name === 'NotFoundError') ||
+      [1, 2, 3].includes(mediaCode));
+  const error = new Error(cause?.message || 'The browser could not play host speech audio.', {
+    cause,
+  });
+  Object.assign(error, { name, phase, category, recoverable, mediaCode });
+  if (cause?.code !== undefined) error.code = cause.code;
+  return error;
+}
 
 /** Browser-owned playback for compact host-synthesized audio. */
 export class HostAudioSpeakingEngine {
@@ -59,20 +89,31 @@ export class HostAudioSpeakingEngine {
     const cancel = () => controller.abort();
     signal?.addEventListener('abort', cancel, { once: true });
     try {
-      const response = await this.g.fetch(this.endpoint, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text, lang, voice, rate: this.synthesisRate(rate) }),
-        signal: controller.signal,
-      });
+      const response = await this.g
+        .fetch(this.endpoint, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text, lang, voice, rate: this.synthesisRate(rate) }),
+          signal: controller.signal,
+        })
+        .catch((error) => {
+          throw voiceNetworkFailure(error, controller.signal);
+        });
       if (!response.ok) {
         let body;
         try {
           body = await response.json();
         } catch {}
-        throw new Error(
-          body?.error?.message || 'Host speech synthesis failed (' + response.status + ').',
+        throw Object.assign(
+          new Error(
+            body?.error?.message || 'Host speech synthesis failed (' + response.status + ').',
+          ),
+          {
+            code: 'http_' + response.status,
+            retryable: [408, 429].includes(response.status) || response.status >= 500,
+            phase: 'synthesis',
+          },
         );
       }
       if (controller.signal.aborted) throw cancelled();
@@ -100,58 +141,83 @@ export class HostAudioSpeakingEngine {
   }
   async playPrepared(prepared, options = {}) {
     const { signal, outputDeviceId = '', rate = 1, volume = 1, retainPrepared = false } = options;
-    const playbackRate = this.playbackRate(rate);
     if (!prepared?.audio) throw new TypeError('Prepared speech audio is required.');
-    await this.stop();
-    if (signal?.aborted) throw cancelled();
+    const request = {};
+    const stopping = this.stop();
+    this.playRequest = request;
+    await stopping;
+    if (signal?.aborted || this.playRequest !== request) {
+      if (!retainPrepared) prepared.dispose();
+      throw cancelled();
+    }
     const operation = { prepared, audio: prepared.audio, paused: false, ready: false };
     this.current = operation;
     const audio = operation.audio;
-    if (retainPrepared) audio.currentTime = 0;
-    audio.playbackRate = playbackRate;
-    audio.volume = volume;
-    try {
-      if (outputDeviceId && typeof audio.setSinkId === 'function')
-        await audio.setSinkId(outputDeviceId);
-      // Stop may run while the browser is awaiting device routing. Never launch stale audio.
-      if (signal?.aborted || this.current !== operation) throw cancelled();
-    } catch (error) {
-      if (this.current === operation) this.current = null;
-      if (!retainPrepared) prepared.dispose();
-      throw error;
-    }
     return new Promise((resolve, reject) => {
-      const cleanup = () => {
+      let settled = false;
+      const cleanup = (pause) => {
+        if (settled) return false;
+        settled = true;
         audio.removeEventListener('playing', started);
         audio.removeEventListener('ended', done);
         audio.removeEventListener('error', failed);
         signal?.removeEventListener('abort', aborted);
         if (this.current === operation) this.current = null;
+        if (pause) audio.pause();
         if (!retainPrepared) prepared.dispose();
+        return true;
       };
       const done = () => {
-        cleanup();
-        resolve();
+        if (cleanup(false)) resolve();
       };
       const started = () => {
-        if (this.current === operation) options.onPlaybackStart?.();
+        if (!settled && this.current === operation) options.onPlaybackStart?.();
       };
-      const failed = () => {
-        cleanup();
-        reject(new Error('The browser could not play host speech audio.'));
+      const fail = (cause, phase) => {
+        if (settled) return;
+        const error = hostAudioPlaybackError(cause, phase, audio);
+        if (cleanup(true)) reject(error);
+        return error;
       };
+      const failed = () => fail(audio.error, 'media');
       const aborted = () => {
-        audio.pause();
-        cleanup();
-        reject(cancelled());
+        if (cleanup(true)) reject(cancelled());
       };
       operation.cancel = aborted;
+      // The same failure path owns initial play and resume, including synchronous throws.
+      operation.play = async (phase) => {
+        try {
+          await audio.play();
+        } catch (cause) {
+          const error = fail(cause, phase);
+          if (error) throw error;
+        }
+      };
       audio.addEventListener('playing', started, { once: true });
       audio.addEventListener('ended', done, { once: true });
       audio.addEventListener('error', failed, { once: true });
       signal?.addEventListener('abort', aborted, { once: true });
-      operation.ready = true;
-      if (!operation.paused) Promise.resolve(audio.play()).catch(failed);
+      const launch = async () => {
+        let phase = 'play';
+        try {
+          if (retainPrepared) audio.currentTime = 0;
+          audio.playbackRate = this.playbackRate(rate);
+          audio.volume = volume;
+          if (outputDeviceId && typeof audio.setSinkId === 'function') {
+            phase = 'output-routing';
+            await audio.setSinkId(outputDeviceId);
+          }
+          // Cancellation settles immediately, even when routing never completes.
+          if (settled) return;
+          if (signal?.aborted || this.current !== operation) return aborted();
+          operation.ready = true;
+          if (!operation.paused) await operation.play('play');
+        } catch (cause) {
+          if (!settled) fail(cause, phase);
+        }
+      };
+      if (signal?.aborted) aborted();
+      else void launch();
     });
   }
   async speak(text, options = {}) {
@@ -167,6 +233,7 @@ export class HostAudioSpeakingEngine {
     if (this.current?.audio) this.current.audio.volume = volume;
   }
   async stop() {
+    this.playRequest = null;
     const operation = this.current;
     if (!operation) return;
     this.current = null;
@@ -196,7 +263,7 @@ export class HostAudioSpeakingEngine {
   async resume() {
     if (!this.current?.audio || (!this.current.paused && !this.current.audio.paused)) return false;
     this.current.paused = false;
-    if (this.current.ready) await this.current.audio.play();
+    if (this.current.ready) await this.current.play('resume');
     return true;
   }
 }

@@ -19,6 +19,21 @@ function languageFor(locale: LiveVoiceLocale = 'en'): any {
 
 const language = languageFor();
 
+test('failed or recovering input never reports ready', () => {
+  assert.equal(
+    resolveConversationStatus({ inputRecovery: { retrying: true } }, null, language),
+    'Recovering recognition',
+  );
+  assert.equal(
+    resolveConversationStatus({ inputRecovery: { retrying: false } }, null, language),
+    'Recognition stopped',
+  );
+  assert.equal(
+    resolveConversationStatus({ error: 'native recognition stopped' }, null, language),
+    'Recognition stopped',
+  );
+});
+
 test('audio storage barriers never appear as queued transcription', () => {
   const language = languageFor();
   for (const pendingTranscriptions of [1, 2, 32]) {

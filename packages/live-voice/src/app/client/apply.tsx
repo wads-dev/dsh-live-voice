@@ -491,7 +491,7 @@ export function apply(ctx) {
     entry.closed = true;
     if (meetingEntry === entry) {
       void meeting.attendee.stop();
-      meeting.cancelDelivery();
+      meeting.composerReplaced();
       meetingEntry = null;
       meeting.transcript.setActive('microphone', false);
     }
@@ -938,7 +938,7 @@ export function apply(ctx) {
         if (!entry.composers.size) suspendSessionSpeech(entry);
         if (meetingEntry === entry && !entry.composers.size) {
           void meeting.attendee.stop();
-          meeting.cancelDelivery();
+          meeting.composerReplaced();
           meetingEntry = null;
           meeting.transcript.setActive('microphone', false);
         }
@@ -956,7 +956,7 @@ export function apply(ctx) {
           void meeting.attendee.stop();
           suspendSessionSpeech(meetingEntry);
         }
-        meeting.cancelDelivery();
+        meeting.composerReplaced();
         meetingEntry = entry;
         entry.controller.setExternalSpeechActivity(sharedSpeechActive);
         const state = entry.controller.getSnapshot();

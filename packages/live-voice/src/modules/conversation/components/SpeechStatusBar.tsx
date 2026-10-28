@@ -1,4 +1,5 @@
 import React from 'react';
+import { RecoveryFeedback } from './RecoveryFeedback.js';
 import { useLanguage } from '../../../app/client/i18n/index.js';
 import { ErrorMessage, IconButton } from '../../../shared/design-system/index.js';
 import { useConversationActions, useConversationController } from '../hooks/index.js';
@@ -23,7 +24,9 @@ export function SpeechStatusBar({ controller }: { controller: any }) {
     !state.speaking &&
     !state.paused &&
     !state.speechRunActive &&
-    !(state.speechSegmentsRemaining > 0)
+    !(state.speechSegmentsRemaining > 0) &&
+    !state.speechRecovery &&
+    !state.speechError
   )
     return null;
   const text = state.speechText ?? '';
@@ -88,11 +91,20 @@ export function SpeechStatusBar({ controller }: { controller: any }) {
         </span>
         <PlaybackControls state={state} invoke={invoke} navigation={false} />
       </div>
+      <RecoveryFeedback
+        recovery={state.speechRecovery}
+        detail={state.speechError}
+        source="speech"
+        onRetry={() => invoke('resumeSpeech')}
+      />
       <ErrorMessage
-        error={error}
+        error={error || (state.speechRecovery ? null : state.speechError)}
         dismissLabel={(commons as any).dismissError()}
         dismissText={(commons as any).dismiss()}
-        onDismiss={clearError}
+        onDismiss={() => {
+          clearError();
+          controller.clearError('speech');
+        }}
       />
     </div>
   );
