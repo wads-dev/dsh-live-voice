@@ -90,7 +90,8 @@ test('event marker has immediate nonblocking tooltip, keyboard dismissal and ful
   assert.ok(tooltip, 'no dwell timer');
   assert.equal(tooltip.style.pointerEvents, 'none');
   assert.ok(tooltip.textContent.includes('Mais 3'));
-  assert.ok(tooltip.textContent.includes('14:00:00') || tooltip.textContent.includes('11:00:00'));
+  // Match the runtime's locale/timezone, including 12-hour clocks on CI.
+  assert.ok(tooltip.textContent.includes(new Date(events[0].occurredAt).toLocaleString()));
   assert.equal(marker.getAttribute('aria-describedby'), tooltip.id);
   await act(async () =>
     document.dispatchEvent(
