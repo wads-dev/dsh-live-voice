@@ -1,6 +1,6 @@
 {
   "name": "dsh-live-voice",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "dshTestedVersion": "0.2.1-rc.2",
   "type": "module",
   "scripts": {
