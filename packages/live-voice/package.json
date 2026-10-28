@@ -1,7 +1,7 @@
 {
   "name": "dsh-live-voice",
   "version": "0.7.0",
-  "dshTestedVersion": "0.2.1-rc.2",
+  "dshTestedVersion": "0.2.2-alpha.2",
   "type": "module",
   "scripts": {
     "build": "node --experimental-strip-types ../../scripts/build.ts --package live-voice",

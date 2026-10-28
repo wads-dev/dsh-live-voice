@@ -1,5 +1,5 @@
 [![npm version](https://img.shields.io/npm/v/dsh-live-voice?logo=npm&label=npm&color=brightgreen)](https://www.npmjs.com/package/dsh-live-voice)
-[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.1--rc.2-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2)
+[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.2--alpha.2-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-alpha.2)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 # DSH Live Voice - You and Your Team / 实时语音 - 您和您的团队
@@ -20,7 +20,7 @@ _Built in Brazil 🇧🇷 and tested daily with Brazilian Portuguese on macOS._
 
 ## ⚡ Quick Start
 
-**Tested with DeepSeek Harness v0.2.1-rc.2.**
+**Tested with DeepSeek Harness v0.2.2-alpha.2.**
 
 Install the prebuilt package from npm with `npx dsh` into your DSH web profile (no source build required):
 
