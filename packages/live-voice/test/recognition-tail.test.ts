@@ -22,6 +22,7 @@ function fixture(Engine, detector = 'silero', delayedFinish = false) {
     speechDone;
   const requests = [],
     spoken = [],
+    recordings = mockRecordingRepository(),
     finishGate = deferred();
   const processor = { connect() {}, disconnect() {} };
   let vadReleased = false,
@@ -30,6 +31,13 @@ function fixture(Engine, detector = 'silero', delayedFinish = false) {
     context: {
       sampleRate: 16000,
       destination: {},
+      state: 'running',
+      async suspend() {
+        this.state = 'suspended';
+      },
+      async resume() {
+        this.state = 'running';
+      },
       createScriptProcessor: () => processor,
       createGain: () => ({ gain: {}, connect() {}, disconnect() {} }),
     },
@@ -40,7 +48,7 @@ function fixture(Engine, detector = 'silero', delayedFinish = false) {
     async stop() {},
   };
   const recognition = new Engine({
-    recordings: mockRecordingRepository(),
+    recordings,
     meter,
     voiceDetectionEngine: detector,
     vadAvailable: async () => true,
@@ -107,8 +115,11 @@ function fixture(Engine, detector = 'silero', delayedFinish = false) {
   return {
     recognition,
     coordinator,
+    recordings,
+    meter,
     requests,
     spoken,
+    finishSpeech: () => speechDone?.(),
     finishGate,
     get vadReleased() {
       return vadReleased;
@@ -118,6 +129,7 @@ function fixture(Engine, detector = 'silero', delayedFinish = false) {
     },
     frame(active, value = active ? 0.25 : 0) {
       const pcm = new Float32Array(512).fill(value);
+      if (meter.context.state === 'suspended') return;
       if (detector === 'silero') {
         onPcm(pcm, 16000);
         callbacks.onProbability({ probability: active ? 0.9 : 0.01, pcm });
@@ -135,7 +147,111 @@ const wavSamples = (request) => new Int16Array(request.options.body, 44);
 const queuedReply = (h) =>
   h.coordinator.observeMessage('reply', 'Synthetic assistant reply.', { complete: true });
 
+test('speaker playback leaves the same recording writer active across a real capture gap', async (t) => {
+  const h = fixture(WhisperHttpRecognitionEngine, 'energy');
+  t.after(() => h.coordinator.dispose());
+  await h.coordinator.startConversation();
+  h.coordinator.updateSettings({ assistantSpeechDelaySeconds: 0 });
+  h.frame(true);
+  const before = (await h.recordings.list())[0];
+  assert.ok(before);
+  queuedReply(h);
+  await tick();
+  assert.equal(h.coordinator.snapshot.listening, true);
+  assert.equal(h.recognition.session.writer.session.id, before.id);
+  assert.equal((await h.recordings.list()).length, 1);
+  assert.equal(h.meter.context.state, 'suspended');
+  const atPause = (await h.recordings.list())[0].capturedSamples;
+  h.frame(true, 0.99);
+  await tick();
+  assert.equal((await h.recordings.list())[0].capturedSamples, atPause);
+  h.finishSpeech();
+  await tick();
+  assert.equal(h.meter.context.state, 'running');
+  h.frame(true);
+  await tick();
+  const after = (await h.recordings.list())[0];
+  assert.equal(after.id, before.id);
+  assert.ok(after.capturedSamples > before.capturedSamples);
+  assert.equal((await h.recordings.list()).length, 1);
+});
+
+test('navigation joins speaker suspension instead of flushing a suspended worklet', async (t) => {
+  const h = fixture(WhisperHttpRecognitionEngine, 'silero');
+  t.after(() => h.coordinator.dispose());
+  const gate = deferred();
+  h.meter.context.suspend = async function () {
+    await gate.promise;
+    this.state = 'suspended';
+  };
+  await h.coordinator.startConversation();
+  let flushes = 0;
+  h.recognition.session.capture.flush = async () => {
+    flushes++;
+  };
+  const speakerPause = h.recognition.suspendCapture();
+  const navigationPause = h.recognition.pauseForNavigation();
+  gate.resolve();
+  assert.equal(await speakerPause, true);
+  assert.equal(await navigationPause, true);
+  assert.equal(flushes, 0);
+  assert.equal(h.meter.context.state, 'suspended');
+});
+
 for (const Engine of [WhisperHttpRecognitionEngine, QwenHttpRecognitionEngine]) {
+  test(
+    Engine.name + ': completed transcription waits for the originating chat to resume',
+    async (t) => {
+      const h = fixture(Engine, 'energy');
+      t.after(() => h.coordinator.dispose());
+      await h.coordinator.startConversation();
+      for (let i = 0; i < 20; i++) h.frame(true);
+      await tick();
+      const id = h.recognition.session.writer.session.id;
+      await h.coordinator.pauseInputForNavigation();
+      await tick();
+      const samples = h.recognition.session.writer.session.capturedSamples;
+      assert.equal(h.requests.length, 1);
+      h.respond(0);
+      await tick();
+      assert.equal(h.draft(), '');
+      assert.equal(h.coordinator.navigationResults.length, 1);
+      h.frame(true);
+      await tick();
+      assert.equal(h.recognition.session.writer.session.capturedSamples, samples);
+      await h.coordinator.resumeInputFromNavigation();
+      assert.equal(h.draft(), 'synthetic phrase 0');
+      assert.equal(h.recognition.session.writer.session.id, id);
+      assert.equal((await h.recordings.list()).length, 1);
+      await h.coordinator.pauseInputForNavigation();
+      await h.coordinator.resumeInputFromNavigation();
+      assert.equal(h.draft(), 'synthetic phrase 0', 'return never duplicates accepted text');
+    },
+  );
+  test(
+    Engine.name + ': navigation pause transcribes captured speech without ending recording',
+    async (t) => {
+      const h = fixture(Engine, 'energy');
+      t.after(() => h.coordinator.dispose());
+      await h.coordinator.startConversation();
+      for (let i = 0; i < 20; i++) h.frame(true);
+      await tick();
+      const id = h.recognition.session.writer.session.id;
+      assert.equal(await h.recognition.pauseForNavigation(), true);
+      await tick();
+      assert.equal(h.meter.context.state, 'suspended');
+      assert.equal(h.requests.length, 1);
+      assert.equal((await h.recordings.list())[0].state, 'recording');
+      h.respond(0);
+      await tick();
+      assert.match(h.draft(), /synthetic phrase 0/);
+      assert.equal(await h.recognition.resumeCapture(), true);
+      h.frame(true);
+      await tick();
+      assert.equal(h.recognition.session.writer.session.id, id);
+      assert.equal((await h.recordings.list()).length, 1);
+    },
+  );
   for (const detector of ['silero', 'energy']) {
     test(
       Engine.name + ' ' + detector + ': a negative frame cannot discard an open segment',

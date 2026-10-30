@@ -174,6 +174,18 @@ export class WhisperHttpRecognitionEngine {
   finish() {
     return this.session?.finishRecording() ?? Promise.resolve();
   }
+  get captureSuspended() {
+    return this.session?.captureSuspended === true;
+  }
+  suspendCapture() {
+    return this.session?.suspendCapture() ?? Promise.resolve(false);
+  }
+  resumeCapture() {
+    return this.session?.resumeCapture() ?? Promise.resolve(false);
+  }
+  pauseForNavigation() {
+    return this.session?.pauseForNavigation() ?? Promise.resolve(false);
+  }
   async stop() {
     this.startGeneration = (this.startGeneration || 0) + 1;
     const session = this.session;

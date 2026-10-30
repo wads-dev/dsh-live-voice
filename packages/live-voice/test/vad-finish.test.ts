@@ -243,6 +243,41 @@ test('stream flush returns exact residual PCM, padding only inference, without d
   assert.equal(f.frames.length, 2);
 });
 
+test('worklet flush drains the partial buffer without ending capture', async (t) => {
+  const f = loopFixture(t);
+  const received: number[] = [];
+  const c = await captureFixture(t, f.stream, false, (pcm) => received.push(...pcm));
+  c.pcm(new Float32Array(128).fill(0.25));
+  await c.capture.flush();
+  assert.equal(received.length, 128);
+  assert.ok(received.every((n) => n === 0.25));
+  assert.equal(c.closed, false);
+  assert.equal(c.disconnected, 0);
+  c.pcm(new Float32Array(128).fill(0.5));
+  await c.capture.flush();
+  assert.equal(received.length, 256);
+  assert.ok(received.slice(128).every((n) => n === 0.5));
+  assert.equal(c.closed, false);
+});
+
+test('worklet navigation flush freezes PCM until explicit resume', async (t) => {
+  const f = loopFixture(t);
+  const received: number[] = [];
+  const c = await captureFixture(t, f.stream, false, (pcm) => received.push(...pcm));
+  c.pcm(new Float32Array(128).fill(0.25));
+  await c.capture.flush(true);
+  assert.equal(received.length, 128);
+  c.pcm(new Float32Array(2048).fill(0.9));
+  await tick();
+  assert.equal(received.length, 128);
+  c.capture.resume();
+  c.pcm(new Float32Array(128).fill(0.5));
+  await c.capture.flush();
+  assert.equal(received.length, 256);
+  assert.ok(received.slice(128).every((n) => n === 0.5));
+  assert.equal(c.closed, false);
+});
+
 test('actual worklet finish emits buffered PCM before ack, drains worker, cleans capture only and is idempotent', async (t) => {
   const gate = deferred();
   const f = loopFixture(t, () => gate.promise);
@@ -395,6 +430,26 @@ test('processor failure during acknowledgement and failed inference during drain
   d.node.onprocessorerror();
   await rejected;
   assert.equal(d.closed, true);
+});
+
+test('capture flush timeout releases its node and a replacement capture remains usable', async (t) => {
+  const f = loopFixture(t);
+  const old = await captureFixture(t, f.stream);
+  const post = old.node.port.postMessage.bind(old.node.port);
+  old.node.port.postMessage = (message: any) => {
+    if (message.type !== 'flush') post(message);
+  };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const timedOut = assert.rejects(old.capture.flush(true), /VAD capture flush timed out/);
+  t.mock.timers.tick(3000);
+  await timedOut;
+  assert.equal(old.closed, true);
+  const replacementStream = f.pool.acquire({ onProbability() {}, onError() {} });
+  t.after(() => replacementStream.release());
+  const next = await captureFixture(t, replacementStream);
+  next.pcm(new Float32Array(128).fill(0.3));
+  await next.capture.flush(true);
+  assert.equal(next.closed, false);
 });
 
 test('capture and worker flush have bounded acknowledgement/drain waits', async (t) => {

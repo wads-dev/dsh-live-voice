@@ -457,7 +457,12 @@ export function apply(ctx) {
       entry.speechState.checkpoint = entry.controller.checkpointSpeech();
     entry.speechAttached = false;
     ++entry.speechRequest;
-    const stopped = entry.controller.suspendSpeech();
+    const preserveInput =
+      entry.controller.snapshot.conversation &&
+      entry.controller.snapshot.listening &&
+      typeof entry.controller.recognition.pauseForNavigation === 'function';
+    entry.parkedInput = preserveInput;
+    const stopped = entry.controller.suspendSpeech(preserveInput);
     entry.speechRelease = Promise.resolve(stopped).then(() => {
       if (entry.controller.speechStopError) throw entry.controller.speechStopError;
       if (entry.controller.inputReleaseError) throw entry.controller.inputReleaseError;
@@ -478,6 +483,13 @@ export function apply(ctx) {
       await entry.speechRelease;
       if (disposed || entry.closed || !entry.speechAttached || request !== entry.speechRequest)
         return;
+      if (entry.parkedInput) {
+        const resumed = await entry.controller.resumeInputFromNavigation();
+        if (disposed || entry.closed || !entry.speechAttached || request !== entry.speechRequest)
+          return;
+        if (!resumed) throw new Error('The paused microphone recording could not resume.');
+        entry.parkedInput = false;
+      }
       entry.controller.restoreSpeech(entry.speechState.checkpoint);
       entry.speechState.checkpoint = null;
       entry.refreshSpeech(!entry.speechState.attached);
@@ -488,6 +500,7 @@ export function apply(ctx) {
   function retire(entry) {
     if (entry.closed) return;
     suspendSessionSpeech(entry);
+    if (entry.parkedInput && !disposed) return;
     entry.closed = true;
     if (meetingEntry === entry) {
       void meeting.attendee.stop();
@@ -753,7 +766,10 @@ export function apply(ctx) {
       const before = controller.getSnapshot();
       update(next);
       const settings = controller.getSnapshot().settings;
-      if ([...recognitionSettingKeys].some((key) => before.settings[key] !== settings[key])) {
+      if (
+        !entry.parkedInput &&
+        [...recognitionSettingKeys].some((key) => before.settings[key] !== settings[key])
+      ) {
         if (!entry.restoreInput) entry.inputRestoreRequest = entry.request;
         entry.restoreInput ||= Boolean(before.listening || before.starting);
         const revision = (entry.inputSettingsRevision = (entry.inputSettingsRevision || 0) + 1);
@@ -802,6 +818,7 @@ export function apply(ctx) {
       controller[method] = (...args) => {
         // Internal handoffs release resources, not the parked navigation cursor.
         if (method === 'endConversation' && args[0] === true && !entry.speechAttached) {
+          if (entry.parkedInput) return entry.speechRelease ?? Promise.resolve();
           controller.patch({ conversation: false });
           return Promise.all([
             controller.stopListening(),
@@ -823,6 +840,7 @@ export function apply(ctx) {
           }
         }
         entry.request++;
+        if (method !== 'stopSpeech') entry.parkedInput = false;
         if (
           (method === 'endConversation' && args[0] !== true) ||
           method === 'stopConversationInput'
@@ -937,7 +955,6 @@ export function apply(ctx) {
         entry.composers.delete(token.current);
         if (!entry.composers.size) suspendSessionSpeech(entry);
         if (meetingEntry === entry && !entry.composers.size) {
-          void meeting.attendee.stop();
           meeting.composerReplaced();
           meetingEntry = null;
           meeting.transcript.setActive('microphone', false);
@@ -952,10 +969,7 @@ export function apply(ctx) {
       if (!entry || entry.closed || disposed) return;
       if (!input || typeof props.inputActions?.setDraft !== 'function') return;
       if (meetingEntry !== entry) {
-        if (meetingEntry) {
-          void meeting.attendee.stop();
-          suspendSessionSpeech(meetingEntry);
-        }
+        if (meetingEntry) suspendSessionSpeech(meetingEntry);
         meeting.composerReplaced();
         meetingEntry = entry;
         entry.controller.setExternalSpeechActivity(sharedSpeechActive);
@@ -991,7 +1005,7 @@ export function apply(ctx) {
       const attachSpeech = !entry.speechAttached;
       if (attachSpeech) entry.speechAttached = true;
       const inputReady =
-        voiceModeActive && !entry.controller.getSnapshot().conversation
+        !entry.parkedInput && voiceModeActive && !entry.controller.getSnapshot().conversation
           ? entry.controller.startConversation()
           : Promise.resolve();
       run(

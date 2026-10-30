@@ -407,7 +407,7 @@ test('worklet module load is shared, released load races never attach, and captu
     audioWorklet: {
       addModule(url) {
         loads++;
-        assert.equal(url, sileroVadAssetBase() + 'vad.capture.js?revision=finish-v1');
+        assert.equal(url, sileroVadAssetBase() + 'vad.capture.js?revision=pause-v2');
         return gate.promise;
       },
     },

@@ -1694,6 +1694,97 @@ test('explicit stop during pending input settings change prevents reacquisition'
   assert.deepEqual(restart, []);
 });
 
+test('navigation retains microphone recording and queues final text only for its originating chat', async (t) => {
+  const f = await fixture(t);
+  const edits = [];
+  const a = f.props('a', { setDraft: (text) => edits.push(['a', text]) });
+  const b = f.props('b', { setDraft: (text) => edits.push(['b', text]) });
+  await f.render(h(f.Buttons, a));
+  const original = f.controllers[0];
+  let pauses = 0,
+    resumes = 0;
+  original.recognition.pauseForNavigation = async () => {
+    pauses++;
+    return true;
+  };
+  original.recognition.resumeCapture = async () => {
+    resumes++;
+    return true;
+  };
+  original.patch({ conversation: true, listening: true });
+  await f.render(h(f.Buttons, b));
+  assert.equal(pauses, 1);
+  assert.equal(original.navigationPaused, true);
+  original.onResult({ final: 'retained words' });
+  assert.deepEqual(edits, []);
+  await f.render(h(f.Buttons, a));
+  assert.equal(resumes, 1);
+  assert.equal(f.controllers.filter((c) => c === original).length, 1);
+  assert.deepEqual(edits, [['a', 'Draft retained words']]);
+});
+
+test('repeated chat switches keep independent parked result queues and current draft edits', async (t) => {
+  const f = await fixture(t);
+  const edits = [];
+  const a = f.props('a', { setDraft: (text) => edits.push(['a', text]) });
+  const b = f.props('b', { setDraft: (text) => edits.push(['b', text]) });
+  await f.render(h(f.Buttons, a));
+  const ca = f.controllers[0];
+  ca.recognition.pauseForNavigation = async () => true;
+  ca.recognition.resumeCapture = async () => true;
+  ca.patch({ conversation: true, listening: true });
+  await f.render(h(f.Buttons, b));
+  const cb = f.controllers.at(-1);
+  cb.recognition.pauseForNavigation = async () => true;
+  cb.recognition.resumeCapture = async () => true;
+  cb.patch({ conversation: true, listening: true });
+  ca.onResult({ final: 'first chat words' });
+  await f.render(h(f.Buttons, { ...a, input: { draft: 'Edited draft', draftRev: 2 } }));
+  assert.deepEqual(edits.at(-1), ['a', 'Edited draft first chat words']);
+  cb.onResult({ final: 'second chat words' });
+  await f.render(h(f.Buttons, b));
+  assert.deepEqual(edits.at(-1), ['b', 'Draft second chat words']);
+  assert.equal(ca.navigationResults.length, 0);
+  assert.equal(cb.navigationResults.length, 0);
+});
+
+test('recognition settings changes do not reacquire parked chat capture', async (t) => {
+  const f = await fixture(t);
+  await f.render(h(f.Buttons, f.props('a')));
+  const c = f.controllers[0];
+  c.recognition.pauseForNavigation = async () => true;
+  c.recognition.resumeCapture = async () => true;
+  c.patch({ conversation: true, listening: true });
+  await f.render(h(f.Buttons, f.props('b')));
+  const recognition = c.recognition;
+  let restarts = 0;
+  t.mock.method(c, '_startInput', async () => {
+    restarts++;
+  });
+  await act(async () => c.updateSettings({ recognitionLang: 'fr-FR' }));
+  assert.equal(restarts, 0);
+  assert.equal(c.recognition, recognition);
+  assert.equal(c.navigationPaused, true);
+});
+
+test('explicit stop releases parked chat input instead of trying to resume it on return', async (t) => {
+  const f = await fixture(t);
+  await f.render(h(f.Buttons, f.props('a')));
+  const c = f.controllers[0];
+  c.recognition.pauseForNavigation = async () => true;
+  let resumes = 0;
+  c.recognition.resumeCapture = async () => {
+    resumes++;
+    return true;
+  };
+  c.patch({ conversation: true, listening: true });
+  await f.render(h(f.Buttons, f.props('b')));
+  assert.equal(c.navigationPaused, true);
+  await act(async () => c.stopConversationInput());
+  await f.render(h(f.Buttons, f.props('a')));
+  assert.equal(resumes, 0);
+});
+
 test('closing microphone mode preserves playback but disables voice continuity on the next chat', async (t) => {
   const f = await fixture(t);
   await f.render(h(f.Buttons, { ...f.props('a'), key: 'a' }));

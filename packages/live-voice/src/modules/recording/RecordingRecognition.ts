@@ -10,7 +10,12 @@ import type {
   RecordingVoiceCommand,
 } from './types.js';
 import type { SileroVadOptions, SileroVadStream } from '../recognition/vad/SileroVadRuntime.js';
-type CaptureHandle = { finish(): Promise<void>; release(): void };
+type CaptureHandle = {
+  finish(): Promise<void>;
+  flush?(pause?: boolean): Promise<void>;
+  resume?(): void;
+  release(): void;
+};
 type Processing = {
   queued: number;
   active: boolean;
@@ -75,6 +80,8 @@ interface RecordingEngine {
     stream: SileroVadStream,
     onPcm: (pcm: Float32Array, rate: number) => void,
   ): Promise<CaptureHandle>;
+  suspendCapture?(): Promise<boolean>;
+  resumeCapture?(): Promise<boolean>;
   stop(): Promise<void>;
 }
 interface RecognitionSession {
@@ -97,6 +104,10 @@ interface RecognitionSession {
   lang: string;
   operation: string;
   capturedSamples: number;
+  captureSuspended: boolean;
+  suspendCapture(): Promise<boolean>;
+  resumeCapture(): Promise<boolean>;
+  pauseForNavigation(): Promise<boolean>;
   pinDetector?: PinDetector;
   finishRecording(): Promise<void>;
   stopRecording(): Promise<void>;
@@ -157,6 +168,7 @@ export async function startRecordingRecognition(
     await writer.finish('interrupted');
     throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
   }
+  let suspension: Promise<boolean> | null = null;
   const session: RecognitionSession = {
     writer,
     detector: capture.silero ? 'silero' : 'energy',
@@ -177,6 +189,31 @@ export async function startRecordingRecognition(
     lang,
     operation: uid(),
     capturedSamples: 0,
+    captureSuspended: false,
+    suspendCapture: () => {
+      if (session.captureSuspended) return Promise.resolve(true);
+      if (suspension) return suspension;
+      if (session.finished || !valid()) return Promise.resolve(false);
+      suspension = (async () => {
+        await engine.meter.context.suspend();
+        if (!valid()) return false;
+        session.captureSuspended = true;
+        return true;
+      })().finally(() => {
+        suspension = null;
+      });
+      return suspension;
+    },
+    resumeCapture: async () => {
+      if (!session.captureSuspended) return true;
+      if (session.finished || !valid()) return false;
+      session.capture?.resume?.();
+      await engine.meter.context.resume();
+      if (!valid()) return false;
+      session.captureSuspended = false;
+      return true;
+    },
+    pauseForNavigation: async () => false,
     finishRecording: async () => {},
     stopRecording: async () => {},
     abort: () => {},
@@ -285,10 +322,13 @@ export async function startRecordingRecognition(
     queuedThrough = Math.max(queuedThrough, end);
     await releaseCapturedRanges();
   };
-  async function releaseCapturedRanges() {
+  async function releaseCapturedRanges(clampToCaptured = false) {
     if (!valid()) return;
     const captured = writer.session.capturedSamples;
-    while (awaitingTail.length && (session.finished || awaitingTail[0].endSample <= captured)) {
+    while (
+      awaitingTail.length &&
+      (session.finished || clampToCaptured || awaitingTail[0].endSample <= captured)
+    ) {
       const pending = awaitingTail[0];
       const attempt = { ...pending, endSample: Math.min(pending.endSample, captured) };
       await writer.attempt(attempt);
@@ -346,6 +386,21 @@ export async function startRecordingRecognition(
     },
   });
   session.pinDetector = detector;
+  session.pauseForNavigation = async () => {
+    // Pause at the worklet boundary and drain its partial buffer before freezing
+    // the context. No port acknowledgement is awaited on a suspended context.
+    // Speaker playback may already be suspending this context. Wait for that
+    // transition before deciding whether its worklet can acknowledge a flush.
+    if (suspension) await suspension;
+    if (!session.captureSuspended) await session.capture?.flush?.(true);
+    if (!(await session.suspendCapture()) || !valid()) return false;
+    // Close an open utterance at the real capture boundary, without sealing
+    // the writer. Requests already running retain their original callbacks.
+    detector.finish();
+    await session.tail;
+    await serialize(() => releaseCapturedRanges(true), false, true);
+    return valid();
+  };
   async function drain() {
     if (session.draining || !valid()) return;
     session.draining = true;
@@ -633,7 +688,7 @@ export async function startRecordingRecognition(
     awaitingTail.length = 0;
     await recovering;
     session.activeRequest?.abort();
-    if (session.finishing) session.capture?.release();
+    if (session.finishing || session.captureSuspended) session.capture?.release();
     else {
       try {
         await session.capture?.finish();

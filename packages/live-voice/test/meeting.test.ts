@@ -662,22 +662,24 @@ test('permanent, unknown and permission errors never retry shared recognition', 
   }
 });
 
-test('composer replacement retains sharing but rejects old recognition and delivery intent', async (t) => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
+test('composer replacement keeps one shared recognition and recording session without delivering old utterances', async (t) => {
   const f = browserMeetingFixture();
   t.after(() => f.meeting.dispose());
   await f.meeting.start('shared', Promise.resolve(f.stream));
   const old = f.entries[0].callbacks;
+  const job = f.meeting.jobs.get('shared');
+  f.meeting.patch('shared', { pending: 2, transcribing: 2, deliveryPending: 2 });
   f.meeting.composerReplaced();
-  old.onResult({ final: 'previous conversation words' });
+  old.onResult({ final: 'previous conversation words', startedAt: Date.now() - 1000 });
   assert.equal(f.draft(), '');
-  await flushRecovery();
-  t.mock.timers.tick(250);
-  await flushRecovery();
+  assert.equal(f.meeting.jobs.get('shared'), job);
+  assert.equal(f.entries.length, 1);
   assert.equal(f.track.stops, 0);
-  assert.equal(f.entries.length, 2);
-  f.entries[1].callbacks.onResult({ final: 'current conversation words' });
+  old.onResult({ final: 'untimed previous result' });
+  assert.equal(f.draft(), '');
+  old.onResult({ final: 'current conversation words', startedAt: Date.now() + 1 });
   assert.equal(f.draft(), 'current conversation words');
+  assert.equal(f.entries.length, 1);
 });
 
 test('failed recognition teardown blocks replacement but still releases shared capture', async (t) => {

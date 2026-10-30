@@ -173,14 +173,17 @@ export class MeetingController {
     for (const input of this.inputs.values()) input.cancelAutoSend();
   }
   composerReplaced() {
-    // Capture follows navigation, but a recognition operation must not deliver
-    // an utterance begun for the previous composer into its replacement.
+    // Recording/capture is application-owned and outlives any one chat composer.
+    // Keep the audio clock and writer, but never deliver a final whose speech began
+    // before the replacement composer was committed.
+    for (const [source, job] of this.jobs) {
+      const state = this.snapshot[source];
+      job.discardResults =
+        (Number.isSafeInteger(state?.pendingTranscriptionRequests)
+          ? state.pendingTranscriptionRequests
+          : state?.pending || 0) || (state?.recognizing ? 1 : 0);
+    }
     this.cancelDelivery();
-    const job = this.jobs.get('shared');
-    if (!job || !job.recognitionAbort) return;
-    job.recognitionAbort.abort();
-    if (this.sharedTrackLive(job)) this.queueRecognitionRecovery('shared', job);
-    else void this.stop('shared').catch(() => {});
   }
   toggleTimestamps() {
     const enabled = !this.snapshot.timestamps;
@@ -206,7 +209,7 @@ export class MeetingController {
     }
     this.patch(null, { active: true });
     const abort = new AbortController();
-    const job = { abort };
+    const job = { abort, discardResults: 0 };
     this.jobs.set(source, job);
     const valid = () => this.jobs.get(source) === job && !abort.signal.aborted;
     this.patch(source, { starting: true, error: null });
@@ -291,6 +294,10 @@ export class MeetingController {
         signal: recognitionAbort.signal,
         onResult: ({ final, interim, startedAt, paragraphBefore }) => {
           if (!valid()) return;
+          if (job.discardResults > 0) {
+            job.discardResults--;
+            return;
+          }
           if (final?.trim()) job.retries = 0;
           const accepted = this.onSpeech?.(source, final || interim) !== false;
           if (accepted)

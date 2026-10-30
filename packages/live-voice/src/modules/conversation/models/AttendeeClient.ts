@@ -623,7 +623,9 @@ export class AttendeeClient {
     this.queues.set(source, work);
   }
   async audio(event, generation) {
-    if (this.canDeliver && !this.canDeliver()) throw new Error('no-composer');
+    // Capture is application-owned and can outlive a composer during chat navigation.
+    // MeetingTranscript has no active destination in that gap, so results are dropped
+    // rather than ending the receiver or being written into a stale composer.
     const source = 'attendee:' + event.botId + ':' + event.participantId;
     let row = this.rows.get(source);
     if (!row) {

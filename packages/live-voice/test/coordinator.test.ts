@@ -112,6 +112,140 @@ for (const delay of [0.6, 1.5]) {
   });
 }
 
+test('navigation pause retains final recognition until the same coordinator resumes', async () => {
+  const f = fixture({ mode: 'headphones', sendingMode: 'manual' });
+  f.recognition.pauseForNavigation = async () => true;
+  f.recognition.resumeCapture = async () => true;
+  await f.coordinator.startConversation();
+  const callback = f.sessions[0];
+  assert.equal(await f.coordinator.pauseInputForNavigation(), true);
+  callback.onResult({ final: 'deferred speech' });
+  assert.equal(f.draft(), 'typed');
+  assert.equal(await f.coordinator.resumeInputFromNavigation(), true);
+  assert.equal(f.draft(), 'typed deferred speech');
+  assert.equal(f.sessions.length, 1);
+  await f.coordinator.dispose();
+});
+
+test('failed navigation flush releases capture and can restart on return without reloading', async () => {
+  const f = fixture({ mode: 'headphones', sendingMode: 'manual' });
+  f.recognition.pauseForNavigation = async () => {
+    f.sessions[0].onResult({ final: 'already recognized' });
+    throw new Error('VAD capture flush timed out.');
+  };
+  await f.coordinator.startConversation();
+  assert.equal(await f.coordinator.pauseInputForNavigation(), false);
+  assert.equal(f.coordinator.snapshot.listening, false);
+  assert.equal(f.coordinator.inputReleaseError, null);
+  assert.equal(f.draft(), 'typed');
+  assert.equal(await f.coordinator.resumeInputFromNavigation(), true);
+  assert.equal(f.coordinator.snapshot.listening, true);
+  assert.equal(f.sessions.length, 2);
+  assert.equal(f.draft(), 'typed already recognized');
+  await f.coordinator.dispose();
+});
+
+test('explicit stop wins over a late flush timeout', async () => {
+  const f = fixture({ mode: 'headphones' });
+  const gate = deferred();
+  f.recognition.pauseForNavigation = () => gate.promise;
+  await f.coordinator.startConversation();
+  const pause = f.coordinator.pauseInputForNavigation();
+  await turn();
+  const stop = f.coordinator.stopListening();
+  gate.reject(new Error('VAD capture flush timed out.'));
+  assert.equal(await pause, false);
+  await stop;
+  assert.equal(f.coordinator.navigationPaused, false);
+  assert.equal(f.coordinator.snapshot.listening, false);
+  assert.equal(f.coordinator.inputReleaseError, null);
+  await f.coordinator.dispose();
+});
+
+test('parked transcription errors do not abort the remaining queue or restart capture', async () => {
+  const f = fixture({ mode: 'headphones', sendingMode: 'manual' });
+  f.recognition.pauseForNavigation = async () => true;
+  f.recognition.resumeCapture = async () => true;
+  await f.coordinator.startConversation();
+  await f.coordinator.pauseInputForNavigation();
+  const stops = f.log.filter((x) => x === 'input:stop').length;
+  f.sessions[0].onError(new Error('transcription failed'));
+  f.sessions[0].onResult({ final: 'next completed segment' });
+  await turn();
+  assert.equal(f.sessions.length, 1);
+  assert.equal(f.log.filter((x) => x === 'input:stop').length, stops);
+  await f.coordinator.resumeInputFromNavigation();
+  assert.equal(f.draft(), 'typed next completed segment');
+  await f.coordinator.dispose();
+});
+
+test('parked chat does not rearm automatic delivery while transcription settles', async () => {
+  const f = fixture({ mode: 'headphones', sendingMode: 'queue' });
+  f.recognition.pauseForNavigation = async () => true;
+  f.recognition.resumeCapture = async () => true;
+  await f.coordinator.startConversation();
+  f.coordinator.autoSendIntent = f.draft();
+  await f.coordinator.pauseInputForNavigation();
+  f.sessions[0].onProcessingChange({ pending: 0, transcribing: 0, deliveryPending: 0 });
+  assert.equal(f.coordinator.snapshot.autoSendAt, null);
+  assert.equal(f.coordinator.autoSendTimer, null);
+  await f.coordinator.dispose();
+});
+
+test('explicit stop prevents an in-flight navigation resume from delivering parked text', async () => {
+  const f = fixture({ mode: 'headphones' });
+  const gate = deferred();
+  f.recognition.pauseForNavigation = async () => true;
+  f.recognition.resumeCapture = () => gate.promise;
+  await f.coordinator.startConversation();
+  await f.coordinator.pauseInputForNavigation();
+  f.sessions[0].onResult({ final: 'must not appear' });
+  const resume = f.coordinator.resumeInputFromNavigation();
+  await turn();
+  const stop = f.coordinator.stopListening();
+  gate.resolve(true);
+  assert.equal(await resume, false);
+  await stop;
+  assert.equal(f.draft(), 'typed');
+  assert.equal(f.coordinator.snapshot.listening, false);
+  await f.coordinator.dispose();
+});
+
+test('speaker playback pauses and resumes capture without replacing the recognition session', async () => {
+  const f = fixture({ mode: 'speaker' });
+  let suspended = 0;
+  let resumed = 0;
+  f.recognition.suspendCapture = async () => {
+    suspended++;
+    f.recognition.captureSuspended = true;
+    return true;
+  };
+  f.recognition.resumeCapture = async () => {
+    resumed++;
+    f.recognition.captureSuspended = false;
+    return true;
+  };
+  const c = f.coordinator;
+  await c.startConversation();
+  const session = f.sessions[0];
+  const stopsBeforePlayback = f.log.filter((item) => item === 'input:stop').length;
+  const meterStopsBeforePlayback = f.log.filter((item) => item === 'meter:stop').length;
+  const playback = c.speak('Assistant reply.', 'reply');
+  await turn();
+  assert.equal(c.snapshot.listening, true);
+  assert.equal(f.sessions.length, 1);
+  assert.equal(suspended, 1);
+  assert.equal(f.log.filter((item) => item === 'input:stop').length, stopsBeforePlayback);
+  assert.equal(f.log.filter((item) => item === 'meter:stop').length, meterStopsBeforePlayback);
+  f.spoken[0].resolve();
+  await playback;
+  assert.equal(c.snapshot.listening, true);
+  assert.equal(f.sessions[0], session);
+  assert.equal(f.sessions.length, 1);
+  assert.equal(resumed, 1);
+  await c.dispose();
+});
+
 test('recording timeline distinguishes gating from real playback start and ignores stale starts', async () => {
   const f = fixture();
   const events = [];
@@ -417,6 +551,31 @@ test('automatic speech streams once with microphone mode off and never starts ca
   assert.equal(c.snapshot.listening, false);
   assert.equal(f.sessions.length, 0);
   assert.ok(!f.log.includes('meter:start'));
+  await c.dispose();
+});
+
+test('automatic speech sends each Markdown table row separately, including after an earlier segment', async () => {
+  const f = fixture({ lang: 'pt-BR' });
+  const c = f.coordinator;
+  c.observeMessage('table', 'Introdução.\n');
+  await turn();
+  const text = 'Introdução.\n| Nome | Valor |\n| --- | --- |\n| Alfa | Um |\n| Beta | Dois |';
+  c.observeMessage('table', text);
+  assert.equal(f.spoken.length, 1, 'wait for the incomplete table');
+  c.observeMessage('table', text, { complete: true });
+  c.observeMessage('table', text, { complete: true });
+  for (const expected of [
+    'Introdução.',
+    'Tabela com colunas: Nome, Valor',
+    'Alfa, Um',
+    'Beta, Dois',
+  ]) {
+    await turn();
+    assert.equal(f.spoken.at(-1).text, expected);
+    f.spoken.at(-1).resolve();
+  }
+  await turn();
+  assert.equal(f.spoken.length, 4);
   await c.dispose();
 });
 

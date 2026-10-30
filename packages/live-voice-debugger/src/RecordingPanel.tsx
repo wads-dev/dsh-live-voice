@@ -552,7 +552,6 @@ function RecordingDetail({
   };
   const [search, setSearch] = React.useState('');
   React.useEffect(() => setSearch(''), [session.id, service]);
-  const matchedSegments = React.useMemo(() => searchSegments(segments, search), [segments, search]);
   const length = Math.max(1, session.savedSamples);
   const [windowStart, setWindowStart] = React.useState(0);
   // null follows the live right edge until the user explicitly chooses an end.
@@ -564,6 +563,15 @@ function RecordingDetail({
   const viewEnd = Math.max(1, Math.min(length, windowEnd ?? length));
   const viewStart = Math.max(0, Math.min(windowStart, viewEnd - 1));
   const viewLength = viewEnd - viewStart;
+  const visibleSegments = React.useMemo(
+    () =>
+      segments.filter((segment) => segment.endSample > viewStart && segment.startSample < viewEnd),
+    [segments, viewStart, viewEnd],
+  );
+  const matchedSegments = React.useMemo(
+    () => searchSegments(visibleSegments, search),
+    [visibleSegments, search],
+  );
   const inWindow = (sample: number) => sample >= viewStart && sample <= viewEnd;
   const position = (sample: number) => ((sample - viewStart) / viewLength) * 100 + '%';
   const segmentName = (segment: RecordingSegment) =>
@@ -744,29 +752,26 @@ function RecordingDetail({
         }}
       />
       <div className="dlvd-timeline" role="group" aria-label={copy.recordings.timeline}>
-        {segments
-          .filter((segment) => segment.endSample > viewStart && segment.startSample < viewEnd)
-          .map((segment) => (
-            <button
-              key={segment.id}
-              type="button"
-              data-kind={commandsFor(segment).length ? 'command' : segment.kind}
-              aria-label={segmentName(segment)}
-              title={segmentName(segment)}
-              aria-pressed={selectedSegment === segment.id}
-              style={{
-                left: position(Math.max(viewStart, segment.startSample)),
-                width:
-                  ((Math.min(viewEnd, segment.endSample) -
-                    Math.max(viewStart, segment.startSample)) /
-                    viewLength) *
-                    100 +
-                  '%',
-              }}
-              disabled={deleting || segment.endSample <= segment.startSample}
-              onClick={() => void play(segment, false)}
-            />
-          ))}
+        {visibleSegments.map((segment) => (
+          <button
+            key={segment.id}
+            type="button"
+            data-kind={commandsFor(segment).length ? 'command' : segment.kind}
+            aria-label={segmentName(segment)}
+            title={segmentName(segment)}
+            aria-pressed={selectedSegment === segment.id}
+            style={{
+              left: position(Math.max(viewStart, segment.startSample)),
+              width:
+                ((Math.min(viewEnd, segment.endSample) - Math.max(viewStart, segment.startSample)) /
+                  viewLength) *
+                  100 +
+                '%',
+            }}
+            disabled={deleting || segment.endSample <= segment.startSample}
+            onClick={() => void play(segment, false)}
+          />
+        ))}
         {session.pins
           .filter((pin) => inWindow(pin.atSample))
           .map((pin) => (

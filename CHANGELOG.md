@@ -6,6 +6,21 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ## [NEXT] - Unreleased
 
+Upcoming changes will be recorded here.
+
+## [0.7.1] - 2026-10-30
+
+### Improvements
+
+- Keep the recording segment list and transcript search aligned with the visible timeline window in Live Voice Debugger.
+
+### Fixes
+
+- Split Markdown table rows into separate speech segments during automatic playback instead of sending the whole table to the speech engine at once.
+- Preserve one recoverable microphone recording across speaker-mode assistant playback by suspending capture for the real playback gap and resuming the same recording session afterward. Keep shared meeting/Attendee source recorders active across chat changes and discard pending results from the previous composer.
+- Park recording-backed microphone input per chat on navigation without closing its recording or cancelling queued transcription. Retain completed results for the originating composer, then resume the same recording and sample-based timer on return. Native Browser recognition retains stop/restart behavior; parked recordings keep their start-time recognition configuration until explicitly restarted.
+- Avoid a Silero VAD flush timeout when assistant playback and chat navigation suspend the microphone concurrently. If a pause still fails, release capture safely so it can be restarted without reloading the tab; already completed results remain available for the originating chat.
+
 ## [0.7.0] - 2026-10-28
 
 ### Live Voice

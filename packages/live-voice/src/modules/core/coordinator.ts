@@ -4,7 +4,6 @@ import { TranscriptDraft } from './transcript.ts';
 import { normalizeSettings } from './settings.ts';
 import { SPEECH_QUEUE_PREFETCH_LIMIT } from '../speak/services/speechQueue.js';
 import {
-  filterSpeechOutput,
   hasMinimumWords,
   hasUnclosedCodeFence,
   hasIncompleteSpeechMarkdown,
@@ -62,6 +61,9 @@ export class VoiceCoordinator {
     this.unfinished = new Set();
     this.suppressed = new Set();
     this.inputTail = Promise.resolve();
+    this.navigationPaused = false;
+    this.navigationEpoch = 0;
+    this.navigationResults = [];
     this.speechBarrier = Promise.resolve();
     this.disposed = false;
     this.inputReleaseError = null;
@@ -325,6 +327,12 @@ export class VoiceCoordinator {
     });
   }
   _recoverInput(error) {
+    if (this.navigationPaused) {
+      // Keep the recording and remaining STT queue; only an attached chat may
+      // decide to retry or replace its capture resources.
+      this.patch({ inputError: message(error), error: message(error) });
+      return;
+    }
     const attempt = this.inputRecoveryAttempt || 0;
     const retry =
       !this.inputReleaseError && isRetryableVoiceError(error) && attempt < MAX_RECOVERY_ATTEMPTS;
@@ -392,6 +400,23 @@ export class VoiceCoordinator {
     const result = this.inputTail.then(task);
     this.inputTail = result.catch(() => {});
     return result;
+  }
+  async _suspendInputCapture() {
+    return this._input(async () => {
+      if (!this.snapshot.listening || typeof this.recognition.suspendCapture !== 'function')
+        return false;
+      return (await this.recognition.suspendCapture()) !== false;
+    });
+  }
+  async _resumeInputCapture() {
+    return this._input(async () => {
+      if (!this.snapshot.listening || typeof this.recognition.resumeCapture !== 'function')
+        return false;
+      return (await this.recognition.resumeCapture()) !== false;
+    });
+  }
+  _hasSuspendedInputCapture() {
+    return this.snapshot.listening && this.recognition.captureSuspended === true;
   }
   async _releaseInput() {
     // Drain recorder-owned worklet buffers while its context/source still exist.
@@ -769,8 +794,19 @@ export class VoiceCoordinator {
     }, this.snapshot.settings.assistantSpeechDelaySeconds * 1000);
   }
 
-  onResult({ final = '', interim = '', startedAt, paragraphBefore = false, onCommandRecognized }) {
+  onResult(result) {
+    const {
+      final = '',
+      interim = '',
+      startedAt,
+      paragraphBefore = false,
+      onCommandRecognized,
+    } = result;
     if (this.disposed || (!this.snapshot.listening && !this.snapshot.starting)) return;
+    if (this.navigationPaused) {
+      if (final) this.navigationResults.push(result);
+      return;
+    }
     const recognizing = this.recognition.activityManaged ? this.snapshot.recognizing : !!interim;
     if (
       this.snapshot.speaking &&
@@ -885,7 +921,7 @@ export class VoiceCoordinator {
     return this.snapshot.pendingDeliveryTranscriptions ?? this.snapshot.pendingTranscriptions;
   }
   maybeScheduleAutoSend(draft = this.autoSendIntent) {
-    if (draft == null || draft !== this.composer.getDraft()) return;
+    if (this.navigationPaused || draft == null || draft !== this.composer.getDraft()) return;
     if (this.autoSendTimer !== null) return;
     if (
       this.snapshot.settings.sendingMode === 'manual' ||
@@ -968,6 +1004,9 @@ export class VoiceCoordinator {
     if (this.autoSendIntent != null && draft !== this.autoSendIntent) this.cancelAutoSend();
   }
   stopListening() {
+    ++this.navigationEpoch;
+    this.navigationPaused = false;
+    this.navigationResults = [];
     this._cancelRecovery('input');
     this.holdToTalkRelease = false;
     this.cancelAutoSend();
@@ -1135,11 +1174,69 @@ export class VoiceCoordinator {
     this.patch({ paused: checkpoint.paused && this.queue.length > 0 });
     this._syncSpeechSegments();
   }
-  async suspendSpeech() {
+  async pauseInputForNavigation() {
+    if (!this.snapshot.listening || typeof this.recognition.pauseForNavigation !== 'function')
+      return false;
+    const generation = ++this.navigationEpoch;
+    this.navigationPaused = true;
+    this.cancelAutoSend();
+    try {
+      const paused = await this._input(() => this.recognition.pauseForNavigation());
+      if (!paused) throw new Error('Microphone capture could not be paused safely.');
+      return true;
+    } catch (error) {
+      if (generation !== this.navigationEpoch || this.disposed) return false;
+      // A failed pause must not leave a failed input ownership barrier forever.
+      // Release hardware before another chat can acquire it; preserve already
+      // completed results for the original composer.
+      try {
+        await this._input(() => this._releaseInput());
+        this.inputReleaseError = null;
+      } catch (cleanup) {
+        this.inputReleaseError = cleanup;
+        this.patch({ inputError: message(cleanup), error: message(cleanup) });
+        throw cleanup;
+      }
+      if (generation !== this.navigationEpoch || this.disposed) return false;
+      this.patch({
+        listening: false,
+        starting: false,
+        recognizing: false,
+        inputError: message(error),
+        error: message(error),
+      });
+      return false;
+    }
+  }
+  async resumeInputFromNavigation() {
+    if (!this.navigationPaused || this.disposed) return false;
+    const generation = this.navigationEpoch;
+    if (!this.snapshot.listening) {
+      // The prior capture could not be paused and was released safely. A fresh
+      // capture is permitted only after the user returns to this chat.
+      const queued = this.navigationResults.splice(0);
+      this.navigationPaused = false;
+      await this._startInput(this.snapshot.conversation);
+      if (this.disposed || generation !== this.navigationEpoch) return false;
+      if (!this.snapshot.listening) {
+        this.navigationPaused = true;
+        this.navigationResults.unshift(...queued);
+        return false;
+      }
+      for (const result of queued) this.onResult(result);
+      return true;
+    }
+    const resumed = await this._input(() => this.recognition.resumeCapture());
+    if (!resumed || this.disposed || generation !== this.navigationEpoch) return false;
+    this.navigationPaused = false;
+    for (const result of this.navigationResults.splice(0)) this.onResult(result);
+    return true;
+  }
+  async suspendSpeech(preserveInput = false) {
     this.speechSuspended = true;
     await Promise.all([
       VoiceCoordinator.prototype.stopSpeech.call(this, false),
-      this.stopListening(),
+      preserveInput ? this.pauseInputForNavigation() : this.stopListening(),
     ]);
   }
   discardSpeechMessage(id) {
@@ -1205,6 +1302,20 @@ export class VoiceCoordinator {
     } catch (error) {
       if (epoch === this.speechEpoch) this.patch({ error: message(error) });
       return;
+    }
+    if (
+      epoch === this.speechEpoch &&
+      !this.disposed &&
+      resumeListening &&
+      !this.navigationPaused &&
+      this.snapshot.settings.mode === 'speaker' &&
+      this._hasSuspendedInputCapture()
+    ) {
+      try {
+        await this._resumeInputCapture();
+      } catch (error) {
+        this.patch({ inputError: message(error), error: message(error) });
+      }
     }
     if (
       epoch === this.speechEpoch &&
@@ -1325,7 +1436,7 @@ export class VoiceCoordinator {
     const epoch = this.speechEpoch;
     const control = ++this.controlEpoch;
     try {
-      if (this.snapshot.settings.mode === 'speaker') {
+      if (this.snapshot.settings.mode === 'speaker' && !this._hasSuspendedInputCapture()) {
         await this.stopListening();
         if (this.inputReleaseError) throw this.inputReleaseError;
       }
@@ -1422,11 +1533,17 @@ export class VoiceCoordinator {
       if (epoch !== this.speechEpoch || this.disposed) return;
       if (this.snapshot.settings.mode === 'speaker') {
         const gating = this.snapshot.listening;
+        const persistentCapture = typeof this.recognition.suspendCapture === 'function';
         if (gating) timeline?.('capture-gated');
-        await this.stopListening();
-        if (this.inputReleaseError) {
+        try {
+          const suspended = persistentCapture ? await this._suspendInputCapture() : false;
+          if (gating && !suspended) {
+            await this.stopListening();
+            if (this.inputReleaseError) throw this.inputReleaseError;
+          }
+        } catch (error) {
           if (gating) timeline?.('capture-gate-failed');
-          throw this.inputReleaseError;
+          throw error;
         }
         if (gating) timeline?.('input-stop-complete');
       }
@@ -1572,6 +1689,12 @@ export class VoiceCoordinator {
           this.assistantSpeechDelayReason = 'segment-gap';
           this.assistantSpeechNotBefore = Date.now() + this.snapshot.settings.segmentGapMs;
           this._drain();
+        } else if (this.snapshot.settings.mode === 'speaker' && this.snapshot.listening) {
+          try {
+            await this._resumeInputCapture();
+          } catch (error) {
+            this.patch({ inputError: message(error), error: message(error) });
+          }
         } else if (
           this.snapshot.conversation &&
           !this.snapshot.inputRecovery &&
@@ -1712,16 +1835,18 @@ export class VoiceCoordinator {
     if (boundary <= 0) return;
     if (!complete && hasIncompleteSpeechMarkdown(remaining.slice(0, boundary))) return;
     if (hasUnclosedCodeFence(remaining.slice(0, boundary)) && !complete) return;
-    const chunk = filterSpeechOutput(remaining.slice(0, boundary).trim(), {
+    const segments = splitSpeechOutput(remaining.slice(0, boundary).trim(), {
       filterCodeBlocks: this.snapshot.settings.outputCodeFilterEnabled,
       codeBlockMaxLines: this.snapshot.settings.outputCodeMaxLines,
       codeBlockNotice: this.snapshot.settings.outputCodeNotice,
       lang: this.snapshot.settings.lang,
-    }).trim();
+    });
     this.consumed.set(id, offset + boundary);
-    if (chunk) {
+    if (segments.length) {
       const initial = !this.snapshot.speaking && !this.queue.some((item) => item.prepared);
-      const parts = initial ? splitInitialSpeechItem(chunk) : [chunk];
+      const parts = initial
+        ? [...splitInitialSpeechItem(segments[0]), ...segments.slice(1)]
+        : segments;
       this.queue.push(...parts.map((text) => ({ text, id })));
       this._prefetchSpeech();
       this._syncSpeechSegments();

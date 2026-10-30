@@ -364,13 +364,18 @@ export async function attachSileroVadCapture(
   source: AudioNode,
   stream: SileroVadStream,
   onPcm?: (pcm: Float32Array, sampleRate: number) => void,
-): Promise<{ finish(): Promise<void>; release(): void }> {
+): Promise<{
+  finish(): Promise<void>;
+  flush(pause?: boolean): Promise<void>;
+  resume(): void;
+  release(): void;
+}> {
   if (!context.audioWorklet || typeof AudioWorkletNode !== 'function')
     throw new Error('AudioWorklet PCM capture is unavailable.');
   let loading = captureLoads.get(context);
   if (!loading) {
     loading = context.audioWorklet.addModule(
-      sileroVadAssetBase() + 'vad.capture.js?revision=finish-v1',
+      sileroVadAssetBase() + 'vad.capture.js?revision=pause-v2',
     );
     captureLoads.set(context, loading);
     void loading.catch(() => {
@@ -389,6 +394,10 @@ export async function attachSileroVadCapture(
   let released = false;
   let acknowledged = false;
   let finishing: Promise<void> | undefined;
+  let flushing: Promise<void> | undefined;
+  let resolveFlush: (() => void) | undefined;
+  let rejectFlush: ((error: Error) => void) | undefined;
+  let flushTimer: ReturnType<typeof setTimeout> | undefined;
   let resolveFinish: (() => void) | undefined;
   let rejectFinish: ((error: Error) => void) | undefined;
   let failure: Error | undefined;
@@ -398,6 +407,8 @@ export async function attachSileroVadCapture(
     if (released) return;
     released = true;
     clearTimeout(timer);
+    clearTimeout(flushTimer);
+    rejectFlush?.(cancelled());
     unsubscribe();
     node.port.onmessage = null;
     node.onprocessorerror = null;
@@ -415,6 +426,8 @@ export async function attachSileroVadCapture(
     if (released) return;
     failure = error;
     rejectFinish?.(error);
+    rejectFlush?.(error);
+    rejectFlush = undefined;
     cleanup();
   };
   unsubscribe = stream.onInvalidated((error) => {
@@ -427,7 +440,15 @@ export async function attachSileroVadCapture(
   }
   node.port.onmessage = (event) => {
     if (released || stream.released) return;
-    if (event.data?.type === 'stopped') {
+    if (event.data?.type === 'flushed') {
+      clearTimeout(flushTimer);
+      void stream.flush().then(() => {
+        const done = resolveFlush;
+        resolveFlush = rejectFlush = undefined;
+        flushing = undefined;
+        done?.();
+      }, fail);
+    } else if (event.data?.type === 'stopped') {
       if (!finishing || acknowledged) return;
       acknowledged = true;
       clearTimeout(timer);
@@ -469,6 +490,25 @@ export async function attachSileroVadCapture(
     throw error;
   }
   return {
+    resume() {
+      if (released || finishing) throw failure || cancelled();
+      node.port.postMessage({ type: 'resume' });
+    },
+    flush(pause = false) {
+      if (flushing) return flushing;
+      if (released || stream.released || finishing) return Promise.reject(failure || cancelled());
+      flushing = new Promise<void>((resolve, reject) => {
+        resolveFlush = resolve;
+        rejectFlush = reject;
+      });
+      flushTimer = setTimeout(() => fail(new Error('VAD capture flush timed out.')), 3000);
+      try {
+        node.port.postMessage({ type: 'flush', pause });
+      } catch (error) {
+        fail(error instanceof Error ? error : new Error('VAD capture flush failed.'));
+      }
+      return flushing;
+    },
     finish() {
       if (finishing) return finishing;
       if (released || stream.released) return (finishing = Promise.reject(failure || cancelled()));

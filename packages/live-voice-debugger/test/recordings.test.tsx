@@ -347,6 +347,26 @@ test('integrated primary recordings tab separates sources, plays silence, export
   for (let i = 0; i < 3; i++) await key(ranges[0], 'PageUp');
   for (let i = 0; i < 5; i++) await key(ranges[1], 'PageDown');
   assert.equal(document.querySelectorAll('.dlvd-timeline button').length, 1);
+  assert.equal(
+    document.querySelectorAll('.dlvd-segments tbody > tr').length,
+    2,
+    'partially visible speech and its attempts remain',
+  );
+  const search = document.querySelector('input[type=search]');
+  await inputValue(search, 'test transcript');
+  assert.equal(document.querySelectorAll('.dlvd-segments tbody > tr').length, 2);
+  await key(ranges[0], 'Home');
+  await key(ranges[1], 'Home');
+  assert.equal(
+    document.querySelectorAll('.dlvd-segments tbody > tr').length,
+    0,
+    'search is limited to the selected window',
+  );
+  await inputValue(search, '');
+  assert.equal(document.querySelectorAll('.dlvd-segments tbody > tr').length, 1);
+  await act(async () => document.querySelector('.dlvd-window-reset').click());
+  for (let i = 0; i < 3; i++) await key(ranges[0], 'PageUp');
+  for (let i = 0; i < 5; i++) await key(ranges[1], 'PageDown');
   assert.equal(document.querySelector('.dlvd-timeline button').style.width, '100%');
   assert.equal(document.querySelector('.dlvd-timeline button').style.left, '0%');
   assert.equal(document.querySelectorAll('.dlvd-event-marker').length, 1);
@@ -361,7 +381,6 @@ test('integrated primary recordings tab separates sources, plays silence, export
   assert.equal(rangeValue(ranges[0]), '0');
   assert.equal(rangeValue(ranges[1]), '900');
   assert.equal(document.querySelectorAll('.dlvd-timeline button').length, 3);
-  const search = document.querySelector('input[type=search]');
   await inputValue(search, 'test transcript');
   assert.equal(
     document.querySelectorAll('.dlvd-segments tbody > tr').length,
