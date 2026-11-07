@@ -8,7 +8,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 Upcoming changes will be recorded here.
 
-## [0.7.1] - 2026-10-30
+## [0.7.1] - 2026-11-07
 
 ### Improvements
 
