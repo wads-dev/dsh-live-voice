@@ -12,6 +12,7 @@ Upcoming changes will be recorded here.
 
 ### Improvements
 
+- Confirm compatibility with DeepSeek Harness v0.2.2-rc.1.
 - Keep the recording segment list and transcript search aligned with the visible timeline window in Live Voice Debugger.
 
 ### Fixes

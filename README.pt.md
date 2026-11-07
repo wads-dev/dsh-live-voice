@@ -1,5 +1,5 @@
 [![npm version](https://img.shields.io/npm/v/dsh-live-voice?logo=npm&label=npm&color=brightgreen)](https://www.npmjs.com/package/dsh-live-voice)
-[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.2--alpha.2-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-alpha.2)
+[![Tested DSH](https://img.shields.io/badge/Tested_DSH-v0.2.2--rc.1-5c5cff?logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.1)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 # DSH Live Voice - Você e sua equipe
@@ -22,7 +22,7 @@ _Feito no Brasil 🇧🇷 e testado diariamente com português brasileiro no mac
 
 ## ⚡ Comece aqui
 
-**Testado com o DeepSeek Harness v0.2.2-alpha.2.**
+**Testado com o DeepSeek Harness v0.2.2-rc.1.**
 
 Instale o pacote já compilado do npm no perfil web do DSH (sem precisar compilar o código):
 
