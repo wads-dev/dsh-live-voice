@@ -492,6 +492,21 @@ const fr: LiveVoiceTranslation = {
     'Le son, y compris les silences et les bruits de fond, est stocké localement dans ce profil de navigateur et ce site, avec compression avec perte. Obtenez le consentement avant d’enregistrer d’autres personnes. Désactiver cette option ne supprime pas les enregistrements sauvegardés.',
   'dsh-live-voice.recording.status.saved': 'Audio enregistré jusqu’à {time}',
   'dsh-live-voice.recording.title': 'Enregistrements récupérables',
+  'dsh-live-voice.settings.autoEnd.continue': 'Continuer à écouter',
+  'dsh-live-voice.settings.autoEnd.countdown':
+    'La capture vocale se terminera dans {seconds} secondes sans transcription.',
+  'dsh-live-voice.settings.autoEnd.enabled': 'Terminer automatiquement la capture vocale',
+  'dsh-live-voice.settings.autoEnd.ended': 'Session vocale terminée pour inactivité.',
+  'dsh-live-voice.settings.autoEnd.help':
+    'Arrête toutes les sources sans texte reconnu. Un nouveau texte ou Continuer à écouter réinitialise le délai. Les durées sont en minutes ; le préavis doit être positif et ne pas dépasser 50 % du total. Pas de sourdine automatique. Une reconnaissance bloquée peut retarder la fermeture de 30 secondes au maximum.',
+  'dsh-live-voice.settings.autoEnd.minutes': 'Arrêter après inactivité (minutes)',
+  'dsh-live-voice.settings.autoEnd.restart': 'Redémarrer',
+  'dsh-live-voice.settings.autoEnd.stopFailed':
+    'Certaines ressources vocales n’ont pas pu être arrêtées. Vérifiez les commandes d’entrée.',
+  'dsh-live-voice.settings.autoEnd.title': 'Arrêt automatique',
+  'dsh-live-voice.settings.autoEnd.warning':
+    'Aucune transcription détectée. La capture se terminera dans {seconds} secondes. Parlez ou choisissez Continuer à écouter pour la maintenir active.',
+  'dsh-live-voice.settings.autoEnd.warningMinutes': 'Préavis avant arrêt (minutes)',
   'dsh-live-voice.settings.autoSend.cancel': 'Annuler l’envoi automatique',
   'dsh-live-voice.settings.autoSend.countdown': 'Envoi dans {remaining}',
   'dsh-live-voice.settings.autoSend.delay': 'Envoyer après le silence',

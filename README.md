@@ -45,6 +45,7 @@ Interface translated into: 🇺🇸 English · 🇧🇷 Portuguese (Brazil) · �
 
 - 🎙️ **Voice Typing:** Append final recognized speech to the end of the DSH composer without replacing manual edits.
 - 👐 **Hands-Free Conversation:** Continuous dialogue that stays active across chat sessions.
+- ⏲️ **End forgotten capture:** enabled by default after five minutes without recognized text across all input sources, with a one-minute advance warning and Continue listening action. Configure or disable it in Conversation settings; warning lead time is limited to half the total.
 - ❓ **Spoken Structured Questions:** Narrates DSH prompt questions and submits your spoken answer.
 - ⌨️ **Optional Hold-to-Talk (Push-to-Talk):** Enable it in Settings, then hold `Control` anywhere on the page to speak; release to queue the message after the configured send delay. Disabled by default.
 - 🎧 **Acoustic Mode Isolation:** Gated listening for speakers (no echo) and open-mic interruption for headphones.

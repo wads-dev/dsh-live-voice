@@ -47,6 +47,10 @@ export const autoSendDelayOptions = Object.freeze([0.6, 0.8, 1, 2, 3, 4, 5, 6]);
 
 export const recordingBitrateOptions = Object.freeze([24000, 32000, 48000, 64000, 96000]);
 
+// Finite positive minute values; no arbitrary product-level maximum.
+const positiveMinutes = (value, fallback) =>
+  Number.isFinite(value) && value > 0 && Number.isFinite(value * 60000) ? value : fallback;
+
 export const defaultSettings = Object.freeze({
   engine: 'browser',
   recognitionEngine: 'browser',
@@ -79,6 +83,9 @@ export const defaultSettings = Object.freeze({
   interruptSpeechOnUserMessage: false,
   sendingMode: 'manual',
   dshBusyEnterBehavior: 'queue',
+  autoEndEnabled: true,
+  autoEndMinutes: 5,
+  autoEndWarningMinutes: 1,
   autoSendDelaySeconds: 4,
   assistantSpeechDelaySeconds: 1.5,
   mode: 'speaker',
@@ -317,6 +324,12 @@ export function normalizeSettings(value) {
         : ['manual', 'queue', 'steer'].includes(source.sendingMode)
           ? source.sendingMode
           : defaultSettings.sendingMode,
+    autoEndEnabled: typeof source.autoEndEnabled === 'boolean' ? source.autoEndEnabled : true,
+    autoEndMinutes: positiveMinutes(source.autoEndMinutes, 5),
+    autoEndWarningMinutes: Math.min(
+      positiveMinutes(source.autoEndWarningMinutes, 1),
+      positiveMinutes(source.autoEndMinutes, 5) / 2,
+    ),
     autoSendDelaySeconds: autoSendDelayOptions.includes(source.autoSendDelaySeconds)
       ? source.autoSendDelaySeconds
       : defaultSettings.autoSendDelaySeconds,

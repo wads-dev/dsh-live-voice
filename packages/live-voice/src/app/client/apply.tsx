@@ -1,5 +1,7 @@
 // @ts-nocheck
 import React from 'react';
+import { VoiceInactivity } from '../../modules/conversation/models/inactivity.js';
+import { InactivityNotice } from '../../modules/conversation/components/InactivityNotice.js';
 import {
   matchesShortcut,
   releasesShortcut,
@@ -92,6 +94,48 @@ export function apply(ctx) {
   // A route change may replace every conversation slot, but the next committed
   // composer should inherit the user's explicit choice to remain in voice mode.
   let voiceModeActive = false;
+  let inactivityEnding = false;
+  const inactivity = new VoiceInactivity({
+    warn: (seconds) => {
+      const text = t('dsh-live-voice.settings.autoEnd.warning', { seconds });
+      const c = meetingEntry?.controller;
+      // Do not replace assistant playback or a manually paused speech queue.
+      const s = c?.getSnapshot();
+      if (c && !s.speaking && !s.paused && !s.speechRunActive && !c.queue.length)
+        run(c, c.play(text, null, true));
+      return text;
+    },
+    end: () => {
+      inactivityEnding = true;
+      voiceModeActive = false;
+      ownership.cancel();
+      const c = meetingEntry?.controller;
+      const work = [meeting.attendee.disconnectMeeting(), meeting.end()];
+      for (const entry of controllers.values()) {
+        entry.parkedInput = false;
+        entry.controller.cancelAutoSend();
+        work.push(entry.controller.endConversation());
+      }
+      void Promise.allSettled(work).then((results) => {
+        inactivityEnding = false;
+        const failed = results.find((result) => result.status === 'rejected');
+        if (failed && c) c.patch({ error: t('dsh-live-voice.settings.autoEnd.stopFailed') });
+      });
+    },
+  });
+  const tickInactivity = () => {
+    if (disposed || inactivityEnding) return;
+    const inputs = [...controllers.values()].map((entry) => entry.controller.getSnapshot());
+    inputs.push(...[...meeting.inputs.values()].map((input) => input.getSnapshot()));
+    const active =
+      inputs.some((s) => s.conversation || s.starting || s.listening) ||
+      meeting.attendee.getSnapshot().active ||
+      meeting.attendee.getSnapshot().starting;
+    const busy = inputs.some(
+      (s) => s.recognizing || (s.pendingTranscriptionRequests ?? s.pendingTranscriptions) > 0,
+    );
+    inactivity.tick(active, busy, preferences.getSnapshot());
+  };
   let meetingEntry = null;
   let sharedSpeechActive = false;
   const externalSpeaking = new Set();
@@ -104,8 +148,12 @@ export function apply(ctx) {
       meetingEntry?.controller.setExternalSpeechActivity(sharedSpeechActive);
       meetingEntry?.controller.refreshDeliveryReadiness();
     },
-    onSpeech: (source, text) =>
-      source === 'microphone' || meetingEntry?.controller.confirmExternalSpeech(text) !== false,
+    onSpeech: (source, text) => {
+      if (!inactivity.recognized(text || '')) return false;
+      return (
+        source === 'microphone' || meetingEntry?.controller.confirmExternalSpeech(text) !== false
+      );
+    },
     stopSpeech: () => meetingEntry?.controller.stopSpeech(),
     composer: {
       getDraft: () => meetingEntry?.draft || '',
@@ -412,6 +460,7 @@ export function apply(ctx) {
       throw error;
     }
   }
+  let inactivitySettings = null;
   let attendeeRecognitionSettings = null;
   const unsubscribePreferences = preferences.subscribe((settings) => {
     if (
@@ -420,6 +469,13 @@ export function apply(ctx) {
     )
       void meeting.attendee.stop();
     attendeeRecognitionSettings = settings;
+    const inactivityNext = JSON.stringify([
+      settings.autoEndEnabled,
+      settings.autoEndMinutes,
+      settings.autoEndWarningMinutes,
+    ]);
+    if (inactivitySettings !== inactivityNext) inactivity.keepAlive();
+    inactivitySettings = inactivityNext;
     if (disposed) return;
     preferencesLoaded = true;
     const speechChanged =
@@ -584,6 +640,7 @@ export function apply(ctx) {
       },
       meter,
       composer: {
+        onRecognizedText: (text) => inactivity.recognized(text || ''),
         getDraft: () => entry.draft,
         canAutoSend: () =>
           [...meeting.inputs.values()].every(
@@ -1166,6 +1223,10 @@ export function apply(ctx) {
     useComposer(entry, props);
     return entry ? (
       <div className="dlv-bar-stack">
+        <InactivityNotice
+          clock={inactivity}
+          restart={() => run(entry.controller, entry.controller.startConversation())}
+        />
         <SpeechStatusBar controller={entry.controller} />
         <MeetingBars meeting={entry.meeting} />
         <ConversationStatusBar controller={entry.controller} includeSpeech={false} />
@@ -1254,6 +1315,7 @@ export function apply(ctx) {
     t('dsh-live-voice.commons.pluginName'),
   );
   ctx.effect(() => {
+    const inactivityTimer = setInterval(tickInactivity, 500);
     const stop = () => {
       speechMemory.clear();
       for (const entry of controllers.values()) entry.speechState.checkpoint = null;
@@ -1343,6 +1405,7 @@ export function apply(ctx) {
     window.addEventListener('pagehide', stop);
     return () => {
       disposed = true;
+      clearInterval(inactivityTimer);
       leaveGuard.dispose();
       localModels.dispose();
       if (window[RECORDING_KEY] === recordings) {

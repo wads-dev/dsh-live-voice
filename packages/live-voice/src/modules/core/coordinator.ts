@@ -811,6 +811,7 @@ export class VoiceCoordinator {
       if (final) this.navigationResults.push(result);
       return;
     }
+    if (this.composer.onRecognizedText?.(final || interim) === false) return;
     const recognizing = this.recognition.activityManaged ? this.snapshot.recognizing : !!interim;
     if (
       this.snapshot.speaking &&

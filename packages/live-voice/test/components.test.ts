@@ -225,8 +225,8 @@ test('mounted voice UI exposes controls, distinct states, and capability failure
       'browser provider controls its own segmentation',
     );
     const checks = [...document.querySelectorAll('input[type=checkbox]')];
-    assert.equal(checks.length, 10);
-    assert.equal(checks.filter((input) => input.checked).length, 8);
+    assert.equal(checks.length, 11);
+    assert.equal(checks.filter((input) => input.checked).length, 9);
     assert.equal(
       checks.find((input) =>
         input.parentElement.textContent.includes('Stop assistant speech when I send a message'),
@@ -549,13 +549,31 @@ test('recording settings default on, preserve explicit opt-out and explain activ
     assert.match(document.body.textContent, /On by default/);
     assert.match(document.body.textContent, /Turn off to opt out/);
     assert.match(document.body.textContent, /Keep 1–100 ordinary captures per source type/);
-    assert.match(document.body.textContent, /Attendee keeps N meeting groups, newest by capture activity/);
-    assert.match(document.body.textContent, /every participant and burst while that group is retained/);
-    assert.match(document.body.textContent, /Active writers, pending writes and stars protect the whole meeting group without consuming an ordinary slot/);
-    assert.match(document.body.textContent, /Silence between bursts does not mean the call ended or reserve its place/);
+    assert.match(
+      document.body.textContent,
+      /Attendee keeps N meeting groups, newest by capture activity/,
+    );
+    assert.match(
+      document.body.textContent,
+      /every participant and burst while that group is retained/,
+    );
+    assert.match(
+      document.body.textContent,
+      /Active writers, pending writes and stars protect the whole meeting group without consuming an ordinary slot/,
+    );
+    assert.match(
+      document.body.textContent,
+      /Silence between bursts does not mean the call ended or reserve its place/,
+    );
     assert.match(document.body.textContent, /a newer meeting may expire an older quiet group/);
-    assert.match(document.body.textContent, /Legacy microphone.shared recordings keep N captures per type/);
-    assert.match(document.body.textContent, /Browser quota or storage eviction can still limit availability/);
+    assert.match(
+      document.body.textContent,
+      /Legacy microphone.shared recordings keep N captures per type/,
+    );
+    assert.match(
+      document.body.textContent,
+      /Browser quota or storage eviction can still limit availability/,
+    );
     assert.match(document.body.textContent, /browser profile and site/);
     assert.match(document.body.textContent, /lossy compression/);
     assert.match(document.body.textContent, /consent/);

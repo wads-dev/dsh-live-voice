@@ -477,6 +477,21 @@ const ptBR: LiveVoiceTranslation = {
     'O áudio, incluindo silêncio e sons de fundo, fica salvo localmente neste perfil do navegador e site, com compressão com perdas. Obtenha consentimento antes de gravar outras pessoas. Desativar esta opção não exclui gravações salvas.',
   'dsh-live-voice.recording.status.saved': 'Áudio salvo até {time}',
   'dsh-live-voice.recording.title': 'Gravações recuperáveis',
+  'dsh-live-voice.settings.autoEnd.continue': 'Continuar ouvindo',
+  'dsh-live-voice.settings.autoEnd.countdown':
+    'A captura de voz será encerrada em {seconds} segundos sem transcrição.',
+  'dsh-live-voice.settings.autoEnd.enabled': 'Encerrar captura de voz automaticamente',
+  'dsh-live-voice.settings.autoEnd.ended': 'Sessão de voz encerrada por inatividade.',
+  'dsh-live-voice.settings.autoEnd.help':
+    'Encerra todas as fontes de entrada após um período sem texto reconhecido. Novo texto ou Continuar ouvindo reinicia a contagem. Os tempos são em minutos; a antecedência deve ser positiva e no máximo 50% do total. Não há mute automático. Um reconhecimento travado pode adiar o encerramento em até 30 segundos.',
+  'dsh-live-voice.settings.autoEnd.minutes': 'Encerrar após inatividade (minutos)',
+  'dsh-live-voice.settings.autoEnd.restart': 'Iniciar novamente',
+  'dsh-live-voice.settings.autoEnd.stopFailed':
+    'Não foi possível encerrar alguns recursos de voz. Verifique os controles de entrada.',
+  'dsh-live-voice.settings.autoEnd.title': 'Encerramento automático',
+  'dsh-live-voice.settings.autoEnd.warning':
+    'Nenhuma transcrição detectada. A captura de voz será encerrada em {seconds} segundos. Fale algo ou escolha Continuar ouvindo para mantê-la ativa.',
+  'dsh-live-voice.settings.autoEnd.warningMinutes': 'Avisar antes de encerrar (minutos)',
   'dsh-live-voice.settings.autoSend.cancel': 'Cancelar envio automático',
   'dsh-live-voice.settings.autoSend.countdown': 'Enviando em {remaining}',
   'dsh-live-voice.settings.autoSend.delay': 'Enviar após o silêncio',

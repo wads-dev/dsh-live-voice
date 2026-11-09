@@ -469,6 +469,21 @@ const en: LiveVoiceTranslation = {
     'Audio, including silence and background sound, is stored locally in this browser profile and site, using lossy compression. Obtain consent before recording others. Turning this off does not delete saved recordings.',
   'dsh-live-voice.recording.status.saved': 'Audio saved through {time}',
   'dsh-live-voice.recording.title': 'Recoverable recordings',
+  'dsh-live-voice.settings.autoEnd.continue': 'Continue listening',
+  'dsh-live-voice.settings.autoEnd.countdown':
+    'Voice capture ends in {seconds} seconds without a transcription.',
+  'dsh-live-voice.settings.autoEnd.enabled': 'End voice capture automatically',
+  'dsh-live-voice.settings.autoEnd.ended': 'Voice session ended due to inactivity.',
+  'dsh-live-voice.settings.autoEnd.help':
+    'End all input sources after no recognized text. New text or Continue listening resets the clock. Both times are in minutes; warning lead time must be positive and at most 50% of the total. No automatic mute. A stalled recognition can delay ending by up to 30 seconds.',
+  'dsh-live-voice.settings.autoEnd.minutes': 'End after inactivity (minutes)',
+  'dsh-live-voice.settings.autoEnd.restart': 'Start again',
+  'dsh-live-voice.settings.autoEnd.stopFailed':
+    'Some voice resources could not be stopped. Check the input controls.',
+  'dsh-live-voice.settings.autoEnd.title': 'Automatic ending',
+  'dsh-live-voice.settings.autoEnd.warning':
+    'No transcription detected. Voice capture will end in {seconds} seconds. Speak or choose Continue listening to keep it active.',
+  'dsh-live-voice.settings.autoEnd.warningMinutes': 'Warn before ending (minutes)',
   'dsh-live-voice.settings.autoSend.cancel': 'Cancel automatic send',
   'dsh-live-voice.settings.autoSend.countdown': 'Sending in {remaining}',
   'dsh-live-voice.settings.autoSend.delay': 'Send after silence',

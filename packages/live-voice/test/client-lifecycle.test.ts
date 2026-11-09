@@ -1389,6 +1389,7 @@ test('composer autoplay remains between shared audio and microphone while idle, 
     c.patch({ settings: { ...c.getSnapshot().settings, ...next } });
   };
   const before = f.calls.length;
+
   await act(async () => buttons[1].click());
   assert.deepEqual(updates, [{ announceAssistantMessages: true, mode: 'headphones' }]);
   assert.equal(buttons[1].getAttribute('data-audio-mode'), 'headphones');
@@ -1924,4 +1925,46 @@ test('closing microphone mode preserves playback but disables voice continuity o
     f.calls.some(([name, controller]) => name === 'conversation' && controller === b),
     false,
   );
+});
+
+test('global inactivity warns, accepts continuation and ends microphone and meeting together', async (t) => {
+  t.mock.timers.enable({ apis: ['Date', 'setInterval'], now: 1000 });
+  const f = await fixture(t);
+  await f.render(h(React.Fragment, null, h(f.Buttons, f.props('a')), h(f.Dock, f.props('a'))));
+  const c = f.controllers.find((value) => !value.disposed);
+  let meeting;
+  t.mock.method(MeetingController.prototype, 'end', async function () {
+    meeting = this;
+    for (const source of this.inputs.values())
+      source.patch({ conversation: false, listening: false });
+    this.patch('shared', { listening: false });
+  });
+  const playback = [];
+  t.mock.method(c, 'play', async (text) => {
+    playback.push(text);
+  });
+  t.mock.method(c, 'endConversation', async () => {
+    c.patch({ listening: false, conversation: false });
+  });
+  await act(async () => c.patch({ listening: true, conversation: true }));
+  const advance = async (seconds) => {
+    for (let i = 0; i < seconds * 2; i++) await act(async () => t.mock.timers.tick(500));
+  };
+  await advance(241);
+  assert.match(document.querySelector('.dlv-inactivity-notice').textContent, /60|59/);
+  assert.equal(playback.length, 1);
+  await act(async () => c.composer.onRecognizedText('I am still here'));
+  assert.equal(document.querySelector('.dlv-inactivity-notice'), null);
+  await advance(240);
+  await act(async () => document.querySelector('.dlv-inactivity-notice button').click());
+  assert.equal(document.querySelector('.dlv-inactivity-notice'), null);
+  await advance(301);
+  assert.equal(c.getSnapshot().conversation, false);
+  assert.ok(meeting, 'application-owned meeting end is invoked alongside microphone end');
+  assert.match(
+    document.querySelector('.dlv-inactivity-notice').textContent,
+    /ended due to inactivity/,
+  );
+  await act(async () => document.querySelector('.dlv-inactivity-notice button').click());
+  assert.ok(f.calls.some(([kind]) => kind === 'conversation'));
 });

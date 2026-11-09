@@ -343,6 +343,17 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.recording.privacyWarning': string;
   'dsh-live-voice.recording.status.saved': string;
   'dsh-live-voice.recording.title': string;
+  'dsh-live-voice.settings.autoEnd.continue': string;
+  'dsh-live-voice.settings.autoEnd.countdown': string;
+  'dsh-live-voice.settings.autoEnd.enabled': string;
+  'dsh-live-voice.settings.autoEnd.ended': string;
+  'dsh-live-voice.settings.autoEnd.help': string;
+  'dsh-live-voice.settings.autoEnd.minutes': string;
+  'dsh-live-voice.settings.autoEnd.restart': string;
+  'dsh-live-voice.settings.autoEnd.stopFailed': string;
+  'dsh-live-voice.settings.autoEnd.title': string;
+  'dsh-live-voice.settings.autoEnd.warning': string;
+  'dsh-live-voice.settings.autoEnd.warningMinutes': string;
   'dsh-live-voice.settings.autoSend.cancel': string;
   'dsh-live-voice.settings.autoSend.countdown': string;
   'dsh-live-voice.settings.autoSend.delay': string;

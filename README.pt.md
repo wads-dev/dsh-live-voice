@@ -47,6 +47,7 @@ Interface traduzida: 🇺🇸 inglês · 🇧🇷 português brasileiro · 🇪�
 
 - 🎙️ **Ditado por voz:** acrescenta a fala reconhecida ao fim da mensagem, sem substituir suas edições manuais.
 - 👐 **Conversa sem teclado:** mantém o diálogo por voz ativo entre sessões de chat.
+- ⏲️ **Encerre capturas esquecidas:** ligado por padrão após cinco minutos sem texto reconhecido em nenhuma fonte de entrada, com aviso um minuto antes e ação Continuar ouvindo. Configure ou desligue na aba Conversa; a antecedência é limitada à metade do prazo total.
 - ❓ **Perguntas estruturadas por voz:** lê as perguntas do DSH e envia sua resposta falada.
 - ⌨️ **Pressione para falar, opcional:** habilite nas configurações, segure `Control` em qualquer lugar da página e solte para colocar a mensagem na fila após o atraso de envio configurado. Desativado por padrão.
 - 🎧 **Comportamento adequado à saída de áudio:** escuta controlada ao usar alto-falantes e interrupção com microfone aberto ao usar fones.

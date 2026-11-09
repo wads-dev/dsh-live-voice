@@ -6,6 +6,14 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ## [NEXT] - Unreleased
 
+### Features
+
+- Automatically end forgotten voice capture after five minutes without recognized text across microphone, shared audio and meeting participants. Enabled by default and configurable in Conversation settings, with a one-minute advance warning, visual countdown, optional available TTS playback and Continue listening action. Both durations are editable; warning lead time must be positive and at most half the total, without an absolute cap. Preserve the composer draft and show an inactivity reason with explicit restart. Pending speech recognition gets bounded grace, and delayed timers provide a fresh warning window.
+
+### Improvements
+
+- Make Ignoring easier to notice with a red-tinted button background in light and dark themes, retaining the accessible state.
+
 ## [0.7.2] - 2026-11-08
 
 ### Fixes

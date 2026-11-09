@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '../../../../app/client/i18n/index.js';
 import { SettingsCard, SettingsSection } from '../../../../shared/design-system/index.js';
 import { DeliverySettings } from './DeliverySettings.js';
+import { InactivitySettings } from './InactivitySettings.js';
 import { MeetingSourceSettings } from './MeetingSourceSettings.js';
 import { ShortcutSettings } from './ShortcutSettings.js';
 import { VoiceModeSettings } from './VoiceModeSettings.js';
@@ -25,6 +26,7 @@ export function ConversationSettingsSection(props: {
           <PlaybackPolicySettings {...props} />
           <ConversationDelaySettings {...props} />
         </SettingsSection>
+        <InactivitySettings {...props} />
         <MeetingSourceSettings {...props} />
         <SettingsSection
           title={(settingsLanguage as any).layout.shortcut()}

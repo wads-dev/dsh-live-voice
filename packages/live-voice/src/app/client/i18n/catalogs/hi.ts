@@ -469,6 +469,21 @@ const hi: LiveVoiceTranslation = {
     'मौन और पृष्ठभूमि की ध्वनि सहित ऑडियो इस ब्राउज़र प्रोफ़ाइल और साइट में स्थानीय रूप से हानिपूर्ण संपीड़न के साथ सहेजा जाता है। दूसरों को रिकॉर्ड करने से पहले सहमति लें। इसे बंद करने से सहेजी गई रिकॉर्डिंग नहीं मिटतीं।',
   'dsh-live-voice.recording.status.saved': 'ऑडियो {time} तक सहेजा गया',
   'dsh-live-voice.recording.title': 'पुनर्प्राप्त करने योग्य रिकॉर्डिंग',
+  'dsh-live-voice.settings.autoEnd.continue': 'सुनना जारी रखें',
+  'dsh-live-voice.settings.autoEnd.countdown':
+    'प्रतिलेखन न होने पर वॉइस कैप्चर {seconds} सेकंड में बंद होगा।',
+  'dsh-live-voice.settings.autoEnd.enabled': 'वॉइस कैप्चर अपने आप बंद करें',
+  'dsh-live-voice.settings.autoEnd.ended': 'निष्क्रियता के कारण वॉइस सत्र समाप्त हुआ।',
+  'dsh-live-voice.settings.autoEnd.help':
+    'पाठ न मिलने पर सभी इनपुट बंद होते हैं। नया पाठ या सुनना जारी रखें समय फिर शुरू करता है। समय मिनटों में है; चेतावनी शून्य से अधिक और कुल का अधिकतम 50% होनी चाहिए। अपने आप म्यूट नहीं होता। अटका पहचान कार्य अधिकतम 30 सेकंड की देरी कर सकता है।',
+  'dsh-live-voice.settings.autoEnd.minutes': 'निष्क्रियता के बाद बंद करें (मिनट)',
+  'dsh-live-voice.settings.autoEnd.restart': 'फिर शुरू करें',
+  'dsh-live-voice.settings.autoEnd.stopFailed':
+    'कुछ वॉइस संसाधन बंद नहीं हुए। इनपुट नियंत्रण जाँचें।',
+  'dsh-live-voice.settings.autoEnd.title': 'अपने आप बंद करना',
+  'dsh-live-voice.settings.autoEnd.warning':
+    'कोई प्रतिलेखन नहीं मिला। वॉइस कैप्चर {seconds} सेकंड में बंद होगा। बोलें या सुनना जारी रखें चुनें।',
+  'dsh-live-voice.settings.autoEnd.warningMinutes': 'बंद होने से पहले चेतावनी (मिनट)',
   'dsh-live-voice.settings.autoSend.cancel': 'स्वचालित भेजना रद्द करें',
   'dsh-live-voice.settings.autoSend.countdown': '{remaining} में भेजा जाएगा',
   'dsh-live-voice.settings.autoSend.delay': 'मौन के बाद भेजें',
