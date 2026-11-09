@@ -246,6 +246,258 @@ test('speaker playback pauses and resumes capture without replacing the recognit
   await c.dispose();
 });
 
+function persistentCapture(f) {
+  f.recognition.suspendCapture = async () => {
+    f.log.push('capture:suspend');
+    f.recognition.captureSuspended = true;
+    return true;
+  };
+  f.recognition.resumeCapture = async () => {
+    f.log.push('capture:resume');
+    f.recognition.captureSuspended = false;
+    return true;
+  };
+}
+
+for (const mode of ['speaker', 'headphones']) {
+  for (const persistent of [false, true]) {
+    for (const ignored of [false, true]) {
+      test(
+        'paused TTS releases enabled input and regates before resume: ' +
+          [mode, persistent, ignored].join('/'),
+        async (t) => {
+          const f = fixture({ mode, microphoneEnabled: !ignored, voiceCommandsEnabled: false });
+          const c = f.coordinator;
+          t.after(() => c.dispose());
+          if (persistent) persistentCapture(f);
+          await c.startConversation();
+          const playback = c.speak('Keep this answer paused.', 'paused-answer');
+          await turn();
+          if (mode === 'speaker')
+            assert.equal(persistent ? f.recognition.captureSuspended : !c.snapshot.listening, true);
+          await c.pauseSpeech();
+          assert.equal(c.snapshot.paused, true);
+          assert.equal(c.snapshot.listening, true);
+          assert.notEqual(f.recognition.captureSuspended, true);
+          assert.equal(c.snapshot.activeMessageId, 'paused-answer');
+          assert.equal(c.snapshot.muted, ignored);
+          const before = f.draft();
+          f.sessions.at(-1).onResult({ final: 'My turn to speak now.' });
+          assert.equal(f.draft() !== before, !ignored);
+          assert.equal(c.snapshot.paused, true);
+          if (persistent || mode === 'headphones') assert.equal(f.sessions.length, 1);
+          f.engine.resume = () => {
+            if (mode === 'speaker') {
+              assert.equal(
+                persistent ? f.recognition.captureSuspended : !c.snapshot.listening,
+                true,
+              );
+            } else {
+              assert.equal(c.snapshot.listening, true);
+              assert.equal(f.log.includes('capture:suspend'), false);
+            }
+            return true;
+          };
+          await c.resumeSpeech();
+          assert.equal(c.snapshot.paused, false);
+          f.spoken[0].resolve();
+          await playback;
+          assert.equal(c.snapshot.listening, true);
+          assert.notEqual(f.recognition.captureSuspended, true);
+        },
+      );
+    }
+  }
+}
+
+test('pause never opens explicitly closed microphone input', async (t) => {
+  const f = fixture({ mode: 'speaker' });
+  persistentCapture(f);
+  const c = f.coordinator;
+  t.after(() => c.dispose());
+  await c.startConversation();
+  const playback = c.speak('An answer.');
+  await turn();
+  await c.stopConversationInput();
+  const starts = f.sessions.length;
+  await c.pauseSpeech();
+  assert.equal(c.snapshot.listening, false);
+  assert.equal(f.sessions.length, starts);
+  assert.equal(f.log.includes('capture:resume'), false);
+  await c.stopSpeech();
+  await playback;
+});
+
+test('failed player pause does not release the speaker echo gate', async (t) => {
+  const f = fixture({ mode: 'speaker' });
+  persistentCapture(f);
+  t.after(() => f.coordinator.dispose());
+  await f.coordinator.startConversation();
+  const playback = f.coordinator.speak('An answer.');
+  await turn();
+  f.engine.pause = () => false;
+  await f.coordinator.pauseSpeech();
+  assert.equal(f.coordinator.snapshot.paused, false);
+  assert.equal(f.recognition.captureSuspended, true);
+  await f.coordinator.stopSpeech();
+  await playback;
+});
+
+test('resume waits for capture suspension and stays paused if gating fails', async (t) => {
+  const f = fixture({ mode: 'speaker' });
+  persistentCapture(f);
+  const c = f.coordinator;
+  t.after(() => c.dispose());
+  await c.startConversation();
+  const playback = c.speak('An answer.');
+  await turn();
+  await c.pauseSpeech();
+  const gate = deferred();
+  f.recognition.suspendCapture = () => gate.promise;
+  const resume = c.resumeSpeech();
+  await turn();
+  assert.equal(f.log.includes('resume'), false);
+  assert.equal(c.snapshot.paused, true);
+  gate.reject(new Error('capture gate failed'));
+  await resume;
+  assert.equal(f.log.includes('resume'), false);
+  assert.equal(c.snapshot.paused, true);
+  assert.match(c.snapshot.error, /capture gate failed/);
+  await c.stopSpeech();
+  await playback;
+});
+
+test('stop input during pause capture recovery cannot reopen it', async (t) => {
+  const f = fixture({ mode: 'speaker' });
+  persistentCapture(f);
+  const c = f.coordinator;
+  t.after(() => c.dispose());
+  await c.startConversation();
+  const playback = c.speak('An answer.');
+  await turn();
+  const gate = deferred();
+  const resumeCapture = f.recognition.resumeCapture;
+  f.recognition.resumeCapture = async () => {
+    await gate.promise;
+    return resumeCapture();
+  };
+  const pause = c.pauseSpeech();
+  await turn();
+  const stop = c.stopConversationInput();
+  gate.resolve();
+  await Promise.all([pause, stop]);
+  assert.equal(c.snapshot.listening, false);
+  assert.equal(c.snapshot.conversation, false);
+  assert.equal(f.sessions.length, 1);
+  await c.stopSpeech();
+  await playback;
+});
+
+for (const outcome of ['refused', 'throws']) {
+  test('unsuccessful resume restores paused speaker capture: ' + outcome, async (t) => {
+    const f = fixture({ mode: 'speaker' });
+    persistentCapture(f);
+    const c = f.coordinator;
+    t.after(() => c.dispose());
+    await c.startConversation();
+    const playback = c.speak('An answer.');
+    await turn();
+    await c.pauseSpeech();
+    f.engine.resume = () => {
+      assert.equal(f.recognition.captureSuspended, true);
+      if (outcome === 'throws') throw new Error('resume failed');
+      return false;
+    };
+    await c.resumeSpeech();
+    assert.equal(c.snapshot.paused, true);
+    assert.equal(f.recognition.captureSuspended, false);
+    await c.stopSpeech();
+    await playback;
+  });
+}
+
+test('pause while initial speaker gate is pending releases capture after the gate settles', async (t) => {
+  const f = fixture({ mode: 'speaker' });
+  persistentCapture(f);
+  const c = f.coordinator;
+  t.after(() => c.dispose());
+  await c.startConversation();
+  const gate = deferred();
+  const suspend = f.recognition.suspendCapture;
+  f.recognition.suspendCapture = async () => {
+    await gate.promise;
+    return suspend();
+  };
+  const playback = c.speak('An answer.');
+  await turn();
+  await c.pauseSpeech();
+  assert.equal(c.snapshot.paused, true);
+  gate.resolve();
+  await turn();
+  assert.equal(f.recognition.captureSuspended, false);
+  assert.equal(f.spoken.length, 0);
+  await c.resumeSpeech();
+  await turn();
+  assert.equal(f.spoken.length, 1);
+  assert.equal(f.recognition.captureSuspended, true);
+  f.spoken[0].resolve();
+  await playback;
+});
+
+test('pause between speaker segments releases the retained capture gate', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const f = fixture({ mode: 'speaker', segmentGapMs: 1000 });
+  persistentCapture(f);
+  const c = f.coordinator;
+  t.after(() => c.dispose());
+  await c.startConversation();
+  c.observeMessage('first', 'First.', { complete: true });
+  await turn();
+  c.observeMessage('second', 'Second.', { complete: true });
+  f.spoken[0].resolve();
+  await turn();
+  assert.equal(c.snapshot.speaking, false);
+  assert.equal(f.recognition.captureSuspended, true);
+  await c.pauseSpeech();
+  assert.equal(f.recognition.captureSuspended, false);
+  t.mock.timers.tick(2000);
+  await turn();
+  assert.equal(f.spoken.length, 1);
+  await c.resumeSpeech();
+  await turn();
+  assert.equal(f.spoken.length, 2);
+  assert.equal(f.recognition.captureSuspended, true);
+  f.spoken[1].resolve();
+  await turn();
+});
+
+test('pause during synthesis restores capture and resume gates before prepared playback', async (t) => {
+  const f = fixture({ mode: 'speaker' });
+  persistentCapture(f);
+  const c = f.coordinator;
+  t.after(() => c.dispose());
+  const preparation = deferred();
+  f.engine.prepare = () => preparation.promise;
+  f.engine.playPrepared = () => {
+    assert.equal(f.recognition.captureSuspended, true);
+    return f.engine.speak('Prepared answer.');
+  };
+  await c.startConversation();
+  const playback = c.speak('An answer.');
+  await turn();
+  await c.pauseSpeech();
+  assert.equal(f.recognition.captureSuspended, false);
+  preparation.resolve({ dispose() {} });
+  await turn();
+  assert.equal(f.spoken.length, 0);
+  await c.resumeSpeech();
+  await turn();
+  assert.equal(f.spoken.length, 1);
+  assert.equal(f.sessions.length, 1);
+  f.spoken[0].resolve();
+  await playback;
+});
+
 test('recording timeline distinguishes gating from real playback start and ignores stale starts', async () => {
   const f = fixture();
   const events = [];

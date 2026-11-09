@@ -44,7 +44,7 @@ Keep the failed speech segment and unread queue for a manual retry after automat
 - **Headphones:** the microphone can remain open. Interruption requires qualifying transcript/activity rather than a single noise event.
 - Spoken Send and Queue commands perform one delivery using their requested mode, without enabling, disabling, changing, or persisting the automatic-send preference. They cancel any pending countdown before that one-shot delivery.
 - Automatic delivery starts only after final transcription and the configured quiet delay. New speech, edits, cancellation, or session replacement cancels a pending delivery.
-- Automatic assistant playback waits for continuous silence and pending transcription/delivery work. Renewed speech restarts the delay. Manual per-message playback is not delayed.
+- Automatic assistant playback waits for continuous silence and pending transcription/delivery work. Renewed speech restarts the delay. Manual per-message playback is not delayed. A confirmed playback pause releases speaker-gated microphone capture while input remains enabled, preserving Ignoring and the paused speech position. Resuming playback must safely suspend or stop microphone capture before any audio resumes; a failed gate leaves playback paused. A pause never reopens explicitly stopped or navigation-parked input.
 - Sending a user message does not stop existing assistant playback unless the explicit interruption preference is enabled. Loaded history never counts as a new user turn.
 
 ## Lifecycle transitions

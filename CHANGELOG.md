@@ -6,7 +6,9 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ## [NEXT] - Unreleased
 
-Upcoming changes will be recorded here.
+### Fixes
+
+- Restore enabled microphone capture while assistant speech is paused in Speakers mode, and reapply the echo-protection gate before resuming playback. Preserve recording-backed sessions, explicit input stop, Ignoring, and Headphones behavior.
 
 ## [0.7.1] - 2026-11-07
 

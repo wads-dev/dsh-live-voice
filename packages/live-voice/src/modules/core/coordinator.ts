@@ -408,9 +408,13 @@ export class VoiceCoordinator {
       return (await this.recognition.suspendCapture()) !== false;
     });
   }
-  async _resumeInputCapture() {
+  async _resumeInputCapture(valid = () => true) {
     return this._input(async () => {
-      if (!this.snapshot.listening || typeof this.recognition.resumeCapture !== 'function')
+      if (
+        !valid() ||
+        !this.snapshot.listening ||
+        typeof this.recognition.resumeCapture !== 'function'
+      )
         return false;
       return (await this.recognition.resumeCapture()) !== false;
     });
@@ -1370,23 +1374,67 @@ export class VoiceCoordinator {
   getSpeechProgress() {
     return this.engines[this.snapshot.speechEngine]?.getPlaybackProgress?.() ?? null;
   }
+  async _restorePausedSpeechInput(epoch, control) {
+    const valid = () =>
+      !this.disposed &&
+      !this.navigationPaused &&
+      epoch === this.speechEpoch &&
+      control === this.controlEpoch &&
+      this.snapshot.paused &&
+      this.snapshot.settings.mode === 'speaker';
+    if (!valid()) return;
+    try {
+      if (this._hasSuspendedInputCapture()) {
+        await this._resumeInputCapture(valid);
+      } else if (
+        this.snapshot.conversation &&
+        !this.snapshot.listening &&
+        !this.snapshot.starting &&
+        !this.snapshot.inputRecovery
+      ) {
+        await this._startInput(true);
+      }
+    } catch (error) {
+      if (valid()) this.patch({ inputError: message(error), error: message(error) });
+    }
+  }
+  async _gateResumedSpeechInput() {
+    if (this.snapshot.settings.mode !== 'speaker') return;
+    // Preserve recording-backed capture; native engines retain safe stop/restart.
+    const suspended = await this._suspendInputCapture();
+    if (!suspended) {
+      await this.stopListening();
+      if (this.inputReleaseError) throw this.inputReleaseError;
+    }
+  }
   async pauseSpeech(automatic = false) {
     if (this.snapshot.speechRecovery?.retrying) this._cancelRecovery('speech', true);
     if (!automatic) {
       this._cancelInterruptionResume();
       this.interruptionPausedSpeech = false;
     }
-    if (this.disposed || this.snapshot.paused) return;
+    if (this.disposed) return;
+    if (this.snapshot.paused) {
+      // Reaffirming pause invalidates a resume whose capture gate is still pending.
+      const epoch = this.speechEpoch;
+      const control = ++this.controlEpoch;
+      await this.inputTail;
+      await this._restorePausedSpeechInput(epoch, control);
+      return;
+    }
     if (!this.snapshot.speaking && this.snapshot.speechRunActive) {
       this._cancelAssistantSpeechTimer();
+      const control = ++this.controlEpoch;
       this.patch({ paused: true });
+      await this._restorePausedSpeechInput(this.speechEpoch, control);
       return;
     }
     if (!this.snapshot.speaking) return;
     if (this.speechLaunchPending) {
       // Preparation has no player to pause yet; retain an explicit launch gate.
-      ++this.controlEpoch;
+      const control = ++this.controlEpoch;
       this.patch({ paused: true });
+      await this._restorePausedSpeechInput(this.speechEpoch, control);
       return;
     }
     const epoch = this.speechEpoch;
@@ -1403,6 +1451,7 @@ export class VoiceCoordinator {
       ) {
         this.patch({ paused: true });
         this.activeRecordingTimeline?.('assistant-pause');
+        await this._restorePausedSpeechInput(epoch, control);
       }
     } catch (error) {
       if (epoch === this.speechEpoch) this.patch({ error: message(error) });
@@ -1422,12 +1471,11 @@ export class VoiceCoordinator {
     if (this.speechLaunchPending) {
       const epoch = this.speechEpoch;
       const control = ++this.controlEpoch;
-      if (this.snapshot.settings.mode === 'speaker') {
-        await this.stopListening();
-        if (this.inputReleaseError) {
-          this.patch({ error: message(this.inputReleaseError) });
-          return;
-        }
+      try {
+        await this._gateResumedSpeechInput();
+      } catch (error) {
+        if (epoch === this.speechEpoch) this.patch({ error: message(error) });
+        return;
       }
       if (epoch === this.speechEpoch && control === this.controlEpoch)
         this.patch({ paused: false });
@@ -1436,10 +1484,7 @@ export class VoiceCoordinator {
     const epoch = this.speechEpoch;
     const control = ++this.controlEpoch;
     try {
-      if (this.snapshot.settings.mode === 'speaker' && !this._hasSuspendedInputCapture()) {
-        await this.stopListening();
-        if (this.inputReleaseError) throw this.inputReleaseError;
-      }
+      await this._gateResumedSpeechInput();
       if (epoch !== this.speechEpoch || control !== this.controlEpoch) return;
       const result =
         await this.engines[this.snapshot.speechEngine || this.snapshot.settings.engine].resume();
@@ -1447,9 +1492,12 @@ export class VoiceCoordinator {
         this.patch({ paused: false });
         this.activeRecordingTimeline?.('assistant-resume');
         this._prefetchSpeech();
+      } else {
+        await this._restorePausedSpeechInput(epoch, control);
       }
     } catch (error) {
       if (epoch === this.speechEpoch) this.patch({ error: message(error) });
+      await this._restorePausedSpeechInput(epoch, control);
     }
   }
   async speak(text, messageId = null) {
@@ -1548,6 +1596,8 @@ export class VoiceCoordinator {
         if (gating) timeline?.('input-stop-complete');
       }
       if (epoch !== this.speechEpoch || this.disposed) return;
+      // A pause can arrive while the initial capture gate is still settling.
+      if (this.snapshot.paused) await this._restorePausedSpeechInput(epoch, this.controlEpoch);
       const queued = item;
       if (queued?.preparing) await queued.preparing;
       if (epoch !== this.speechEpoch || this.disposed) return;
