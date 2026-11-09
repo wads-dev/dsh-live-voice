@@ -690,7 +690,8 @@ export function apply(ctx) {
       entry.chatListeners.add(listener);
       return () => entry.chatListeners.delete(listener);
     };
-    entry.readChat = entry.chat.getSnapshot.bind(entry.chat);
+    // Stable React store readers must follow a replacement DSH session binding.
+    entry.readChat = () => entry.chat.getSnapshot();
     const refresh = (reset = false) => {
       if (disposed || entry.closed) return;
       const snapshot = entry.readChat();
@@ -729,10 +730,22 @@ export function apply(ctx) {
     };
     entry.refreshSpeech = refresh;
     refresh();
-    entry.unsubscribe = entry.chat.subscribe(() => {
+    const publishChat = () => {
       refresh();
       for (const listener of entry.chatListeners) listener();
-    });
+    };
+    entry.unsubscribe = entry.chat.subscribe(publishChat);
+    entry.reconnectChat = () => {
+      if (disposed || entry.closed) return;
+      const chat = ctx.uiConversation.binding(sessionId).target('chat');
+      if (chat === entry.chat) return;
+      entry.unsubscribe?.();
+      entry.chat = chat;
+      entry.unsubscribe = chat.subscribe(publishChat);
+      // Subscribe first: activation may materialize the target synchronously.
+      // Existing speech memory and detached-session admission rules still apply.
+      publishChat();
+    };
     // DSH 0.1.6 may omit this legacy store. Keep the remaining voice controls
     // available while structured-question integration is unavailable.
     const pendingInteractions = ctx.uiSession.pendingInteractions;
@@ -927,6 +940,7 @@ export function apply(ctx) {
       // Allocation and subscriptions happen only for committed mounts. Suspended
       // or abandoned renders never acquire a session, probe engines, or retain it.
       const current = get(sessionId);
+      current.reconnectChat();
       current.refs++;
       if (kind === 'buttons') current.buttons++;
       setEntry(current);

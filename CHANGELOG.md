@@ -6,8 +6,11 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ## [NEXT] - Unreleased
 
+## [0.7.2] - 2026-11-08
+
 ### Fixes
 
+- Reconnect retained voice sessions to the current conversation after chat navigation so new responses remain available to automatic speech and per-message playback when DSH replaces the chat binding.
 - Restore enabled microphone capture while assistant speech is paused in Speakers mode, and reapply the echo-protection gate before resuming playback. Preserve recording-backed sessions, explicit input stop, Ignoring, and Headphones behavior.
 
 ## [0.7.1] - 2026-11-07

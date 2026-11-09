@@ -220,6 +220,12 @@ async function fixture(
   return {
     serverSettings: () => serverSettings,
     chatStore: store,
+    replaceChatStore(id) {
+      // A new DSH session binding owns a new target; existing subscribers stay
+      // on the old target and must explicitly reconnect.
+      stores.delete(id);
+      return store(id);
+    },
     render,
     props,
     Buttons,
@@ -645,6 +651,109 @@ test('manual message playback remains usable without a provider health result', 
   assert.equal(button.disabled, false);
   assert.equal(button.getAttribute('aria-label'), 'Speak message');
 });
+
+for (const replaceBinding of [false, true]) {
+  for (const symptom of ['manual button', 'automatic observation']) {
+    test(
+      'session return uses the current chat target: ' + symptom + ', replaced=' + replaceBinding,
+      async (t) => {
+        const observed = [];
+        const observe = VoiceCoordinator.prototype.observeMessage;
+        t.mock.method(VoiceCoordinator.prototype, 'observeMessage', function (id, text, options) {
+          observed.push({ controller: this, id, text, ...options });
+          return observe.call(this, id, text, options);
+        });
+        const f = await fixture(t);
+        let messageId = 'm';
+        const view = (sessionId) =>
+          h(
+            React.Fragment,
+            null,
+            // Action mounts may outlive the composer, retaining the voice entry.
+            h(f.Action, { ...f.props('a'), messageId, key: 'retained-action' }),
+            h(f.Buttons, { ...f.props(sessionId), key: sessionId }),
+          );
+        await f.render(view('a'));
+        const a = f.controllers[0];
+        const oldTarget = f.store('a');
+        assert.equal(document.querySelector('.dlv-speaker').disabled, false);
+        await f.render(view('b'));
+        assert.equal(a.disposed, false, 'navigation retains the originating controller');
+
+        const currentTarget = replaceBinding ? f.replaceChatStore('a') : oldTarget;
+        messageId = 'after-navigation';
+        const reply = (text) => ({
+          kind: 'assistant-step',
+          data: {
+            turn: 2,
+            step: 0,
+            time: Date.now(),
+            status: 'settled',
+            finalNode: { messageId },
+            blocks: [{ kind: 'text', text }],
+          },
+        });
+        await act(async () =>
+          currentTarget.setSnapshot({
+            nodes: new Map([...currentTarget.getSnapshot().nodes, ['new', reply('New answer.')]]),
+          }),
+        );
+        assert.equal(
+          observed.some((item) => item.controller === a && item.text === 'New answer.'),
+          false,
+          'detached sessions do not admit background speech',
+        );
+        await f.render(view('a'));
+        assert.equal(a.disposed, false);
+        assert.equal(currentTarget.listeners.size, 1, 'one subscription even under StrictMode');
+        if (replaceBinding) {
+          assert.equal(oldTarget.listeners.size, 0, 'replacement releases the stale subscription');
+          observed.length = 0;
+          await act(async () => oldTarget.setSnapshot(oldTarget.getSnapshot()));
+          assert.equal(
+            observed.length,
+            0,
+            'stale target notifications cannot reach the controller',
+          );
+        }
+
+        if (symptom === 'manual button') {
+          assert.equal(
+            document.querySelector('.dlv-speaker').disabled,
+            false,
+            'a visible response on the current chat target must remain playable after A → B → A',
+          );
+          await act(async () => document.querySelector('.dlv-speaker').click());
+          assert.ok(
+            f.calls.some(
+              ([name, controller, text]) =>
+                name === 'speak' && controller === a && text === 'New answer.',
+            ),
+          );
+        } else {
+          // Publish again after return: this must reach automatic admission,
+          // independently of any per-message button click or real audio engine.
+          observed.length = 0;
+          await act(async () =>
+            currentTarget.setSnapshot({
+              nodes: new Map([
+                ...currentTarget.getSnapshot().nodes,
+                ['new', reply('New answer. Continued.')],
+              ]),
+            }),
+          );
+          assert.ok(
+            observed.some(
+              (item) =>
+                item.controller === a && item.text === 'New answer. Continued.' && !item.baseline,
+            ),
+            'automatic speech must observe current-target updates after returning',
+          );
+        }
+      },
+    );
+  }
+}
 
 test('late browser voices refresh live sessions and listener detaches on disposal', async (t) => {
   const f = await fixture(t);
