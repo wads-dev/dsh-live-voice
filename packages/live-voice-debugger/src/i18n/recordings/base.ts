@@ -31,6 +31,10 @@ export type RecordingsTranslation = {
   commandStopSpeaking: string;
   completed: string;
   confirmDelete: string;
+  copyTranscripts: string;
+  copyTranscriptsError: string;
+  copyTranscriptsHelp: string;
+  copyTranscriptsSuccess: string;
   date: string;
   delete: string;
   deleteAll: string;

@@ -359,6 +359,17 @@ test('integrated primary recordings tab separates sources, plays silence, export
     ['command'],
     'event table follows the same selected window as timeline',
   );
+  let copiedTranscript;
+  Object.defineProperty(owner.window.navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      writeText: async (text) => {
+        copiedTranscript = text;
+      },
+    },
+  });
+  await act(async () => document.querySelector('.dlvd-copy-transcripts button').click());
+  assert.equal(copiedTranscript, 'test transcript');
   const search = document.querySelector('input[type=search]');
   await inputValue(search, 'test transcript');
   assert.equal(document.querySelectorAll('.dlvd-segments tbody > tr').length, 2);

@@ -6,17 +6,28 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ## [NEXT] - Unreleased
 
-### Features
+### Live Voice
+
+#### Features
 
 - Show a compact, explicitly branded DSH Live Voice warning with the same red tint as the muted control after four continuous seconds of detected speech while muted, without waiting for recognized text or a completed chunk. Transcription processing alone does not count, chunk results do not reset active speech, and three continuous seconds of silence hide the notice without flicker across brief pauses. Unmute/stop clears it immediately. Never unmute or send automatically.
-- Identify recognized speech discarded by Ignoring/mute in the debugger with a separate legend, event lane, striped timeline annotation and marked segment rows. Preserve the original transcription history for recovery without copying text into diagnostic events; shared and participant sources keep the originating recording acknowledgements.
 - Customize timestamp date parts, seconds and punctuation in Conversation settings, with a live format preview and mandatory hours/minutes. Optionally label a solo input. Microphone/shared names and the always-show-name choice now stay in this browser instead of being shared through host preferences; old host names are not imported.
 - Automatically end forgotten voice capture after five minutes without recognized text across microphone, shared audio and meeting participants. Enabled by default and configurable in Conversation settings, with a one-minute advance warning, visual countdown, optional available TTS playback and Continue listening action. Both durations are editable; warning lead time must be positive and at most half the total, without an absolute cap. Preserve the composer draft and show an inactivity reason with explicit restart. Pending speech recognition gets bounded grace, and delayed timers provide a fresh warning window.
 
-### Improvements
+#### Improvements
+
+- Make Ignoring easier to notice with a red-tinted button background in light and dark themes, with crossed-out microphone/meeting icons and accessible state.
+
+### Live Voice Debugger
+
+#### Features
+
+- Copy transcripts from the current segment list with one action, respecting the selected timeline window and transcript search. Include ignored speech and copy only the latest successful nonempty attempt per segment, without duplicating retry history. Report clipboard success or failure.
+- Identify recognized speech discarded by Ignoring/mute in the debugger with a separate legend, event lane, striped timeline annotation and marked segment rows. Preserve the original transcription history for recovery without copying text into diagnostic events; shared and participant sources keep the originating recording acknowledgements.
+
+#### Improvements
 
 - Filter the debugger event table by the selected timeline window as well as the existing segment list and transcript search. Reset restores every original event, including right-edge playback events.
-- Make Ignoring easier to notice with a red-tinted button background in light and dark themes, with crossed-out microphone/meeting icons and accessible state.
 
 ## [0.7.2] - 2026-11-08
 

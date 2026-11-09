@@ -3,6 +3,7 @@ import { formatBytes } from './formatBytes.js';
 import { RecordingStorage } from './RecordingStorage.js';
 import { EventTimeline } from './EventTimeline.js';
 import { TimelineWindow } from './TimelineWindow.js';
+import { CopyTranscripts } from './CopyTranscripts.js';
 import { searchSegments } from './segmentSearch.js';
 import {
   RECORDING_CHANGED,
@@ -863,7 +864,10 @@ function RecordingDetail({
           ))}
         </tbody>
       </table>
-      <h4>{copy.recordings.segments}</h4>
+      <div className="dlvd-segment-heading">
+        <h4>{copy.recordings.segments}</h4>
+        <CopyTranscripts segments={matchedSegments} copy={copy.recordings} />
+      </div>
       <label>
         {copy.recordings.search}
         <input

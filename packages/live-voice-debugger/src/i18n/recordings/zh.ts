@@ -33,6 +33,11 @@ const translation = {
   completed: '已完成',
   confirmDelete:
     '删除整个录音，包括音频和转录历史？此操作无法撤销。删除正在录制的会话还会丢弃后续保存的音频。',
+  copyTranscripts: '复制转写',
+  copyTranscriptsError: '无法复制。请检查剪贴板权限或手动复制文本。',
+  copyTranscriptsHelp:
+    '按当前列表顺序复制每个片段最新的成功且非空转写。包含被忽略的语音，并遵循时间窗口和搜索条件。',
+  copyTranscriptsSuccess: '转写已复制。',
   date: '开始时间',
   delete: '删除整个会话',
   deleteAll: '删除所有录音',

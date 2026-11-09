@@ -33,6 +33,11 @@ const translation = {
   completed: 'Completed',
   confirmDelete:
     'Delete this entire recording, including its audio and transcription history? This cannot be undone. Deleting an active recording also discards its future saved audio.',
+  copyTranscripts: 'Copy transcripts',
+  copyTranscriptsError: 'Could not copy. Check clipboard permission or copy the text manually.',
+  copyTranscriptsHelp:
+    'Copy the latest successful nonempty transcript per segment in the current list, in list order. Includes ignored speech; window and search filters apply.',
+  copyTranscriptsSuccess: 'Transcripts copied.',
   date: 'Started',
   delete: 'Delete entire session',
   deleteAll: 'Delete all recordings',

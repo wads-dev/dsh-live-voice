@@ -33,6 +33,12 @@ const translation = {
   completed: 'Completada',
   confirmDelete:
     '¿Eliminar toda esta grabación, incluido el audio y el historial de transcripción? No se puede deshacer. Eliminar una grabación activa también descarta su audio guardado futuro.',
+  copyTranscripts: 'Copiar transcripciones',
+  copyTranscriptsError:
+    'No se pudo copiar. Revisa el permiso del portapapeles o copia manualmente.',
+  copyTranscriptsHelp:
+    'Copia la última transcripción correcta no vacía de cada segmento de la lista actual, en su orden. Incluye voz ignorada y respeta ventana y búsqueda.',
+  copyTranscriptsSuccess: 'Transcripciones copiadas.',
   date: 'Inicio',
   delete: 'Eliminar sesión completa',
   deleteAll: 'Borrar todas las grabaciones',

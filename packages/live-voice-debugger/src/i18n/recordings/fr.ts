@@ -33,6 +33,12 @@ const translation = {
   completed: 'Terminé',
   confirmDelete:
     'Supprimer cet enregistrement entier, y compris son audio et son historique de transcription ? Cette action est irréversible. Supprimer un enregistrement actif supprime aussi son futur audio enregistré.',
+  copyTranscripts: 'Copier les transcriptions',
+  copyTranscriptsError:
+    'Copie impossible. Vérifiez l’autorisation du presse-papiers ou copiez manuellement.',
+  copyTranscriptsHelp:
+    'Copie la dernière transcription réussie non vide par segment de la liste actuelle, dans son ordre. Inclut la parole ignorée et respecte la fenêtre et la recherche.',
+  copyTranscriptsSuccess: 'Transcriptions copiées.',
   date: 'Début',
   delete: 'Supprimer toute la session',
   deleteAll: 'Supprimer tous les enregistrements',

@@ -49,6 +49,10 @@ test('all 696 translated messages are preserved exactly in typed per-module per-
             flatten(tree).filter(
               ([key]) =>
                 ![
+                  'recordingCopyTranscripts',
+                  'recordingCopyTranscriptsError',
+                  'recordingCopyTranscriptsHelp',
+                  'recordingCopyTranscriptsSuccess',
                   'recordingIgnoredMuted',
                   'recordingAliasAtCapture',
                   'recordingMeetingId',
