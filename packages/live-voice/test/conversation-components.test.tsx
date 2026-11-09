@@ -63,6 +63,36 @@ test('conversation buttons preserve plugin classes and scoped language labels', 
   assert.deepEqual(calls, ['speak', 'mic']);
 });
 
+for (const sourceIcon of ['mic', 'meeting']) {
+  test(
+    sourceIcon + ' Ignoring button uses a crossed-out icon and restores it on resume',
+    async (t) => {
+      const controller = controllerFixture({ conversation: true, listening: true, muted: true });
+      controller.meter = { level: () => 0 };
+      const root = await fixture(
+        t,
+        <LiveVoiceTranslationProvider>
+          <ConversationStatusBar
+            controller={controller}
+            sourceIcon={sourceIcon}
+            includeSpeech={false}
+          />
+        </LiveVoiceTranslationProvider>,
+      );
+      const button = root.querySelector('.dlv-mic-state');
+      assert.equal(
+        button.querySelector('path').getAttribute('d'),
+        iconPaths[sourceIcon === 'mic' ? 'micOff' : 'meetingOff'],
+      );
+      assert.equal(button.dataset.muted, 'true');
+      assert.equal(button.getAttribute('aria-pressed'), 'false');
+      await act(async () => controller.patch({ muted: false }));
+      assert.equal(button.querySelector('path').getAttribute('d'), iconPaths[sourceIcon]);
+      assert.equal(button.dataset.muted, 'false');
+    },
+  );
+}
+
 test('conversation waveform preserves canvas contract without a canvas implementation', async (t) => {
   const root = await fixture(t, <Waveform controller={{ meter: { level: () => 0 } }} enabled />);
   assert.equal(root.querySelector('canvas').className, 'dlv-wave');

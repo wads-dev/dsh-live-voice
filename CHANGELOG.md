@@ -13,7 +13,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ### Improvements
 
-- Make Ignoring easier to notice with a red-tinted button background in light and dark themes, retaining the accessible state.
+- Make Ignoring easier to notice with a red-tinted button background in light and dark themes, with crossed-out microphone/meeting icons and accessible state.
 
 ## [0.7.2] - 2026-11-08
 
