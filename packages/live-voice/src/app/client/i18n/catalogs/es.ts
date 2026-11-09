@@ -551,6 +551,17 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.settings.tabs.conversation': 'Conversación',
   'dsh-live-voice.settings.tabs.recognition': 'Reconocimiento de voz',
   'dsh-live-voice.settings.tabs.speak': 'Síntesis de voz',
+  'dsh-live-voice.settings.timestamp.alwaysName':
+    'Mostrar siempre el nombre, incluso con una entrada',
+  'dsh-live-voice.settings.timestamp.day': 'Día',
+  'dsh-live-voice.settings.timestamp.help':
+    'Personaliza fecha, segundos y puntuación; hora y minuto siempre aparecen. Solo afecta a bloques nuevos. Los nombres y su visibilidad forzada se guardan solo en este navegador, no en el host DSH. No se importan nombres del host. Se usa la hora local al comenzar a hablar.',
+  'dsh-live-voice.settings.timestamp.month': 'Mes',
+  'dsh-live-voice.settings.timestamp.preview': 'Vista previa',
+  'dsh-live-voice.settings.timestamp.punctuation': 'Puntuación',
+  'dsh-live-voice.settings.timestamp.seconds': 'Segundos',
+  'dsh-live-voice.settings.timestamp.title': 'Marcas de tiempo y nombres locales',
+  'dsh-live-voice.settings.timestamp.year': 'Año',
   'dsh-live-voice.settings.title': 'Configuración de Voz en vivo',
   'dsh-live-voice.settings.whisper.hostHelp':
     'Configuración para todo el host. Solo se permiten URL HTTP sin autenticación en la interfaz de bucle local (localhost, 127.0.0.1, [::1]). El bucle local se refiere al host de DSH, no a este navegador. Todas las comprobaciones de estado y solicitudes de audio pasan por el servidor con autenticación.',

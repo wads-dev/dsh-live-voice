@@ -47,7 +47,8 @@ async function fixture(t) {
 
 test('all normalized preferences survive a host restart and another browser', async (t) => {
   const f = await fixture(t);
-  const first = createSettingsClient(f.fetch);
+  const local = { getItem: () => null, setItem: () => {} };
+  const first = createSettingsClient(f.fetch, local);
   await first.ready;
   const expected = normalizeSettings({
     engine: 'say',
@@ -75,10 +76,17 @@ test('all normalized preferences survive a host restart and another browser', as
     volume: 0.37,
   });
   await first.save(expected);
-  assert.deepEqual(await createSettingsStore(f.path).load(), expected);
+  const { microphoneSourceName, sharedSourceName, alwaysShowSourceName, ...hostExpected } =
+    expected;
+  assert.deepEqual(await createSettingsStore(f.path).load(), hostExpected);
   const second = createSettingsClient(f.fetch);
-  assert.deepEqual(await second.ready, expected);
-  assert.deepEqual(JSON.parse(await readFile(f.path, 'utf8')), expected);
+  assert.deepEqual(await second.ready, {
+    ...expected,
+    microphoneSourceName: 'Me',
+    sharedSourceName: 'Them',
+    alwaysShowSourceName: false,
+  });
+  assert.deepEqual(JSON.parse(await readFile(f.path, 'utf8')), hostExpected);
   assert.equal((await stat(f.path)).mode & 0o777, 0o600);
   f.cleanup();
   assert.equal(f.removed(), true);

@@ -544,6 +544,17 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.settings.tabs.conversation': 'Conversa',
   'dsh-live-voice.settings.tabs.recognition': 'Reconhecimento de voz',
   'dsh-live-voice.settings.tabs.speak': 'Fala',
+  'dsh-live-voice.settings.timestamp.alwaysName':
+    'Sempre mostrar o nome da fonte, mesmo com uma entrada',
+  'dsh-live-voice.settings.timestamp.day': 'Dia',
+  'dsh-live-voice.settings.timestamp.help':
+    'Personalize data, segundos e pontuação; hora e minuto são obrigatórios. Alterações afetam apenas novos blocos. Nomes e a opção de sempre mostrar o nome são salvos somente neste navegador, não no host DSH. Nomes antigos do host não são importados. O horário é o início local da fala.',
+  'dsh-live-voice.settings.timestamp.month': 'Mês',
+  'dsh-live-voice.settings.timestamp.preview': 'Prévia do formato',
+  'dsh-live-voice.settings.timestamp.punctuation': 'Pontuação',
+  'dsh-live-voice.settings.timestamp.seconds': 'Segundos',
+  'dsh-live-voice.settings.timestamp.title': 'Timestamps e nomes locais',
+  'dsh-live-voice.settings.timestamp.year': 'Ano',
   'dsh-live-voice.settings.title': 'Configurações da Voz ao Vivo',
   'dsh-live-voice.settings.whisper.hostHelp':
     'Configurações para todo o host. Apenas URLs HTTP loopback não autenticadas (localhost, 127.0.0.1, [::1]) são permitidas. Loopback refere-se ao host DSH, não a este navegador. Todas as verificações de integridade e requisições de áudio passam pelo backend autenticado.',

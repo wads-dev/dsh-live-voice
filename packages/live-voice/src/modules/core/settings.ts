@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { timestampDefaults, normalizeTimestamp } from './timestamp.js';
 import { TRANSCRIPTION_CONTEXT_MAX_LENGTH } from '../recognition/transcriptionContext.js';
 import { resolveCodeNotice } from './speechDefaults.js';
 import { normalizeShortcut } from '../../shared/design-system/forms/keyboardShortcut.js';
@@ -52,6 +53,8 @@ const positiveMinutes = (value, fallback) =>
   Number.isFinite(value) && value > 0 && Number.isFinite(value * 60000) ? value : fallback;
 
 export const defaultSettings = Object.freeze({
+  ...timestampDefaults,
+  alwaysShowSourceName: false,
   engine: 'browser',
   recognitionEngine: 'browser',
   browserWhisperModel: 'whisper-small',
@@ -172,6 +175,8 @@ export const voiceDetectionSilenceMs = (settings) =>
 export function normalizeSettings(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
+    ...normalizeTimestamp(source),
+    alwaysShowSourceName: source.alwaysShowSourceName === true,
     engine: ['browser', 'say', 'qwen-http', 'chatterbox-http'].includes(source.engine)
       ? source.engine
       : defaultSettings.engine,

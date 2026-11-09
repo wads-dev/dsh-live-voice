@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { LiveVoiceTranslationProvider } from '../src/app/client/i18n/index.ts';
 import { defaultSettings } from '../src/modules/core/settings.ts';
-import { MeetingSourceSettings } from '../src/modules/settings/sections/conversation/MeetingSourceSettings.tsx';
+import { TimestampSettings } from '../src/modules/settings/sections/conversation/TimestampSettings.js';
 
 test('meeting source names have labelled fields and persist only on blur', async (t) => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'https://dsh.local/' });
@@ -25,7 +25,7 @@ test('meeting source names have labelled fields and persist only on blur', async
   await act(async () =>
     root.render(
       <LiveVoiceTranslationProvider>
-        <MeetingSourceSettings
+        <TimestampSettings
           settings={defaultSettings}
           updateSettings={(patch) => calls.push(patch)}
         />
@@ -42,7 +42,21 @@ test('meeting source names have labelled fields and persist only on blur', async
   assert.ok(inputs[0].closest('label').textContent.includes('Microphone source name'));
   assert.ok(inputs[1].closest('label').textContent.includes('Shared-audio source name'));
   assert.equal(inputs[0].maxLength, 80);
-  assert.equal(document.querySelector('details').open, false);
+  assert.ok(document.querySelector('output').textContent.includes('14:25:36'));
+  const formatInputs = [...document.querySelectorAll('input[type=checkbox]')];
+  assert.equal(formatInputs.length, 6);
+  for (const [index, key] of [
+    'timestampDay',
+    'timestampMonth',
+    'timestampYear',
+    'timestampSeconds',
+    'timestampPunctuation',
+    'alwaysShowSourceName',
+  ].entries()) {
+    await act(async () => formatInputs[index].click());
+    assert.deepEqual(calls.pop(), { [key]: index === 5 });
+  }
+  assert.equal(document.querySelectorAll('.dlv-hint-trigger').length, 1);
   for (const [index, name] of [' Alice ', ''].entries()) {
     await act(async () => {
       inputs[index].value = name;

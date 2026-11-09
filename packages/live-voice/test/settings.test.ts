@@ -224,6 +224,12 @@ test('Qwen local ASR and TTS selections survive normalization', () => {
 
 test('valid local options survive normalization', () => {
   const options = {
+    timestampDay: true,
+    timestampMonth: true,
+    timestampYear: true,
+    timestampSeconds: true,
+    timestampPunctuation: true,
+    alwaysShowSourceName: false,
     engine: 'say',
     recognitionEngine: 'browser',
     browserWhisperModel: 'whisper-tiny',

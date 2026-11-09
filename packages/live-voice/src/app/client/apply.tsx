@@ -657,7 +657,8 @@ export function apply(ctx) {
                   source.startsWith('attendee:') &&
                   (state.listening || state.starting || state.pending),
               ) ||
-              entry.controller.getSnapshot().timestamps)
+              entry.controller.getSnapshot().timestamps ||
+              entry.controller.getSnapshot().settings.alwaysShowSourceName)
           ) {
             meeting.transcript.setSourceTimestamps(
               'microphone',

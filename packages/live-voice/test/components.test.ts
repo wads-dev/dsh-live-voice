@@ -225,8 +225,8 @@ test('mounted voice UI exposes controls, distinct states, and capability failure
       'browser provider controls its own segmentation',
     );
     const checks = [...document.querySelectorAll('input[type=checkbox]')];
-    assert.equal(checks.length, 11);
-    assert.equal(checks.filter((input) => input.checked).length, 9);
+    assert.equal(checks.length, 17);
+    assert.equal(checks.filter((input) => input.checked).length, 14);
     assert.equal(
       checks.find((input) =>
         input.parentElement.textContent.includes('Stop assistant speech when I send a message'),

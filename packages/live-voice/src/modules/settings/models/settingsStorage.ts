@@ -1,4 +1,5 @@
 import { normalizeSettings } from '../../core/settings.js';
+import { createLocalIdentity, localIdentityKeys } from './localIdentity.js';
 import { defaultSpeakingEngine } from '../../core/engineSelection.js';
 import { settingsDocument, type SettingsDocument } from './settingsDocument.js';
 export const SETTINGS_STORAGE_KEY = 'dsh-live-voice.settings';
@@ -6,8 +7,12 @@ export const SETTINGS_PATH = '/api/dsh-live-voice/settings';
 type ClientSettings = SettingsDocument & ReturnType<typeof normalizeSettings>;
 
 /** Transport is schema-independent; only this client interprets its known preferences. */
-export function createSettingsClient(fetchImpl = globalThis.fetch) {
-  let settings = { ...normalizeSettings({}) } as ClientSettings;
+export function createSettingsClient(
+  fetchImpl = globalThis.fetch,
+  localStorage?: Pick<Storage, 'getItem' | 'setItem'>,
+) {
+  const identity = createLocalIdentity(localStorage);
+  let settings = { ...normalizeSettings({}), ...identity.getSnapshot() } as ClientSettings;
   let stored: SettingsDocument = {};
   let hostPlatform: string | undefined;
   let queue = Promise.resolve();
@@ -20,6 +25,7 @@ export function createSettingsClient(fetchImpl = globalThis.fetch) {
     settings = {
       ...document,
       ...normalizeSettings({ engine: defaultSpeakingEngine(hostPlatform), ...document }),
+      ...identity.getSnapshot(),
     };
     for (const listener of listeners) {
       try {
@@ -64,6 +70,22 @@ export function createSettingsClient(fetchImpl = globalThis.fetch) {
         snapshot = settingsDocument(patch);
       } catch (error) {
         return Promise.reject(error);
+      }
+      const local = Object.fromEntries(
+        Object.entries(snapshot).filter(([key]) => localIdentityKeys.includes(key)),
+      );
+      if (Object.keys(local).length) {
+        try {
+          identity.save(local);
+        } catch (error) {
+          publish();
+          return Promise.reject(error);
+        }
+        snapshot = Object.fromEntries(
+          Object.entries(snapshot).filter(([key]) => !localIdentityKeys.includes(key)),
+        );
+        publish();
+        if (!Object.keys(snapshot).length) return Promise.resolve(settings);
       }
       pendingPatches.push(snapshot);
       const operation = queue.then(async () => {

@@ -535,6 +535,17 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.settings.tabs.conversation': 'Conversation',
   'dsh-live-voice.settings.tabs.recognition': 'Speech recognition',
   'dsh-live-voice.settings.tabs.speak': 'Speech',
+  'dsh-live-voice.settings.timestamp.alwaysName':
+    'Always show the source name, even with one input',
+  'dsh-live-voice.settings.timestamp.day': 'Day',
+  'dsh-live-voice.settings.timestamp.help':
+    'Customize date parts, seconds and punctuation; hours and minutes are always included. Changes affect new blocks only. Names and the always-show-name choice are saved only in this browser, not on the DSH host. Existing host names are not imported. Timestamps use the local time when speech began.',
+  'dsh-live-voice.settings.timestamp.month': 'Month',
+  'dsh-live-voice.settings.timestamp.preview': 'Format preview',
+  'dsh-live-voice.settings.timestamp.punctuation': 'Punctuation',
+  'dsh-live-voice.settings.timestamp.seconds': 'Seconds',
+  'dsh-live-voice.settings.timestamp.title': 'Timestamps and local names',
+  'dsh-live-voice.settings.timestamp.year': 'Year',
   'dsh-live-voice.settings.title': 'Live Voice settings',
   'dsh-live-voice.settings.whisper.hostHelp':
     'Host-wide settings. Only unauthenticated loopback HTTP URLs (localhost, 127.0.0.1, [::1]) are allowed. Loopback means the DSH host, not this browser. All health checks and audio requests run through the authenticated backend.',

@@ -397,6 +397,15 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.settings.tabs.conversation': string;
   'dsh-live-voice.settings.tabs.recognition': string;
   'dsh-live-voice.settings.tabs.speak': string;
+  'dsh-live-voice.settings.timestamp.alwaysName': string;
+  'dsh-live-voice.settings.timestamp.day': string;
+  'dsh-live-voice.settings.timestamp.help': string;
+  'dsh-live-voice.settings.timestamp.month': string;
+  'dsh-live-voice.settings.timestamp.preview': string;
+  'dsh-live-voice.settings.timestamp.punctuation': string;
+  'dsh-live-voice.settings.timestamp.seconds': string;
+  'dsh-live-voice.settings.timestamp.title': string;
+  'dsh-live-voice.settings.timestamp.year': string;
   'dsh-live-voice.settings.title': string;
   'dsh-live-voice.settings.whisper.hostHelp': string;
   'dsh-live-voice.speak.agentContext.enabled': string;

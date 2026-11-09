@@ -535,6 +535,16 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.settings.tabs.conversation': 'बातचीत',
   'dsh-live-voice.settings.tabs.recognition': 'वाक् पहचान',
   'dsh-live-voice.settings.tabs.speak': 'वाचन',
+  'dsh-live-voice.settings.timestamp.alwaysName': 'एक इनपुट पर भी स्रोत का नाम हमेशा दिखाएँ',
+  'dsh-live-voice.settings.timestamp.day': 'दिन',
+  'dsh-live-voice.settings.timestamp.help':
+    'तारीख, सेकंड और विराम चिह्न चुनें; घंटे और मिनट हमेशा रहते हैं। केवल नए खंड बदलते हैं। नाम और नाम दिखाने की पसंद केवल इस ब्राउज़र में सहेजे जाते हैं, DSH होस्ट पर नहीं। पुराने होस्ट नाम आयात नहीं होते। समय बोलना शुरू होने का स्थानीय समय है।',
+  'dsh-live-voice.settings.timestamp.month': 'महीना',
+  'dsh-live-voice.settings.timestamp.preview': 'प्रारूप पूर्वावलोकन',
+  'dsh-live-voice.settings.timestamp.punctuation': 'विराम चिह्न',
+  'dsh-live-voice.settings.timestamp.seconds': 'सेकंड',
+  'dsh-live-voice.settings.timestamp.title': 'टाइमस्टैम्प और स्थानीय नाम',
+  'dsh-live-voice.settings.timestamp.year': 'वर्ष',
   'dsh-live-voice.settings.title': 'लाइव वॉइस सेटिंग्स',
   'dsh-live-voice.settings.whisper.hostHelp':
     'पूरे होस्ट पर लागू होने वाली सेटिंग्स। केवल बिना प्रमाणीकरण वाले लूपबैक HTTP URL (localhost, 127.0.0.1, [::1]) स्वीकार्य हैं। लूपबैक का अर्थ DSH होस्ट है, यह ब्राउज़र नहीं। सभी स्वास्थ्य जाँच और ऑडियो अनुरोध प्रमाणीकरण वाले बैकएंड के ज़रिए चलते हैं।',

@@ -561,6 +561,17 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.settings.tabs.conversation': 'Conversation',
   'dsh-live-voice.settings.tabs.recognition': 'Reconnaissance vocale',
   'dsh-live-voice.settings.tabs.speak': 'Synthèse vocale',
+  'dsh-live-voice.settings.timestamp.alwaysName':
+    'Toujours afficher le nom, même avec une seule entrée',
+  'dsh-live-voice.settings.timestamp.day': 'Jour',
+  'dsh-live-voice.settings.timestamp.help':
+    'Personnalisez date, secondes et ponctuation ; heures et minutes restent présentes. Seuls les nouveaux blocs changent. Les noms et leur affichage forcé restent dans ce navigateur, pas sur le serveur DSH. Les anciens noms du serveur ne sont pas importés. Utilise l’heure locale de début de parole.',
+  'dsh-live-voice.settings.timestamp.month': 'Mois',
+  'dsh-live-voice.settings.timestamp.preview': 'Aperçu du format',
+  'dsh-live-voice.settings.timestamp.punctuation': 'Ponctuation',
+  'dsh-live-voice.settings.timestamp.seconds': 'Secondes',
+  'dsh-live-voice.settings.timestamp.title': 'Horodatage et noms locaux',
+  'dsh-live-voice.settings.timestamp.year': 'Année',
   'dsh-live-voice.settings.title': 'Paramètres de Voix en direct',
   'dsh-live-voice.settings.whisper.hostHelp':
     'Paramètres communs à tout l’hôte. Seules les URL HTTP sans authentification sur l’interface de bouclage (localhost, 127.0.0.1, [::1]) sont autorisées. Le bouclage désigne l’hôte DSH, pas ce navigateur. Toutes les vérifications d’état et requêtes audio passent par le serveur avec authentification.',

@@ -1,3 +1,4 @@
+import { formatTimestamp } from '../../core/timestamp.js';
 import { defaultSettings, normalizeSourceName } from '../../core/settings.js';
 
 export type MeetingSource = 'microphone' | 'shared' | `attendee:${string}`;
@@ -27,8 +28,12 @@ export class MeetingTranscript {
   }
   constructor(
     private composer: { getDraft(): string; setDraft(text: string): void },
-    private settings: () => { microphoneSourceName?: string; sharedSourceName?: string } = () =>
-      defaultSettings,
+    private settings: () => {
+      microphoneSourceName?: string;
+      sharedSourceName?: string;
+      alwaysShowSourceName?: boolean;
+      [key: string]: unknown;
+    } = () => defaultSettings,
   ) {}
   setActive(source: MeetingSource, enabled: boolean) {
     if (enabled) this.active.add(source);
@@ -39,27 +44,14 @@ export class MeetingTranscript {
     if (!chunk || !this.active.has(source)) return;
     const draft = this.composer.getDraft();
     if (!draft) this.last = null;
-    const labelled = this.active.size > 1 || source.startsWith('attendee:');
+    const labelled =
+      this.active.size > 1 ||
+      source.startsWith('attendee:') ||
+      this.settings().alwaysShowSourceName === true;
     const timestamps = this.sourceTimestamps.get(source) ?? this.timestamps;
     const changed = this.last !== source || paragraphBefore;
     const date = new Date(Number.isFinite(startedAt) ? startedAt! : Date.now());
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const stamp =
-      timestamps && changed
-        ? '[' +
-          date.getFullYear() +
-          '/' +
-          pad(date.getMonth() + 1) +
-          '/' +
-          pad(date.getDate()) +
-          ' ' +
-          pad(date.getHours()) +
-          ':' +
-          pad(date.getMinutes()) +
-          ':' +
-          pad(date.getSeconds()) +
-          '] '
-        : '';
+    const stamp = timestamps && changed ? formatTimestamp(date, this.settings()) + ' ' : '';
     const key = source === 'microphone' ? 'microphoneSourceName' : 'sharedSourceName';
     const name =
       this.labels.get(source) || normalizeSourceName(this.settings()[key], defaultSettings[key]);

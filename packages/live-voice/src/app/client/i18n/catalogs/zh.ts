@@ -497,6 +497,16 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.settings.tabs.conversation': '对话',
   'dsh-live-voice.settings.tabs.recognition': '语音识别',
   'dsh-live-voice.settings.tabs.speak': '语音合成',
+  'dsh-live-voice.settings.timestamp.alwaysName': '即使只有一个输入，也始终显示来源名称',
+  'dsh-live-voice.settings.timestamp.day': '日',
+  'dsh-live-voice.settings.timestamp.help':
+    '自定义日期、秒和标点；小时和分钟始终显示。仅影响新文本块。名称及强制显示名称的选择仅保存在此浏览器，不保存在 DSH 主机。不会导入主机旧名称。使用开始说话时的本地时间。',
+  'dsh-live-voice.settings.timestamp.month': '月',
+  'dsh-live-voice.settings.timestamp.preview': '格式预览',
+  'dsh-live-voice.settings.timestamp.punctuation': '标点',
+  'dsh-live-voice.settings.timestamp.seconds': '秒',
+  'dsh-live-voice.settings.timestamp.title': '时间戳和本地名称',
+  'dsh-live-voice.settings.timestamp.year': '年',
   'dsh-live-voice.settings.title': '实时语音 设置',
   'dsh-live-voice.settings.whisper.hostHelp':
     '主机级设置。仅允许无需身份验证的回环 HTTP URL（localhost、127.0.0.1、[::1]）。回环地址指 DSH 主机，而非此浏览器。所有健康检查和音频请求都通过需要身份验证的后端执行。',
