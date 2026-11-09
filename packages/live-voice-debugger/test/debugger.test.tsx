@@ -332,7 +332,7 @@ test('runtime tab is conditional, translated, keyboard accessible and honest abo
       await new Promise((r) => setTimeout(r, 110));
     });
     const tabs = [...document.querySelectorAll('[role=tab]')];
-    assert.equal(tabs.length, 3);
+    assert.equal(tabs.length, 4);
     const rt = tabs.find((e) => e.textContent === copy.runtimes.title);
     assert.ok(rt);
     await act(async () =>

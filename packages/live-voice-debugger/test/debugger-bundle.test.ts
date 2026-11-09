@@ -19,6 +19,7 @@ test('optional debugger bundle loads independently without bundling the voice co
   assert.equal(registration.id, 'dsh-live-voice-debugger');
   const plugin = registration.factory((id: string) => {
     if (id === 'react') return React;
+    if (id === 'react-dom') return { createPortal() {} };
     if (id === 'react-dom/client') return { createRoot() {} };
     assert.fail('Unexpected bundled dependency: ' + id);
   });

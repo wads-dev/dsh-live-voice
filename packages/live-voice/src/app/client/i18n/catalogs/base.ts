@@ -81,6 +81,7 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.debugger.installing': string;
   'dsh-live-voice.debugger.label': string;
   'dsh-live-voice.debugger.local': string;
+  'dsh-live-voice.debugger.popupBlocked': string;
   'dsh-live-voice.debugger.ready': string;
   'dsh-live-voice.debugger.restart': string;
   'dsh-live-voice.debugger.scripts': string;

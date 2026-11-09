@@ -97,6 +97,7 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.debugger.label': '诊断',
   'dsh-live-voice.debugger.local':
     '已存在本地、Git 或自定义调试器依赖。请使用原安装方式管理；此处不会替换。',
+  'dsh-live-voice.debugger.popupBlocked': '无法打开诊断。请允许此站点弹出窗口后重试。',
   'dsh-live-voice.debugger.ready': '诊断已就绪。请关闭此对话框，然后点击“诊断”打开调试器。',
   'dsh-live-voice.debugger.restart':
     '调试器 {version} 已安装。DSH 管理器要求重启。请在准备好后重启 DSH，再重新加载此页面。不会自动重启。',

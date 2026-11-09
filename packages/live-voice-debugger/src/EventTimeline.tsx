@@ -156,6 +156,12 @@ export function EventTimeline({
   return (
     <div className="dlvd-event-timeline" ref={root}>
       <div className="dlvd-event-legend">
+        <span data-category="silence">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2 8h12" stroke="currentColor" strokeWidth="2" />
+          </svg>
+          {copy.silence}
+        </span>
         {eventCategories.map((category) => (
           <span key={category} data-category={category}>
             <EventGlyph
@@ -179,44 +185,46 @@ export function EventTimeline({
       </div>
       <p className="dlvd-event-help">{copy.eventTrackHelp}</p>
       <div className="dlvd-event-track" ref={lanes} role="group" aria-label={copy.events}>
-        {eventCategories.map((category) => (
-          <div
-            className="dlvd-event-lane"
-            key={category}
-            data-category={category}
-            role="group"
-            aria-label={labels[category]}
-          >
-            {groups
-              .filter((item) => item.category === category)
-              .map((item) => (
-                <button
-                  type="button"
-                  key={item.key}
-                  className="dlvd-event-marker"
-                  data-category={category}
-                  data-event={item.events.length === 1 ? item.events[0].kind : 'group'}
-                  data-count={item.events.length}
-                  style={{ left: item.fraction * 100 + '%' }}
-                  aria-label={describe(item) + ' · ' + copy.eventInspect}
-                  aria-describedby={active?.key === item.key ? tooltipId : undefined}
-                  onMouseEnter={(event) => show(item, event.currentTarget)}
-                  onMouseLeave={() => setActive(null)}
-                  onFocus={(event) => show(item, event.currentTarget)}
-                  onBlur={() => setActive(null)}
-                  onClick={() => {
-                    setActive(null);
-                    onSelect(item.events);
-                  }}
-                >
-                  <EventGlyph kind={item.events[0].kind} />
-                  {item.events.length > 1 && (
-                    <span className="dlvd-event-count">{item.events.length}</span>
-                  )}
-                </button>
-              ))}
-          </div>
-        ))}
+        {eventCategories
+          .filter((category) => groups.some((group) => group.category === category))
+          .map((category) => (
+            <div
+              className="dlvd-event-lane"
+              key={category}
+              data-category={category}
+              role="group"
+              aria-label={labels[category]}
+            >
+              {groups
+                .filter((item) => item.category === category)
+                .map((item) => (
+                  <button
+                    type="button"
+                    key={item.key}
+                    className="dlvd-event-marker"
+                    data-category={category}
+                    data-event={item.events.length === 1 ? item.events[0].kind : 'group'}
+                    data-count={item.events.length}
+                    style={{ left: item.fraction * 100 + '%' }}
+                    aria-label={describe(item) + ' · ' + copy.eventInspect}
+                    aria-describedby={active?.key === item.key ? tooltipId : undefined}
+                    onMouseEnter={(event) => show(item, event.currentTarget)}
+                    onMouseLeave={() => setActive(null)}
+                    onFocus={(event) => show(item, event.currentTarget)}
+                    onBlur={() => setActive(null)}
+                    onClick={() => {
+                      setActive(null);
+                      onSelect(item.events);
+                    }}
+                  >
+                    <EventGlyph kind={item.events[0].kind} />
+                    {item.events.length > 1 && (
+                      <span className="dlvd-event-count">{item.events.length}</span>
+                    )}
+                  </button>
+                ))}
+            </div>
+          ))}
       </div>
       {group && root.current && (
         <div

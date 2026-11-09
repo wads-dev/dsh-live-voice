@@ -105,6 +105,8 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.debugger.label': 'Diagnósticos',
   'dsh-live-voice.debugger.local':
     'Ya existe una dependencia local, Git o personalizada del depurador. Adminístrala con su método de instalación original; no se sustituirá aquí.',
+  'dsh-live-voice.debugger.popupBlocked':
+    'No se pudo abrir Diagnósticos. Permite ventanas emergentes e inténtalo de nuevo.',
   'dsh-live-voice.debugger.ready':
     'Los diagnósticos están listos. Cierra este diálogo y pulsa Diagnósticos para abrir el depurador.',
   'dsh-live-voice.debugger.restart':

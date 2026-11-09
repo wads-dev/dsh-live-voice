@@ -14,14 +14,24 @@ export function DebuggerPanel({
   locale = 'en',
   onClose,
   target = window,
+  recordingRequest,
 }: {
+  recordingRequest?: { id?: string; revision: number };
   copy: DebuggerTranslation;
   locale?: string;
   onClose(): void;
   target?: any;
 }) {
-  const [tab, setTab] = React.useState<'recordings' | 'states' | 'runtimes'>('recordings');
+  const [tab, setTab] = React.useState<'recordings' | 'states' | 'runtimes' | 'storage'>(
+    'recordings',
+  );
+  React.useEffect(() => {
+    if (recordingRequest?.id) setTab('recordings');
+  }, [recordingRequest]);
   const tabsId = React.useId();
+  const [recordingToolbar, setRecordingToolbar] = React.useState<HTMLDivElement | null>(null);
+  const [storagePanel, setStoragePanel] = React.useState<HTMLDivElement | null>(null);
+  const [storageTotal, setStorageTotal] = React.useState('—');
   const [frozen, setFrozen] = React.useState(false);
   const [refreshHz, setRefreshHz] = React.useState(10);
   const updateRef = React.useRef<(() => void) | null>(null);
@@ -75,58 +85,63 @@ export function DebuggerPanel({
   const modules = [...new Set(view?.transitions.map((entry) => entry.module) ?? [])].sort();
   const runtimeData = (view?.state as any)?.runtimes;
   const hasRuntimes = !!runtimeData?.models?.length;
-  const tabs: ('recordings' | 'states' | 'runtimes')[] = hasRuntimes
-    ? ['recordings', 'states', 'runtimes']
-    : ['recordings', 'states'];
+  const tabs: ('recordings' | 'states' | 'runtimes' | 'storage')[] = hasRuntimes
+    ? ['recordings', 'states', 'storage', 'runtimes']
+    : ['recordings', 'states', 'storage'];
   React.useEffect(() => {
     if (tab === 'runtimes' && !hasRuntimes) setTab('states');
   }, [tab, hasRuntimes]);
   return (
     <aside className="dlvd-panel" aria-label={copy.commons.title}>
-      <header>
-        <strong>{copy.commons.title}</strong>
-        <span>{refreshHz} Hz</span>
-        <button type="button" onClick={onClose} aria-label={copy.commons.close}>
-          ×
-        </button>
-      </header>
-      <div className="dlvd-tabs" role="tablist" aria-label={copy.commons.title}>
-        {tabs.map((name) => (
-          <button
-            type="button"
-            key={name}
-            role="tab"
-            id={tabsId + '-' + name + '-tab'}
-            aria-controls={tabsId + '-' + name}
-            aria-selected={tab === name}
-            tabIndex={tab === name ? 0 : -1}
-            onClick={() => setTab(name)}
-            onKeyDown={(event) => {
-              if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-                event.preventDefault();
-                const index = tabs.indexOf(tab);
-                const next =
-                  event.key === 'Home'
-                    ? tabs[0]
-                    : event.key === 'End'
-                      ? tabs[tabs.length - 1]
-                      : tabs[
-                          (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length
-                        ];
-                setTab(next);
-                event.currentTarget.parentElement
-                  ?.querySelector<HTMLButtonElement>('[id="' + tabsId + '-' + next + '-tab"]')
-                  ?.focus();
-              }
-            }}
-          >
-            {name === 'recordings'
-              ? copy.recordings.title
-              : name === 'runtimes'
-                ? copy.runtimes.title
-                : copy.commons.states}
+      <div className="dlvd-navigation">
+        <div className="dlvd-tabs" role="tablist" aria-label={copy.commons.title}>
+          {tabs.map((name) => (
+            <button
+              type="button"
+              key={name}
+              role="tab"
+              id={tabsId + '-' + name + '-tab'}
+              aria-controls={tabsId + '-' + name}
+              aria-selected={tab === name}
+              tabIndex={tab === name ? 0 : -1}
+              onClick={() => setTab(name)}
+              onKeyDown={(event) => {
+                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                  event.preventDefault();
+                  const index = tabs.indexOf(tab);
+                  const next =
+                    event.key === 'Home'
+                      ? tabs[0]
+                      : event.key === 'End'
+                        ? tabs[tabs.length - 1]
+                        : tabs[
+                            (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) %
+                              tabs.length
+                          ];
+                  setTab(next);
+                  event.currentTarget.parentElement
+                    ?.querySelector<HTMLButtonElement>('[id="' + tabsId + '-' + next + '-tab"]')
+                    ?.focus();
+                }
+              }}
+            >
+              {name === 'storage'
+                ? copy.recordings.storageTab + ': ' + storageTotal
+                : name === 'recordings'
+                  ? copy.recordings.title
+                  : name === 'runtimes'
+                    ? copy.runtimes.title
+                    : copy.commons.states}
+            </button>
+          ))}
+        </div>
+        <div className="dlvd-navigation-actions">
+          <div className="dlvd-recording-toolbar-slot" ref={setRecordingToolbar} />
+          <span className="dlvd-refresh-frequency">{refreshHz} Hz</span>
+          <button type="button" onClick={onClose} aria-label={copy.commons.close}>
+            ×
           </button>
-        ))}
+        </div>
       </div>
       <div
         className="dlvd-tab-panel"
@@ -135,8 +150,24 @@ export function DebuggerPanel({
         aria-labelledby={tabsId + '-recordings-tab'}
         hidden={tab !== 'recordings'}
       >
-        {tab === 'recordings' && <RecordingPanel copy={copy} locale={locale} target={target} />}
+        <RecordingPanel
+          copy={copy}
+          locale={locale}
+          target={target}
+          toolbarTarget={recordingToolbar}
+          storageTarget={storagePanel}
+          onStorageTotal={setStorageTotal}
+          recordingRequest={recordingRequest}
+        />
       </div>
+      <div
+        className="dlvd-tab-panel dlvd-scroll"
+        role="tabpanel"
+        id={tabsId + '-storage'}
+        aria-labelledby={tabsId + '-storage-tab'}
+        hidden={tab !== 'storage'}
+        ref={setStoragePanel}
+      />
       {hasRuntimes && (
         <div
           className="dlvd-tab-panel"

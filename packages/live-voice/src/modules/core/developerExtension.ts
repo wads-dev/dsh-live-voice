@@ -5,6 +5,8 @@ export interface DeveloperExtension {
   version: 1;
   label(): string;
   component: ComponentType;
+  /** Optional direct user-gesture launcher. False means popup could not open. */
+  open?(request?: { recordingId?: string }): boolean;
 }
 export function readDeveloperExtension(target: any = globalThis.window): DeveloperExtension | null {
   const extension = target?.[DEVELOPER_KEY];

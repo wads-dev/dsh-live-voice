@@ -147,6 +147,7 @@ const translation = {
   storageScope:
     'Toutes les sources de ce navigateur et site. Audio encodé sauvegardé uniquement ; hors métadonnées, surcharge de base de données, exports et audio non sauvegardé. Ce n’est pas le stockage total du navigateur.',
   storageSessions: '{count} session(s), toutes sources confondues',
+  storageTab: 'Stockage',
   storageTotal: 'Total de l’audio stocké',
   storageUnknown: 'Indisponible',
   success: 'Réussite',
@@ -157,6 +158,10 @@ const translation = {
   unstar: 'Retirer la protection',
   unstarHelp:
     'Autorise le nettoyage automatique et compte à nouveau cet enregistrement parmi ceux à conserver. La suppression manuelle reste autorisée. Le stockage et la protection contre l’éviction par le navigateur ne changent pas.',
+  viewLayout: 'Vue',
+  viewList: 'Liste',
+  viewSession: 'Session',
+  viewSplit: 'Partagée',
   voiceCommandRecognized: 'Commande vocale reconnue',
   waitCancelled: 'Attente annulée',
   waitChanged: 'Motifs d’attente modifiés',

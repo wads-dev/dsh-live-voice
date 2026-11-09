@@ -23,6 +23,38 @@ export function eventCategory(kind: string): EventCategory {
   if (kind.startsWith('capture-') || kind === 'input-stop-complete') return 'capture';
   return 'playback';
 }
+/** Paired intervals on the captured sample clock only; zero-width capture gaps remain points. */
+export function eventIntervals(events: RecordingEvent[], frontier: number) {
+  const open = new Map<string, RecordingEvent>();
+  const ranges: { category: 'waiting' | 'playback'; start: number; end: number }[] = [];
+  for (const event of events) {
+    const category = event.kind.startsWith('assistant-wait') ? 'waiting' : 'playback';
+    const starts =
+      event.kind === 'assistant-wait-start' ||
+      event.kind === 'assistant-start' ||
+      event.kind === 'assistant-resume';
+    const ends =
+      event.kind === 'assistant-wait-end' ||
+      ['assistant-end', 'assistant-pause', 'assistant-cancel', 'assistant-error'].includes(
+        event.kind,
+      );
+    if (starts && !open.has(category)) open.set(category, event);
+    if (ends && open.has(category)) {
+      const begin = open.get(category)!;
+      open.delete(category);
+      if (event.atSample > begin.atSample)
+        ranges.push({ category, start: begin.atSample, end: event.atSample });
+    }
+  }
+  for (const [category, begin] of open)
+    if (frontier > begin.atSample)
+      ranges.push({
+        category: category as 'waiting' | 'playback',
+        start: begin.atSample,
+        end: frontier,
+      });
+  return ranges;
+}
 export interface EventGroup {
   key: string;
   category: EventCategory;

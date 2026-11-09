@@ -107,6 +107,8 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.debugger.label': 'Diagnostics',
   'dsh-live-voice.debugger.local':
     'Une dépendance locale, Git ou personnalisée du débogueur existe déjà. Gérez-la avec sa méthode d’installation d’origine ; elle ne sera pas remplacée ici.',
+  'dsh-live-voice.debugger.popupBlocked':
+    'Impossible d’ouvrir les diagnostics. Autorisez les fenêtres contextuelles et réessayez.',
   'dsh-live-voice.debugger.ready':
     'Les diagnostics sont prêts. Fermez cette boîte de dialogue et cliquez sur Diagnostics pour ouvrir le débogueur.',
   'dsh-live-voice.debugger.restart':

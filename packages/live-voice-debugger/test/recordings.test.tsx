@@ -287,7 +287,105 @@ test('integrated primary recordings tab separates sources, plays silence, export
     document.querySelector('[role=tab][aria-selected=true]').textContent,
     copy.recordings.title,
   );
-  const select = document.querySelector('.dlvd-recordings select');
+  assert.equal(document.querySelector('.dlvd-timeline-legend'), null);
+  assert.equal(
+    [...document.querySelectorAll('.dlvd-recording-detail h4')].some(
+      (h) => h.textContent === copy.recordings.timeline,
+    ),
+    false,
+  );
+  const player = document.querySelector('.dlvd-recording-detail audio');
+  assert.ok(
+    document.querySelector('.dlvd-event-timeline').compareDocumentPosition(player) &
+      owner.window.Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  assert.ok(
+    player.compareDocumentPosition(document.querySelector('.dlvd-detail-tabs')) &
+      owner.window.Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  await act(async () => {
+    root.render(
+      <DebuggerPanel
+        copy={copy}
+        target={target.window}
+        onClose={() => {}}
+        recordingRequest={{ id: 'mic', revision: 1 }}
+      />,
+    );
+    await flush();
+  });
+  assert.equal(document.querySelector('.dlvd-recording-columns').dataset.layout, 'session');
+  const innerTabs = [...document.querySelectorAll('.dlvd-detail-tabs [role=tab]')];
+  const pinsPanel = document.querySelector('.dlvd-boundary-pins');
+  assert.equal(document.querySelector('.dlvd-panel > header'), null);
+  assert.ok(
+    document
+      .querySelector('.dlvd-navigation-actions .dlvd-refresh-frequency')
+      .textContent.includes('Hz'),
+  );
+  assert.ok(
+    document.querySelector(
+      '.dlvd-navigation-actions button[aria-label="' + copy.commons.close + '"]',
+    ),
+  );
+  assert.equal(innerTabs.length, 3);
+  assert.equal(innerTabs[2].textContent, copy.recordings.pins);
+  assert.equal(pinsPanel.hidden, true);
+  await act(async () =>
+    innerTabs[0].dispatchEvent(
+      new owner.window.KeyboardEvent('keydown', { key: 'End', bubbles: true }),
+    ),
+  );
+  assert.equal(pinsPanel.hidden, false);
+  assert.equal(document.querySelector('.dlvd-segments').closest('[role=tabpanel]').hidden, true);
+  assert.equal(
+    document.querySelector('.dlvd-recording-events').closest('[role=tabpanel]').hidden,
+    true,
+  );
+  await act(async () => innerTabs[0].click());
+  assert.equal(pinsPanel.hidden, true);
+  const segmentTable = document.querySelector('.dlvd-segments');
+  const eventTable = document.querySelector('.dlvd-recording-events');
+  assert.equal(
+    segmentTable.closest('[role=tabpanel]').hidden,
+    false,
+    'segments selected by default',
+  );
+  assert.equal(eventTable.closest('[role=tabpanel]').hidden, true);
+  await act(async () => document.querySelector('.dlvd-event-marker').click());
+  assert.equal(eventTable.closest('[role=tabpanel]').hidden, false, 'marker opens events');
+  assert.equal(segmentTable.closest('[role=tabpanel]').hidden, true);
+  await act(async () => document.querySelector('.dlvd-detail-tabs [role=tab]').click());
+  assert.equal(segmentTable.closest('[role=tabpanel]').hidden, false);
+  assert.equal(
+    document.querySelector('.dlvd-segments'),
+    segmentTable,
+    'list is retained across tabs',
+  );
+  const layoutSelect = document.querySelector('.dlvd-navigation .dlvd-layout-control select');
+  assert.ok(layoutSelect, 'layout selector belongs to existing toolbar');
+  const preservedDetail = document.querySelector('.dlvd-recording-detail');
+  const preservedPlayer = preservedDetail.querySelector('audio');
+  for (const mode of ['session', 'list', 'split']) {
+    await act(async () => {
+      layoutSelect.value = mode;
+      layoutSelect.dispatchEvent(new owner.window.Event('change', { bubbles: true }));
+    });
+    assert.equal(document.querySelector('.dlvd-recording-columns').dataset.layout, mode);
+    assert.equal(document.querySelector('.dlvd-session-list').hidden, mode === 'session');
+    assert.equal(preservedDetail.hidden, mode === 'list');
+    assert.equal(preservedDetail.querySelector('audio'), preservedPlayer);
+  }
+  const detailHeading = document.querySelector('.dlvd-detail-heading');
+  assert.ok(detailHeading.querySelector('h3'));
+  assert.equal(detailHeading.querySelectorAll('.dlvd-detail-actions button').length, 4);
+  for (const pair of document.querySelectorAll('.dlvd-session-meta > div')) {
+    assert.equal(pair.querySelectorAll('dt').length, 1);
+    assert.equal(pair.querySelectorAll('dd').length, 1);
+  }
+  const select = document.querySelector(
+    '.dlvd-recording-toolbar-slot label:not(.dlvd-layout-control) select',
+  );
   assert.equal(select.options.length, 4);
   assert.match(document.querySelector('.dlvd-recording-detail').textContent, /test transcript/);
   assert.equal(document.querySelectorAll('.dlvd-event-track [data-event]').length, 3);
@@ -333,6 +431,29 @@ test('integrated primary recordings tab separates sources, plays silence, export
       field.dispatchEvent(new owner.window.Event('input', { bubbles: true }));
       await flush();
     });
+  const detailBeforeTab = document.querySelector('.dlvd-recording-detail');
+  const audioBeforeTab = document.querySelector('audio');
+  const storageTab = [...document.querySelectorAll('[role=tab]')].find((button) =>
+    button.textContent.startsWith(copy.recordings.storageTab + ':'),
+  );
+  assert.ok(storageTab);
+  assert.equal(
+    document.querySelector('.dlvd-recording-storage').closest('[role=tabpanel]').hidden,
+    true,
+  );
+  assert.equal(select.closest('.dlvd-navigation') !== null, true);
+  await act(async () => storageTab.click());
+  assert.equal(
+    document.querySelector('.dlvd-recording-storage').closest('[role=tabpanel]').hidden,
+    false,
+  );
+  await act(async () =>
+    [...document.querySelectorAll('[role=tab]')]
+      .find((button) => button.textContent === copy.recordings.title)
+      .click(),
+  );
+  assert.equal(document.querySelector('.dlvd-recording-detail'), detailBeforeTab);
+  assert.equal(document.querySelector('audio'), audioBeforeTab);
   const ranges = [...document.querySelectorAll('.dlvd-window-handle')];
   assert.equal(document.querySelectorAll('.dlvd-window-track').length, 1);
   assert.equal(ranges.length, 2);
@@ -919,7 +1040,9 @@ test('participant sources stay visible beside custom titles and label each segme
       root.render(React.createElement(DebuggerPanel, { copy, target: owner.window, onClose() {} }));
       await flush();
     });
-    const filter = document.querySelector('.dlvd-recordings select');
+    const filter = document.querySelector(
+      '.dlvd-recording-toolbar-slot label:not(.dlvd-layout-control) select',
+    );
     const participantOptions = [...filter.options].filter((o) =>
       o.textContent.startsWith(copy.recordings.participant + ' · Same display'),
     );

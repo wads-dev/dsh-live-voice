@@ -1,5 +1,6 @@
 // @ts-nocheck
 import test from 'node:test';
+import { publishDeveloperExtension } from '../src/modules/core/developerExtension.js';
 import { iconPaths } from '../src/shared/design-system/icons/icons.js';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
@@ -63,6 +64,41 @@ test('conversation buttons preserve plugin classes and scoped language labels', 
   assert.deepEqual(calls, ['speak', 'mic']);
 });
 
+test('diagnostics shortcut appears only for an active direct launcher and sends source recording ID', async (t) => {
+  const c = controllerFixture({ conversation: true, listening: true });
+  c.meter = { level: () => 0 };
+  c.recordingId = () => 'source-recording';
+  const root = await fixture(
+    t,
+    <LiveVoiceTranslationProvider>
+      <ConversationStatusBar controller={c} includeSpeech={false} />
+    </LiveVoiceTranslationProvider>,
+  );
+  assert.equal(root.querySelector('.dlv-diagnostics-shortcut'), null);
+  let requested;
+  let dispose;
+  await act(async () => {
+    dispose = publishDeveloperExtension(window, {
+      version: 1,
+      label: () => 'Diagnostics',
+      component: () => null,
+      open: (request) => {
+        requested = request;
+        return true;
+      },
+    });
+  });
+  const button = root.querySelector('.dlv-diagnostics-shortcut');
+  assert.ok(button);
+  assert.ok(
+    button.compareDocumentPosition(root.querySelector('.dlv-mic-state')) &
+      window.Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  await act(async () => button.click());
+  assert.deepEqual(requested, { recordingId: 'source-recording' });
+  await act(async () => dispose());
+  assert.equal(root.querySelector('.dlv-diagnostics-shortcut'), null);
+});
 for (const sourceIcon of ['mic', 'meeting']) {
   test(
     sourceIcon + ' Ignoring button uses a crossed-out icon and restores it on resume',

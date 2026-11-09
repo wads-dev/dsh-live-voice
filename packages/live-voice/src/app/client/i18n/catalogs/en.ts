@@ -103,6 +103,8 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.debugger.label': 'Diagnostics',
   'dsh-live-voice.debugger.local':
     'A local, Git or custom debugger dependency already exists. Manage it with its original installation method; it will not be replaced here.',
+  'dsh-live-voice.debugger.popupBlocked':
+    'Could not open Diagnostics. Allow popups for this site and try again.',
   'dsh-live-voice.debugger.ready':
     'Diagnostics are ready. Close this dialog and click Diagnostics to open the debugger.',
   'dsh-live-voice.debugger.restart':

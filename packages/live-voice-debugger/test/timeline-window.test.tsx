@@ -53,6 +53,10 @@ test('single-track selector resizes edges, pans fixed width, clamps and releases
     left: 10,
     width: 1000,
   });
+  assert.ok(document.body.textContent.includes(copyFor().recordings.start + ':'));
+  assert.ok(document.body.textContent.includes(copyFor().recordings.end + ':'));
+  assert.equal(document.body.textContent.includes(copyFor().recordings.windowStart + ':'), false);
+  assert.equal(document.body.textContent.includes(copyFor().recordings.windowEnd + ':'), false);
   const start = document.querySelector('[data-edge=start]');
   const end = document.querySelector('[data-edge=end]');
   const middle = document.querySelector('.dlvd-window-selection');

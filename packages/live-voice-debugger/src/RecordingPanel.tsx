@@ -1,6 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { formatBytes } from './formatBytes.js';
-import { RecordingStorage } from './RecordingStorage.js';
+import { RecordingStorage, recordingStorage } from './RecordingStorage.js';
+import { eventIntervals } from './eventTimelineModel.js';
 import { EventTimeline } from './EventTimeline.js';
 import { TimelineWindow } from './TimelineWindow.js';
 import { CopyTranscripts } from './CopyTranscripts.js';
@@ -71,7 +73,15 @@ export function RecordingPanel({
   copy,
   target,
   locale = 'en',
+  toolbarTarget,
+  storageTarget,
+  onStorageTotal,
+  recordingRequest,
 }: {
+  recordingRequest?: { id?: string; revision: number };
+  toolbarTarget?: HTMLElement | null;
+  storageTarget?: HTMLElement | null;
+  onStorageTotal?(value: string): void;
   copy: DebuggerTranslation;
   target: any;
   locale?: string;
@@ -84,9 +94,31 @@ export function RecordingPanel({
     loading: true,
     failed: false,
   });
+  const total = recordingStorage(view.sessions);
+  const totalLabel =
+    view.failed || view.loading || !view.service
+      ? '—'
+      : (total.unknown ? '≥ ' : '') + formatBytes(total.bytes, locale);
+  React.useEffect(() => {
+    onStorageTotal?.(totalLabel);
+  }, [onStorageTotal, totalLabel]);
   const inspector = React.useRef<ReturnType<typeof createRecordingInspector> | null>(null);
   const [filter, setFilter] = React.useState('');
+  const [layout, setLayout] = React.useState<'list' | 'split' | 'session'>('split');
   const [clearing, setClearing] = React.useState(false);
+  const appliedRequest = React.useRef<object | null>(null);
+  React.useEffect(() => {
+    if (
+      !recordingRequest?.id ||
+      appliedRequest.current === recordingRequest ||
+      !view.sessions.some((session) => session.id === recordingRequest.id)
+    )
+      return;
+    appliedRequest.current = recordingRequest;
+    setFilter('');
+    setLayout('session');
+    inspector.current?.select(recordingRequest.id);
+  }, [recordingRequest, view.sessions]);
   React.useEffect(() => {
     const current = createRecordingInspector(target, setView);
     inspector.current = current;
@@ -128,50 +160,116 @@ export function RecordingPanel({
   }, [filter, view.selected?.id, view.loading, visible[0]?.id]);
   const selected =
     view.selected && visible.some((s) => s.id === view.selected?.id) ? view.selected : null;
+  const effectiveLayout = selected ? layout : 'list';
+  const layoutControl = (
+    <label className="dlvd-layout-control">
+      {copy.recordings.viewLayout}{' '}
+      <select
+        value={effectiveLayout}
+        onChange={(event) => setLayout(event.target.value as typeof layout)}
+      >
+        <option value="list">{copy.recordings.viewList}</option>
+        <option value="split" disabled={!selected}>
+          {copy.recordings.viewSplit}
+        </option>
+        <option value="session" disabled={!selected}>
+          {copy.recordings.viewSession}
+        </option>
+      </select>
+    </label>
+  );
   return (
     <section className="dlvd-recordings" aria-label={copy.recordings.title}>
       <p>{copy.recordings.help}</p>
-      <div className="dlvd-toolbar">
-        <label>
-          {copy.recordings.sourceFilter}{' '}
-          <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-            <option value="">{copy.recordings.allSources}</option>
-            {sources.map((session) => (
-              <option key={sourceKey(session)} value={sourceKey(session)}>
-                {sourceName(session, copy)}
-                {session.participant ? ' · ' + session.participant.participantId : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            inspector.current?.discover();
-            inspector.current?.refresh();
-          }}
-        >
-          {copy.recordings.refresh}
-        </button>
-      </div>
+      {toolbarTarget ? (
+        createPortal(
+          <div className="dlvd-toolbar">
+            {layoutControl}
+            <label>
+              {copy.recordings.sourceFilter}{' '}
+              <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+                <option value="">{copy.recordings.allSources}</option>
+                {sources.map((session) => (
+                  <option key={sourceKey(session)} value={sourceKey(session)}>
+                    {sourceName(session, copy)}
+                    {session.participant ? ' · ' + session.participant.participantId : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                inspector.current?.discover();
+                inspector.current?.refresh();
+              }}
+            >
+              {copy.recordings.refresh}
+            </button>
+          </div>,
+          toolbarTarget,
+        )
+      ) : (
+        <div className="dlvd-toolbar">
+          {layoutControl}
+          <label>
+            {copy.recordings.sourceFilter}{' '}
+            <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+              <option value="">{copy.recordings.allSources}</option>
+              {sources.map((session) => (
+                <option key={sourceKey(session)} value={sourceKey(session)}>
+                  {sourceName(session, copy)}
+                  {session.participant ? ' · ' + session.participant.participantId : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              inspector.current?.discover();
+              inspector.current?.refresh();
+            }}
+          >
+            {copy.recordings.refresh}
+          </button>
+        </div>
+      )}
       {view.failed && <p role="alert">{copy.recordings.loadError}</p>}
       {!view.service ? (
         <p role="status">{copy.recordings.unavailable}</p>
       ) : (
         <>
           {view.loading && <p role="status">{copy.recordings.loading}</p>}
-          <RecordingStorage
-            locale={locale}
-            service={view.service}
-            sessions={view.sessions}
-            loading={view.loading}
-            failed={view.failed}
-            copy={copy.recordings}
-            refresh={() => inspector.current?.refresh()}
-            onBusy={setClearing}
-          />
-          <div className="dlvd-recording-columns">
+          {storageTarget ? (
+            createPortal(
+              <RecordingStorage
+                locale={locale}
+                service={view.service}
+                sessions={view.sessions}
+                loading={view.loading}
+                failed={view.failed}
+                copy={copy.recordings}
+                refresh={() => inspector.current?.refresh()}
+                onBusy={setClearing}
+              />,
+              storageTarget,
+            )
+          ) : (
+            <RecordingStorage
+              locale={locale}
+              service={view.service}
+              sessions={view.sessions}
+              loading={view.loading}
+              failed={view.failed}
+              copy={copy.recordings}
+              refresh={() => inspector.current?.refresh()}
+              onBusy={setClearing}
+            />
+          )}
+          <div className="dlvd-recording-columns" data-layout={effectiveLayout}>
             <div
+              hidden={effectiveLayout === 'session'}
               className="dlvd-session-list dlvd-scroll"
               tabIndex={0}
               aria-label={copy.recordings.title}
@@ -200,7 +298,10 @@ export function RecordingPanel({
                                 <button
                                   type="button"
                                   aria-pressed={session.id === selected?.id}
-                                  onClick={() => inspector.current?.select(session.id)}
+                                  onClick={() => {
+                                    setLayout('split');
+                                    inspector.current?.select(session.id);
+                                  }}
                                 >
                                   {session.starred && (
                                     <span
@@ -240,7 +341,11 @@ export function RecordingPanel({
                   </section>
                 ))}
             </div>
-            <div className="dlvd-recording-detail dlvd-scroll" tabIndex={0}>
+            <div
+              className="dlvd-recording-detail dlvd-scroll"
+              hidden={effectiveLayout === 'list'}
+              tabIndex={0}
+            >
               {selected && !clearing ? (
                 <RecordingDetail
                   locale={locale}
@@ -291,6 +396,8 @@ function RecordingDetail({
   const [exporting, setExporting] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [starring, setStarring] = React.useState(false);
+  const [detailTab, setDetailTab] = React.useState<'segments' | 'events' | 'pins'>('segments');
+  const detailTabsId = React.useId();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [name, setName] = React.useState(session.name ?? '');
   const [naming, setNaming] = React.useState(false);
@@ -596,7 +703,42 @@ function RecordingDetail({
     duration(segment.endSample, session.sampleRate);
   return (
     <section ref={container} aria-label={sourceName(session, copy)}>
-      <h3>{sourceName(session, copy)}</h3>
+      <div className="dlvd-detail-heading">
+        <h3>{sourceName(session, copy)}</h3>
+        <div className="dlvd-toolbar dlvd-detail-actions">
+          <button
+            type="button"
+            aria-label={session.starred ? copy.recordings.unstar : copy.recordings.star}
+            aria-pressed={!!session.starred}
+            title={session.starred ? copy.recordings.unstarHelp : copy.recordings.starHelp}
+            disabled={starring || deleting || naming}
+            onClick={() => void toggleStarred()}
+          >
+            {session.starred ? '★' : '☆'}
+          </button>
+          <button
+            type="button"
+            disabled={playing || deleting || !session.savedSamples}
+            onClick={() => void play()}
+          >
+            {copy.recordings.playSession}
+          </button>
+          <button
+            type="button"
+            disabled={exporting || downloading || deleting}
+            onClick={() => void exportSession()}
+          >
+            {copy.recordings.export}
+          </button>
+          <button
+            type="button"
+            disabled={deleting || starring || naming || !!retrying}
+            onClick={() => setConfirmDelete(true)}
+          >
+            {copy.recordings.delete}
+          </button>
+        </div>
+      </div>
       {session.name && (
         <p>
           <strong>
@@ -648,30 +790,42 @@ function RecordingDetail({
           </button>
         </form>
       )}
-      <dl className="dlvd-recording-meta">
-        <dt>{copy.recordings.date}</dt>
-        <dd>{new Date(session.startedAt).toLocaleString()}</dd>
-        <dt>{copy.recordings.state}</dt>
-        <dd>{stateName(session, copy)}</dd>
-        <dt>{copy.recordings.storageAudio}</dt>
-        <dd>
-          {session.audioBytes === undefined
-            ? copy.recordings.storageUnknown
-            : formatBytes(session.audioBytes, locale)}
-        </dd>
-        <dt>{copy.recordings.captured}</dt>
-        <dd>{duration(session.capturedSamples, session.sampleRate)}</dd>
-        <dt>{copy.recordings.saved}</dt>
-        <dd>
-          {duration(session.savedSamples, session.sampleRate)} ·
-          {session.storage === 'indexeddb' || session.persistent
-            ? copy.recordings.persistent
-            : copy.recordings.memory}
-        </dd>
+      <dl className="dlvd-recording-meta dlvd-session-meta">
+        <div>
+          <dt>{copy.recordings.date}</dt>
+          <dd>{new Date(session.startedAt).toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt>{copy.recordings.state}</dt>
+          <dd>{stateName(session, copy)}</dd>
+        </div>
+        <div>
+          <dt>{copy.recordings.storageAudio}</dt>
+          <dd>
+            {session.audioBytes === undefined
+              ? copy.recordings.storageUnknown
+              : formatBytes(session.audioBytes, locale)}
+          </dd>
+        </div>
+        <div>
+          <dt>{copy.recordings.captured}</dt>
+          <dd>{duration(session.capturedSamples, session.sampleRate)}</dd>
+        </div>
+        <div>
+          <dt>{copy.recordings.saved}</dt>
+          <dd>
+            {duration(session.savedSamples, session.sampleRate)} ·
+            {session.storage === 'indexeddb' || session.persistent
+              ? copy.recordings.persistent
+              : copy.recordings.memory}
+          </dd>
+        </div>
         {session.endedAt && (
           <>
-            <dt>{copy.recordings.end}</dt>
-            <dd>{new Date(session.endedAt).toLocaleString()}</dd>
+            <div>
+              <dt>{copy.recordings.end}</dt>
+              <dd>{new Date(session.endedAt).toLocaleString()}</dd>
+            </div>
           </>
         )}
       </dl>
@@ -680,39 +834,7 @@ function RecordingDetail({
           {copy.recordings.error}: {session.error}
         </p>
       )}
-      <div className="dlvd-toolbar">
-        <button
-          type="button"
-          aria-label={session.starred ? copy.recordings.unstar : copy.recordings.star}
-          aria-pressed={!!session.starred}
-          title={session.starred ? copy.recordings.unstarHelp : copy.recordings.starHelp}
-          disabled={starring || deleting || naming}
-          onClick={() => void toggleStarred()}
-        >
-          {session.starred ? '★' : '☆'}
-        </button>
-        <button
-          type="button"
-          disabled={playing || deleting || !session.savedSamples}
-          onClick={() => void play()}
-        >
-          {copy.recordings.playSession}
-        </button>
-        <button
-          type="button"
-          disabled={exporting || downloading || deleting}
-          onClick={() => void exportSession()}
-        >
-          {copy.recordings.export}
-        </button>
-        <button
-          type="button"
-          disabled={deleting || starring || naming || !!retrying}
-          onClick={() => setConfirmDelete(true)}
-        >
-          {copy.recordings.delete}
-        </button>
-      </div>
+
       {confirmDelete && (
         <div
           className="dlvd-delete-confirm"
@@ -734,17 +856,7 @@ function RecordingDetail({
       )}
       {error && <p role="alert">{copy.recordings[error]}</p>}
       {retrying && <p role="status">{copy.recordings.retranscribing}</p>}
-      <audio
-        ref={audio}
-        controls
-        preload="metadata"
-        aria-label={copy.recordings.audio}
-        onError={() => {
-          clearPlayback();
-          setError('audioError');
-        }}
-      />
-      <h4>{copy.recordings.timeline}</h4>
+
       <TimelineWindow
         key={session.id}
         total={session.savedSamples}
@@ -788,6 +900,41 @@ function RecordingDetail({
             onClick={() => void play(segment, false)}
           />
         ))}
+        {eventIntervals(session.events ?? [], session.savedSamples)
+          .filter((range) => range.end > viewStart && range.start < viewEnd)
+          .map((range, index) => (
+            <span
+              key={range.category + index}
+              className="dlvd-summary-interval"
+              data-category={range.category}
+              role="img"
+              aria-label={
+                (range.category === 'waiting'
+                  ? copy.recordings.eventWaiting
+                  : copy.recordings.eventPlayback) +
+                ' · ' +
+                duration(range.start, session.sampleRate) +
+                ' – ' +
+                duration(range.end, session.sampleRate)
+              }
+              title={
+                (range.category === 'waiting'
+                  ? copy.recordings.eventWaiting
+                  : copy.recordings.eventPlayback) +
+                ' · ' +
+                duration(range.start, session.sampleRate) +
+                ' – ' +
+                duration(range.end, session.sampleRate)
+              }
+              style={{
+                left: position(Math.max(viewStart, range.start)),
+                width:
+                  ((Math.min(viewEnd, range.end) - Math.max(viewStart, range.start)) / viewLength) *
+                    100 +
+                  '%',
+              }}
+            />
+          ))}
         {session.pins
           .filter((pin) => inWindow(pin.atSample))
           .map((pin) => (
@@ -804,16 +951,6 @@ function RecordingDetail({
             />
           ))}
       </div>
-      <div className="dlvd-timeline-legend">
-        <span data-kind="speech">{copy.recordings.speech}</span>
-        {' · '}
-        <span data-kind="silence">{copy.recordings.silence}</span> ·{' '}
-        <span data-kind="command">{copy.recordings.eventCommand}</span> ·{' '}
-        <span data-kind="ignored">{copy.recordings.ignoredMuted}</span>
-        {' · '}
-        {duration(viewStart, session.sampleRate)} –{' '}
-        {duration(Math.min(viewEnd, session.savedSamples), session.sampleRate)}
-      </div>
       <EventTimeline
         events={session.events ?? []}
         start={viewStart}
@@ -823,258 +960,336 @@ function RecordingDetail({
         name={eventName}
         details={eventDetails}
         onSelect={(events) => {
+          setDetailTab('events');
           setSelectedEvents(events.map((event) => event.id));
           const row = Array.from(
             container.current?.querySelectorAll<HTMLElement>('[data-recording-event]') ?? [],
           ).find((node) => node.dataset.recordingEvent === events[0].id);
-          row?.scrollIntoView?.({ block: 'nearest' });
-          row?.focus();
+          const focusRow = () => {
+            row?.scrollIntoView?.({ block: 'nearest' });
+            row?.focus();
+          };
+          const win = row?.ownerDocument.defaultView;
+          if (win?.requestAnimationFrame) win.requestAnimationFrame(focusRow);
+          else setTimeout(focusRow, 0);
         }}
       />
-      <h4>{copy.recordings.events}</h4>
-      <p>{copy.recordings.eventsHelp}</p>
-      <table className="dlvd-recording-events">
-        <thead>
-          <tr>
-            <th scope="col">{copy.recordings.state}</th>
-            <th scope="col">{copy.recordings.eventTime}</th>
-            <th scope="col">{copy.recordings.captured}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleEvents.map((event) => (
-            <tr
-              key={event.id}
-              data-recording-event={event.id}
-              data-selected={selectedEvents.includes(event.id)}
-              tabIndex={-1}
-            >
-              <td>
-                {eventName(event.kind)}
-                {event.details && <div className="dlvd-event-details">{eventDetails(event)}</div>}
-              </td>
-              <td>
-                <time dateTime={event.occurredAt}>
-                  {new Date(event.occurredAt).toLocaleString()}.
-                  {new Date(event.occurredAt).getMilliseconds().toString().padStart(3, '0')}
-                </time>
-              </td>
-              <td>{duration(event.atSample, session.sampleRate)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="dlvd-segment-heading">
-        <h4>{copy.recordings.segments}</h4>
-        <CopyTranscripts segments={matchedSegments} copy={copy.recordings} />
+      <audio
+        ref={audio}
+        controls
+        preload="metadata"
+        aria-label={copy.recordings.audio}
+        onError={() => {
+          clearPlayback();
+          setError('audioError');
+        }}
+      />
+      <div className="dlvd-tabs dlvd-detail-tabs" role="tablist" aria-label={copy.recordings.title}>
+        {(['segments', 'events', 'pins'] as const).map((name) => (
+          <button
+            type="button"
+            role="tab"
+            key={name}
+            id={detailTabsId + '-' + name + '-tab'}
+            aria-controls={detailTabsId + '-' + name}
+            aria-selected={detailTab === name}
+            tabIndex={detailTab === name ? 0 : -1}
+            onClick={() => setDetailTab(name)}
+            onKeyDown={(event) => {
+              if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                event.preventDefault();
+                const names = ['segments', 'events', 'pins'] as const;
+                const index = names.indexOf(name);
+                const next =
+                  event.key === 'Home'
+                    ? names[0]
+                    : event.key === 'End'
+                      ? names[2]
+                      : names[(index + (event.key === 'ArrowRight' ? 1 : 2)) % names.length];
+                setDetailTab(next);
+                event.currentTarget.parentElement
+                  ?.querySelector<HTMLButtonElement>('[id="' + detailTabsId + '-' + next + '-tab"]')
+                  ?.focus();
+              }
+            }}
+          >
+            {name === 'segments'
+              ? copy.recordings.segments
+              : name === 'pins'
+                ? copy.recordings.pins
+                : copy.recordings.events}
+          </button>
+        ))}
       </div>
-      <label>
-        {copy.recordings.search}
-        <input
-          type="search"
-          value={search}
-          maxLength={160}
-          aria-label={copy.recordings.search}
-          onInput={(event) => setSearch(event.currentTarget.value)}
-        />
-      </label>
-      {search.trim() && matchedSegments.length === 0 && (
-        <p role="status">{copy.recordings.searchEmpty}</p>
-      )}
-      <table className="dlvd-segments">
-        <thead>
-          <tr>
-            <th scope="col">{copy.recordings.state}</th>
-            <th scope="col">{copy.recordings.start}</th>
-            <th scope="col">{copy.recordings.end}</th>
-            <th scope="col">{copy.recordings.duration}</th>
-            <th scope="col">{copy.recordings.audio}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {matchedSegments.map((segment) => (
-            <React.Fragment key={segment.id}>
-              <tr data-selected={selectedSegment === segment.id}>
+      <div
+        className="dlvd-detail-list"
+        role="tabpanel"
+        id={detailTabsId + '-events'}
+        aria-labelledby={detailTabsId + '-events-tab'}
+        hidden={detailTab !== 'events'}
+      >
+        <h4>{copy.recordings.events}</h4>
+        <p>{copy.recordings.eventsHelp}</p>
+        <table className="dlvd-recording-events">
+          <thead>
+            <tr>
+              <th scope="col">{copy.recordings.state}</th>
+              <th scope="col">{copy.recordings.eventTime}</th>
+              <th scope="col">{copy.recordings.captured}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleEvents.map((event) => (
+              <tr
+                key={event.id}
+                data-recording-event={event.id}
+                data-selected={selectedEvents.includes(event.id)}
+                tabIndex={-1}
+              >
                 <td>
-                  <span>{sourceName(session, copy)}</span>
-                  <br />
-                  {commandsFor(segment).length ? (
-                    <span className="dlvd-command-label">
-                      ϟ {copy.recordings.eventCommand} ·{' '}
-                      {commandsFor(segment)
-                        .map((event) => commandName(event.details!.command!))
-                        .join(', ')}
-                    </span>
-                  ) : ignoredFor(segment).length ? (
-                    <span className="dlvd-ignored-label">⊘ {copy.recordings.ignoredMuted}</span>
-                  ) : segment.kind === 'speech' ? (
-                    <span className="dlvd-speech-label">● {copy.recordings.speech}</span>
-                  ) : (
-                    copy.recordings.silence
-                  )}
-                  {segment.open && <small>{copy.recordings.open}</small>}
+                  {eventName(event.kind)}
+                  {event.details && <div className="dlvd-event-details">{eventDetails(event)}</div>}
                 </td>
-                <td>{duration(segment.startSample, session.sampleRate)}</td>
-                <td>{duration(segment.endSample, session.sampleRate)}</td>
-                <td>{duration(segment.endSample - segment.startSample, session.sampleRate)}</td>
                 <td>
-                  <button
-                    type="button"
-                    className="dlvd-segment-action"
-                    title={copy.recordings.play}
-                    disabled={deleting || segment.endSample <= segment.startSample}
-                    aria-label={
-                      copy.recordings.play +
-                      ' · ' +
-                      sourceName(session, copy) +
-                      ' · ' +
-                      segmentName(segment)
-                    }
-                    onClick={() => void play(segment)}
-                  >
-                    <SegmentIcon kind="play" />
-                  </button>
-                  <button
-                    type="button"
-                    className="dlvd-segment-action"
-                    disabled={
-                      downloading ||
-                      exporting ||
-                      deleting ||
-                      segment.endSample <= segment.startSample
-                    }
-                    title={copy.recordings.download}
-                    aria-label={copy.recordings.download + ' · ' + segmentName(segment)}
-                    onClick={() => void downloadSegment(segment)}
-                  >
-                    <SegmentIcon kind="download" />
-                  </button>
-                  {segment.kind === 'speech' && service.retranscribe && (
+                  <time dateTime={event.occurredAt}>
+                    {new Date(event.occurredAt).toLocaleString()}.
+                    {new Date(event.occurredAt).getMilliseconds().toString().padStart(3, '0')}
+                  </time>
+                </td>
+                <td>{duration(event.atSample, session.sampleRate)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div
+        className="dlvd-detail-list"
+        role="tabpanel"
+        id={detailTabsId + '-segments'}
+        aria-labelledby={detailTabsId + '-segments-tab'}
+        hidden={detailTab !== 'segments'}
+      >
+        <div className="dlvd-segment-heading">
+          <h4>{copy.recordings.segments}</h4>
+          <CopyTranscripts segments={matchedSegments} copy={copy.recordings} />
+        </div>
+        <label>
+          {copy.recordings.search}
+          <input
+            type="search"
+            value={search}
+            maxLength={160}
+            aria-label={copy.recordings.search}
+            onInput={(event) => setSearch(event.currentTarget.value)}
+          />
+        </label>
+        {search.trim() && matchedSegments.length === 0 && (
+          <p role="status">{copy.recordings.searchEmpty}</p>
+        )}
+        <table className="dlvd-segments">
+          <thead>
+            <tr>
+              <th scope="col">{copy.recordings.state}</th>
+              <th scope="col">{copy.recordings.start}</th>
+              <th scope="col">{copy.recordings.end}</th>
+              <th scope="col">{copy.recordings.duration}</th>
+              <th scope="col">{copy.recordings.audio}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matchedSegments.map((segment) => (
+              <React.Fragment key={segment.id}>
+                <tr data-selected={selectedSegment === segment.id}>
+                  <td>
+                    <span>{sourceName(session, copy)}</span>
+                    <br />
+                    {commandsFor(segment).length ? (
+                      <span className="dlvd-command-label">
+                        ϟ {copy.recordings.eventCommand} ·{' '}
+                        {commandsFor(segment)
+                          .map((event) => commandName(event.details!.command!))
+                          .join(', ')}
+                      </span>
+                    ) : ignoredFor(segment).length ? (
+                      <span className="dlvd-ignored-label">⊘ {copy.recordings.ignoredMuted}</span>
+                    ) : segment.kind === 'speech' ? (
+                      <span className="dlvd-speech-label">● {copy.recordings.speech}</span>
+                    ) : (
+                      copy.recordings.silence
+                    )}
+                    {segment.open && <small>{copy.recordings.open}</small>}
+                  </td>
+                  <td>{duration(segment.startSample, session.sampleRate)}</td>
+                  <td>{duration(segment.endSample, session.sampleRate)}</td>
+                  <td>{duration(segment.endSample - segment.startSample, session.sampleRate)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="dlvd-segment-action"
+                      title={copy.recordings.play}
+                      disabled={deleting || segment.endSample <= segment.startSample}
+                      aria-label={
+                        copy.recordings.play +
+                        ' · ' +
+                        sourceName(session, copy) +
+                        ' · ' +
+                        segmentName(segment)
+                      }
+                      onClick={() => void play(segment)}
+                    >
+                      <SegmentIcon kind="play" />
+                    </button>
                     <button
                       type="button"
                       className="dlvd-segment-action"
                       disabled={
+                        downloading ||
+                        exporting ||
                         deleting ||
-                        !!retrying ||
-                        session.state === 'recording' ||
-                        segment.open ||
-                        segment.endSample <= segment.startSample ||
-                        segment.attempts.some((a) => a.status === 'pending')
+                        segment.endSample <= segment.startSample
                       }
-                      title={copy.recordings.retranscribeHelp}
-                      aria-label={copy.recordings.retranscribe + ' · ' + segmentName(segment)}
-                      onClick={() => void retranscribe(segment)}
+                      title={copy.recordings.download}
+                      aria-label={copy.recordings.download + ' · ' + segmentName(segment)}
+                      onClick={() => void downloadSegment(segment)}
                     >
-                      <SegmentIcon kind="retry" />
+                      <SegmentIcon kind="download" />
                     </button>
-                  )}
-                </td>
-              </tr>
-              {segment.kind === 'speech' && (
-                <tr>
-                  <td colSpan={5}>
-                    <details open={!!search.trim() || selectedSegment === segment.id || undefined}>
-                      <summary>
-                        {copy.recordings.attempts} · {segment.attempts.length}
-                      </summary>
-                      {!segment.attempts.length && <p>{copy.recordings.noAttempts}</p>}
-                      {segment.attempts.map((attempt) => (
-                        <article className="dlvd-attempt" key={attempt.id}>
-                          <div>
-                            {copy.recordings.engine}: {attempt.engine} ·
-                            {
-                              {
-                                pending: copy.recordings.pending,
-                                success: copy.recordings.success,
-                                error: copy.recordings.error,
-                              }[attempt.status]
-                            }
-                          </div>
-                          <time dateTime={attempt.createdAt}>
-                            {new Date(attempt.createdAt).toLocaleString()}
-                          </time>
-                          {attempt.finishedAt && (
-                            <>
-                              {' '}
-                              —{' '}
-                              <time dateTime={attempt.finishedAt}>
-                                {new Date(attempt.finishedAt).toLocaleString()}
-                              </time>
-                            </>
-                          )}
-                          <div>
-                            {duration(attempt.startSample, session.sampleRate)} —{' '}
-                            {duration(attempt.endSample, session.sampleRate)}
-                          </div>
-                          {attempt.request ? (
-                            <details className="dlvd-request">
-                              <summary>
-                                {copy.recordings.requestMetadata} ·{' '}
-                                {attempt.request.payloadBytes.toLocaleString()} B ·{' '}
-                                {(attempt.request.durationMs / 1000).toFixed(3)} s
-                              </summary>
-                              <p>{copy.recordings.requestHelp}</p>
-                              <dl className="dlvd-recording-meta">
-                                <dt>{copy.recordings.requestBytes}</dt>
-                                <dd>{attempt.request.payloadBytes.toLocaleString()} B</dd>
-                                <dt>{copy.recordings.requestInput}</dt>
-                                <dd>
-                                  {attempt.request.inputSamples.toLocaleString()} /{' '}
-                                  {attempt.request.inputSampleRate.toLocaleString()} Hz
-                                </dd>
-                                <dt>{copy.recordings.requestSamples}</dt>
-                                <dd>
-                                  {attempt.request.sampleCount.toLocaleString()} /{' '}
-                                  {attempt.request.sampleRate.toLocaleString()} Hz
-                                </dd>
-                                <dt>{copy.recordings.duration}</dt>
-                                <dd>{(attempt.request.durationMs / 1000).toFixed(3)} s</dd>
-                                <dt>{copy.recordings.requestExpected}</dt>
-                                <dd>
-                                  {duration(
-                                    attempt.endSample - attempt.startSample,
-                                    session.sampleRate,
-                                  )}
-                                </dd>
-                                <dt>{copy.recordings.requestLanguage}</dt>
-                                <dd>{attempt.request.language}</dd>
-                                <dt>{copy.recordings.requestPrepared}</dt>
-                                <dd>
-                                  <time dateTime={attempt.request.preparedAt}>
-                                    {new Date(attempt.request.preparedAt).toLocaleString()}
-                                  </time>
-                                </dd>
-                                <dt>{copy.recordings.requestStatus}</dt>
-                                <dd>
-                                  {attempt.request.responseStatus ?? copy.recordings.requestUnknown}
-                                </dd>
-                              </dl>
-                            </details>
-                          ) : (
-                            <small>{copy.recordings.requestUnknown}</small>
-                          )}
-                          {attempt.text != null && (
-                            <p className="dlvd-transcript">{attempt.text}</p>
-                          )}
-                          {attempt.error && (
-                            <p className="dlvd-attempt-error">
-                              {copy.recordings.error}: {attempt.error}
-                            </p>
-                          )}
-                        </article>
-                      ))}
-                    </details>
+                    {segment.kind === 'speech' && service.retranscribe && (
+                      <button
+                        type="button"
+                        className="dlvd-segment-action"
+                        disabled={
+                          deleting ||
+                          !!retrying ||
+                          session.state === 'recording' ||
+                          segment.open ||
+                          segment.endSample <= segment.startSample ||
+                          segment.attempts.some((a) => a.status === 'pending')
+                        }
+                        title={copy.recordings.retranscribeHelp}
+                        aria-label={copy.recordings.retranscribe + ' · ' + segmentName(segment)}
+                        onClick={() => void retranscribe(segment)}
+                      >
+                        <SegmentIcon kind="retry" />
+                      </button>
+                    )}
                   </td>
                 </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-      <details>
-        <summary>
+                {segment.kind === 'speech' && (
+                  <tr>
+                    <td colSpan={5}>
+                      <details
+                        open={!!search.trim() || selectedSegment === segment.id || undefined}
+                      >
+                        <summary>
+                          {copy.recordings.attempts} · {segment.attempts.length}
+                        </summary>
+                        {!segment.attempts.length && <p>{copy.recordings.noAttempts}</p>}
+                        {segment.attempts.map((attempt) => (
+                          <article className="dlvd-attempt" key={attempt.id}>
+                            <div>
+                              {copy.recordings.engine}: {attempt.engine} ·
+                              {
+                                {
+                                  pending: copy.recordings.pending,
+                                  success: copy.recordings.success,
+                                  error: copy.recordings.error,
+                                }[attempt.status]
+                              }
+                            </div>
+                            <time dateTime={attempt.createdAt}>
+                              {new Date(attempt.createdAt).toLocaleString()}
+                            </time>
+                            {attempt.finishedAt && (
+                              <>
+                                {' '}
+                                —{' '}
+                                <time dateTime={attempt.finishedAt}>
+                                  {new Date(attempt.finishedAt).toLocaleString()}
+                                </time>
+                              </>
+                            )}
+                            <div>
+                              {duration(attempt.startSample, session.sampleRate)} —{' '}
+                              {duration(attempt.endSample, session.sampleRate)}
+                            </div>
+                            {attempt.request ? (
+                              <details className="dlvd-request">
+                                <summary>
+                                  {copy.recordings.requestMetadata} ·{' '}
+                                  {attempt.request.payloadBytes.toLocaleString()} B ·{' '}
+                                  {(attempt.request.durationMs / 1000).toFixed(3)} s
+                                </summary>
+                                <p>{copy.recordings.requestHelp}</p>
+                                <dl className="dlvd-recording-meta">
+                                  <dt>{copy.recordings.requestBytes}</dt>
+                                  <dd>{attempt.request.payloadBytes.toLocaleString()} B</dd>
+                                  <dt>{copy.recordings.requestInput}</dt>
+                                  <dd>
+                                    {attempt.request.inputSamples.toLocaleString()} /{' '}
+                                    {attempt.request.inputSampleRate.toLocaleString()} Hz
+                                  </dd>
+                                  <dt>{copy.recordings.requestSamples}</dt>
+                                  <dd>
+                                    {attempt.request.sampleCount.toLocaleString()} /{' '}
+                                    {attempt.request.sampleRate.toLocaleString()} Hz
+                                  </dd>
+                                  <dt>{copy.recordings.duration}</dt>
+                                  <dd>{(attempt.request.durationMs / 1000).toFixed(3)} s</dd>
+                                  <dt>{copy.recordings.requestExpected}</dt>
+                                  <dd>
+                                    {duration(
+                                      attempt.endSample - attempt.startSample,
+                                      session.sampleRate,
+                                    )}
+                                  </dd>
+                                  <dt>{copy.recordings.requestLanguage}</dt>
+                                  <dd>{attempt.request.language}</dd>
+                                  <dt>{copy.recordings.requestPrepared}</dt>
+                                  <dd>
+                                    <time dateTime={attempt.request.preparedAt}>
+                                      {new Date(attempt.request.preparedAt).toLocaleString()}
+                                    </time>
+                                  </dd>
+                                  <dt>{copy.recordings.requestStatus}</dt>
+                                  <dd>
+                                    {attempt.request.responseStatus ??
+                                      copy.recordings.requestUnknown}
+                                  </dd>
+                                </dl>
+                              </details>
+                            ) : (
+                              <small>{copy.recordings.requestUnknown}</small>
+                            )}
+                            {attempt.text != null && (
+                              <p className="dlvd-transcript">{attempt.text}</p>
+                            )}
+                            {attempt.error && (
+                              <p className="dlvd-attempt-error">
+                                {copy.recordings.error}: {attempt.error}
+                              </p>
+                            )}
+                          </article>
+                        ))}
+                      </details>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div
+        className="dlvd-detail-list dlvd-boundary-pins"
+        role="tabpanel"
+        id={detailTabsId + '-pins'}
+        aria-labelledby={detailTabsId + '-pins-tab'}
+        hidden={detailTab !== 'pins'}
+      >
+        <h4>
           {copy.recordings.pins} · {session.pins.length}
-        </summary>
+        </h4>
         <table>
           <thead>
             <tr>
@@ -1097,7 +1312,7 @@ function RecordingDetail({
             ))}
           </tbody>
         </table>
-      </details>
+      </div>
     </section>
   );
 }

@@ -15,6 +15,7 @@ export const inject = ['locale'];
 export function apply(ctx: any) {
   let enabled = false;
   let blocked = false;
+  let requestedRecording: { id?: string; revision: number } = { revision: 0 };
   let popup: Window | null = null;
   let root: Root | null = null;
   let closedTimer: ReturnType<typeof setInterval> | null = null;
@@ -42,6 +43,7 @@ export function apply(ctx: any) {
     notify();
   };
   function Host() {
+    const request = React.useSyncExternalStore(subscribe, () => requestedRecording);
     const { scoped: labels, current } = useDebuggerLanguage();
     React.useEffect(() => {
       if (popup && !popup.closed) popup.document.title = labels.commons.title;
@@ -51,15 +53,18 @@ export function apply(ctx: any) {
         copy={labels}
         locale={current.locale}
         target={window}
+        recordingRequest={request}
         onClose={() => queueMicrotask(close)}
       />
     );
   }
   // Open synchronously inside the user's click so browsers preserve popup permission.
-  const open = () => {
+  const open = (request?: { recordingId?: string }) => {
+    requestedRecording = { id: request?.recordingId, revision: requestedRecording.revision + 1 };
     if (popup && !popup.closed) {
       popup.focus();
-      return;
+      notify();
+      return true;
     }
     close();
     blocked = false;
@@ -73,7 +78,7 @@ export function apply(ctx: any) {
       if (!candidate) {
         blocked = true;
         notify();
-        return;
+        return false;
       }
       popup = candidate;
       const doc = candidate.document;
@@ -95,11 +100,13 @@ export function apply(ctx: any) {
         else if (popup) syncDebuggerTheme(window, popup.document);
       }, 250);
       notify();
+      return true;
     } catch {
       close();
       if (candidate && !candidate.closed) candidate.close();
       blocked = true;
       notify();
+      return false;
     }
   };
   function Settings() {
@@ -107,7 +114,7 @@ export function apply(ctx: any) {
     const { scoped: labels } = useDebuggerLanguage();
     return (
       <div className="dlv-diagnostics-launcher">
-        <button type="button" className="dlv-diagnostics-button" onClick={open}>
+        <button type="button" className="dlv-diagnostics-button" onClick={() => open()}>
           <Icon name="bug" />
           {labels.commons.diagnostics}
         </button>
@@ -124,6 +131,7 @@ export function apply(ctx: any) {
         version: 1,
         label: () => t('commons.developer'),
         component: LocalizedSettings,
+        open,
       }),
     namespace + ': Developer tab',
   );

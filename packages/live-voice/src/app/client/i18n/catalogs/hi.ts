@@ -102,6 +102,8 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.debugger.label': 'डायग्नोस्टिक्स',
   'dsh-live-voice.debugger.local':
     'डीबगर की स्थानीय, Git या कस्टम निर्भरता पहले से मौजूद है। उसकी मूल इंस्टॉलेशन विधि से प्रबंधन करें; यहाँ उसे बदला नहीं जाएगा।',
+  'dsh-live-voice.debugger.popupBlocked':
+    'निदान नहीं खुला। इस साइट के पॉपअप की अनुमति दें और फिर प्रयास करें।',
   'dsh-live-voice.debugger.ready':
     'डायग्नोस्टिक्स तैयार हैं। संवाद बंद करके डीबगर खोलने के लिए डायग्नोस्टिक्स पर क्लिक करें।',
   'dsh-live-voice.debugger.restart':

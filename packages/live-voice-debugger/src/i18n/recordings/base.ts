@@ -131,6 +131,7 @@ export type RecordingsTranslation = {
   storagePartial: string;
   storageScope: string;
   storageSessions: string;
+  storageTab: string;
   storageTotal: string;
   storageUnknown: string;
   success: string;
@@ -139,6 +140,10 @@ export type RecordingsTranslation = {
   unavailable: string;
   unstar: string;
   unstarHelp: string;
+  viewLayout: string;
+  viewList: string;
+  viewSession: string;
+  viewSplit: string;
   voiceCommandRecognized: string;
   waitCancelled: string;
   waitChanged: string;

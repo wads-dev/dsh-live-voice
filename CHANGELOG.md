@@ -4,7 +4,18 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 [Product overview](README.md) · [Visão geral em português](README.pt.md) · [简体中文概览](README.zh-CN.md)
 
-## [NEXT] - Unreleased
+## [0.9.0] - Planned
+
+Roadmap only — not implemented or released. Scope and delivery timing may change.
+
+### Live Voice
+
+#### Features
+
+- [ ] Bring recording-session management into the main plugin with a friendlier interface for reviewing saved audio and recovering ignored speech, without requiring the optional debugger.
+- [ ] Add a direct entry point on each source bar to open the corresponding recording session.
+
+## [0.8.0] - Unreleased
 
 ### Live Voice
 
@@ -27,6 +38,16 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 #### Improvements
 
+- Rework the recording inspector into a more compact, task-focused workspace for reviewing saved sessions and recovering speech that never reached the Composer:
+  - Give recordings, current state and storage separate top-level views, with total saved audio visible in the Storage tab and source filtering/refresh, sampling frequency and close alongside navigation instead of a redundant title row.
+  - Widen composer voice bars and offer a Diagnostics shortcut before the microphone only while the optional debugger is active. Open or focus the current source recording directly; report blocked popups without affecting capture.
+  - Choose List, Split or Session directly in the existing toolbar; let either panel use the full width without losing review state, and default to the list when nothing is selected.
+  - Keep session actions beside the title and arrange metadata in wrapping inline groups, leaving more room for audio, the timeline and transcripts.
+  - Prioritize transcript review with Segments selected by default; move assistant/capture events and boundary pins into their own internal tabs instead of stacking long lists.
+  - Hide empty marker lanes for the selected window and open the corresponding event list when inspecting a marker.
+  - Align speech and command colors with one icon legend without duplicating Speech and Capture/listening, and overlay captured-time waiting/playback intervals in the horizontal summary without hiding speech or inventing audio duration during capture gaps.
+  - Remove the redundant timeline heading and text-only legend, shorten visible range labels to Start/End, and place audio playback after the markers, immediately before the internal list tabs.
+  - Preserve the selected session, timeline window, transcript search and audio player across top-level tab changes. Recording management remains part of the separately installed optional debugger; this release does not add a session manager or session shortcut to the main plugin.
 - Filter the debugger event table by the selected timeline window as well as the existing segment list and transcript search. Reset restores every original event, including right-edge playback events.
 
 ## [0.7.2] - 2026-11-08

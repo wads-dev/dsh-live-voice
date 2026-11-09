@@ -5,7 +5,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { EventTimeline } from '../src/EventTimeline.js';
-import { eventCategory, groupTimelineEvents } from '../src/eventTimelineModel.js';
+import { eventCategory, groupTimelineEvents, eventIntervals } from '../src/eventTimelineModel.js';
 import { copyFor } from '../src/i18n/index.js';
 const event = (id, atSample, kind = 'assistant-start') => ({
   id,
@@ -14,6 +14,30 @@ const event = (id, atSample, kind = 'assistant-start') => ({
   occurredAt: '2026-10-19T14:00:00.123Z',
 });
 
+test('summary intervals use paired sample boundaries and never invent duration in capture gaps', () => {
+  assert.deepEqual(
+    eventIntervals(
+      [
+        event('a', 10, 'assistant-wait-start'),
+        event('b', 20, 'assistant-wait-end'),
+        event('c', 20, 'assistant-start'),
+        event('d', 40, 'assistant-end'),
+      ],
+      50,
+    ),
+    [
+      { category: 'waiting', start: 10, end: 20 },
+      { category: 'playback', start: 20, end: 40 },
+    ],
+  );
+  assert.deepEqual(
+    eventIntervals([event('a', 20, 'assistant-start'), event('b', 20, 'assistant-end')], 50),
+    [],
+  );
+  assert.deepEqual(eventIntervals([event('a', 30, 'assistant-wait-start')], 50), [
+    { category: 'waiting', start: 30, end: 50 },
+  ]);
+});
 test('timeline groups nearby events by semantic category without losing real times or changing input', () => {
   const events = [
     event('a', 0),
@@ -38,7 +62,11 @@ test('timeline groups nearby events by semantic category without losing real tim
   assert.equal(eventCategory('capture-gate-failed'), 'attention');
   assert.equal(eventCategory('voice-command-recognized'), 'command');
   assert.equal(eventCategory('transcription-ignored-muted'), 'ignored');
-  assert.equal(groupTimelineEvents([event('ignored', 500, 'transcription-ignored-muted')], 0, 1000, 360)[0].category, 'ignored');
+  assert.equal(
+    groupTimelineEvents([event('ignored', 500, 'transcription-ignored-muted')], 0, 1000, 360)[0]
+      .category,
+    'ignored',
+  );
   assert.equal(groupTimelineEvents(events, 0, 1000, 10).length, 2);
   assert.deepEqual(groupTimelineEvents(events, 400, 500, 360), []);
   assert.equal(groupTimelineEvents([event('end', 0)], 0, 0, 0).length, 1);
@@ -83,6 +111,18 @@ test('event marker has immediate nonblocking tooltip, keyboard dismissal and ful
     );
   await act(async () => render());
   const marker = document.querySelector('.dlvd-event-marker');
+  assert.equal(
+    document.querySelectorAll('.dlvd-event-lane').length,
+    1,
+    'empty categories have no lane',
+  );
+  assert.equal(
+    document.querySelectorAll('.dlvd-event-legend span').length,
+    7,
+    'legend retains category descriptions',
+  );
+  assert.equal(document.querySelector('.dlvd-event-legend [data-category=speech]'), null);
+  assert.equal(document.querySelectorAll('.dlvd-event-legend [data-category=capture]').length, 1);
   assert.equal(marker.dataset.count, '8');
   assert.equal(marker.title, '');
   await act(async () =>
@@ -119,6 +159,12 @@ test('event marker has immediate nonblocking tooltip, keyboard dismissal and ful
   });
   await act(async () => dom.window.dispatchEvent(new dom.window.Event('scroll')));
   assert.ok(document.querySelector('[role=tooltip]'), 'scroll repositions a focused tooltip');
+  await act(async () => render(0, 500));
+  assert.equal(
+    document.querySelectorAll('.dlvd-event-lane').length,
+    0,
+    'window with no markers has no empty rows',
+  );
   await act(async () => dom.window.dispatchEvent(new dom.window.Event('resize')));
   assert.equal(document.querySelector('[role=tooltip]'), null);
 });

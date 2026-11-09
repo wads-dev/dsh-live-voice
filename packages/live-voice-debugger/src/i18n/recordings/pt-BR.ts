@@ -146,6 +146,7 @@ const translation = {
   storageScope:
     'Todas as fontes deste navegador e site. Apenas áudio codificado salvo; não inclui metadados, espaço interno do banco, arquivos exportados nem áudio ainda não salvo. Não é o uso total do navegador.',
   storageSessions: '{count} sessão(ões) de todas as fontes',
+  storageTab: 'Armazenamento',
   storageTotal: 'Total de áudio armazenado',
   storageUnknown: 'Indisponível',
   success: 'Sucesso',
@@ -156,6 +157,10 @@ const translation = {
   unstar: 'Remover proteção',
   unstarHelp:
     'Permite a limpeza automática e inclui novamente esta gravação na contagem de retenção. A exclusão manual continua permitida. O armazenamento e a proteção contra remoção pelo navegador não mudam.',
+  viewLayout: 'Visualização',
+  viewList: 'Lista',
+  viewSession: 'Sessão',
+  viewSplit: 'Dividido',
   voiceCommandRecognized: 'Comando de voz reconhecido',
   waitCancelled: 'Espera cancelada',
   waitChanged: 'Motivos da espera alterados',

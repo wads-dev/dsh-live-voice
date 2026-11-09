@@ -142,6 +142,7 @@ const translation = {
   storageScope:
     '此浏览器和站点的所有来源。仅计算已保存的编码音频；不含元数据、数据库开销、导出文件或未保存音频。并非浏览器总存储用量。',
   storageSessions: '所有来源共 {count} 个会话',
+  storageTab: '存储',
   storageTotal: '已存储音频总量',
   storageUnknown: '不可用',
   success: '成功',
@@ -151,6 +152,10 @@ const translation = {
   unstar: '取消保护',
   unstarHelp:
     '允许自动清理，并将此录音重新计入保留数量。仍可手动删除。浏览器存储和防逐出保护保持不变。',
+  viewLayout: '视图',
+  viewList: '列表',
+  viewSession: '会话',
+  viewSplit: '分栏',
   voiceCommandRecognized: '已识别语音命令',
   waitCancelled: '等待已取消',
   waitChanged: '等待原因已改变',

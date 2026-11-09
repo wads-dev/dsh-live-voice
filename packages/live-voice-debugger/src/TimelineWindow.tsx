@@ -113,10 +113,10 @@ export function TimelineWindow({ total, start, end, copy, format, onChange, onRe
       <div className="dlvd-window-selector">
         <div className="dlvd-window-values">
           <span>
-            {copy.windowStart}: {format(start)}
+            {copy.start}: {format(start)}
           </span>
           <span>
-            {copy.windowEnd}: {format(end)}
+            {copy.end}: {format(end)}
           </span>
         </div>
         <div className="dlvd-window-track" ref={track}>

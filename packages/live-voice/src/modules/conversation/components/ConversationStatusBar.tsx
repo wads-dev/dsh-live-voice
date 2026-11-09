@@ -1,4 +1,5 @@
 import React from 'react';
+import { DiagnosticsButton } from './DiagnosticsButton.js';
 import { MutedSpeechNotice } from './MutedSpeechNotice.js';
 import { RecoveryFeedback } from './RecoveryFeedback.js';
 import { useLanguage } from '../../../app/client/i18n/index.js';
@@ -81,6 +82,7 @@ export function ConversationStatusBar({
           status={status}
           leading={
             <>
+              <DiagnosticsButton controller={controller} />
               {state.conversation && !capture ? (
                 <IconButton
                   label={(recognition as any).microphone.takeControl()}

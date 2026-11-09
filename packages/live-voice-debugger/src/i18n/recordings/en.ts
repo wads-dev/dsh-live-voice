@@ -145,6 +145,7 @@ const translation = {
   storageScope:
     'All sources in this browser and site. Encoded saved audio only; excludes metadata, database overhead, exported files and unsaved audio. Not total browser storage usage.',
   storageSessions: '{count} session(s) across all sources',
+  storageTab: 'Storage',
   storageTotal: 'Total stored audio',
   storageUnknown: 'Unavailable',
   success: 'Success',
@@ -155,6 +156,10 @@ const translation = {
   unstar: 'Remove protection',
   unstarHelp:
     'Allow automatic cleanup and include this recording in the retention count again. Manual deletion is still allowed. Browser storage and eviction protection are unchanged.',
+  viewLayout: 'View',
+  viewList: 'List',
+  viewSession: 'Session',
+  viewSplit: 'Split',
   voiceCommandRecognized: 'Voice command recognized',
   waitCancelled: 'Wait cancelled',
   waitChanged: 'Wait reasons changed',
