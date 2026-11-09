@@ -805,6 +805,7 @@ export class VoiceCoordinator {
       startedAt,
       paragraphBefore = false,
       onCommandRecognized,
+      onIgnoredMuted,
     } = result;
     if (this.disposed || (!this.snapshot.listening && !this.snapshot.starting)) return;
     if (this.navigationPaused) {
@@ -881,6 +882,10 @@ export class VoiceCoordinator {
         return;
       }
       if (this.snapshot.muted) {
+        if (typeof final === 'string' && final.trim()) {
+          if (onIgnoredMuted) onIgnoredMuted();
+          else this.recordingTimeline?.()?.('transcription-ignored-muted');
+        }
         // Discard pending recognition without rewriting the composer.
         this.transcript.reset();
         this.patch({ recognizing });

@@ -160,7 +160,7 @@ test('Whisper browser engine segments speech and sends authenticated complete ut
   );
   assert.doesNotThrow(() => validateMonoPcm16Wav(requests.at(-1).options.body));
   assert.deepEqual(
-    results.map(({ startedAt, onCommandRecognized, ...text }) => text),
+    results.map(({ startedAt, onCommandRecognized, onIgnoredMuted, ...text }) => text),
     [{ final: 'Olá do Whisper', interim: '', paragraphBefore: false }],
   );
   assert.equal(

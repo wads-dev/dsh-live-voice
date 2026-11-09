@@ -32,6 +32,7 @@ interface RecognitionCallbacks {
     startedAt: number;
     paragraphBefore?: boolean;
     onCommandRecognized?(command: RecordingVoiceCommand): void;
+    onIgnoredMuted?(): void;
   }): void;
   onActivity?(active: boolean): void;
   onError?(error: Error): void;
@@ -457,6 +458,7 @@ export async function startRecordingRecognition(
             finishedAt: new Date().toISOString(),
           });
           let commandRecorded = false;
+          let ignoredRecorded = false;
           if (valid() && text)
             onResult?.({
               final: text,
@@ -465,6 +467,14 @@ export async function startRecordingRecognition(
                 Date.parse(writer.session.startedAt) +
                 ((attempt.speechStartSample ?? attempt.startSample) / rate) * 1000,
               paragraphBefore: attempt.paragraphBefore,
+              onIgnoredMuted: () => {
+                if (ignoredRecorded || commandRecorded) return;
+                ignoredRecorded = true;
+                void commandTimeline('transcription-ignored-muted', {
+                  segmentId: attempt.segmentId,
+                  attemptId: attempt.id,
+                }).catch((error) => onError?.(new Error(engine.recordingErrorMessage(error))));
+              },
               onCommandRecognized: (command) => {
                 if (commandRecorded) return;
                 commandRecorded = true;

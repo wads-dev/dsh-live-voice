@@ -59,6 +59,7 @@ export interface RecordingEventDetails {
   outcome?: 'ready' | 'cancelled' | 'changed';
 }
 export type RecordingEventKind =
+  | 'transcription-ignored-muted'
   | 'voice-command-recognized'
   | 'assistant-wait-start'
   | 'assistant-wait-end'

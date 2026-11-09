@@ -1,8 +1,16 @@
 import type { RecordingEvent } from '../../live-voice/src/modules/recording/types.js';
 
-export const eventCategories = ['waiting', 'playback', 'capture', 'command', 'attention'] as const;
+export const eventCategories = [
+  'waiting',
+  'playback',
+  'capture',
+  'command',
+  'ignored',
+  'attention',
+] as const;
 export type EventCategory = (typeof eventCategories)[number];
 export function eventCategory(kind: string): EventCategory {
+  if (kind === 'transcription-ignored-muted') return 'ignored';
   if (kind === 'voice-command-recognized') return 'command';
   if (kind.startsWith('assistant-wait')) return 'waiting';
   if (

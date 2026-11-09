@@ -398,6 +398,29 @@ test('integrated primary recordings tab separates sources, plays silence, export
     'reset restores original events including the right-edge event',
   );
   assert.equal(document.querySelectorAll('.dlvd-timeline button').length, 3);
+  const originalEvents = records[0].events;
+  records[0].events = [
+    {
+      id: 'ignored',
+      kind: 'transcription-ignored-muted',
+      occurredAt: '2026-10-14T12:00:03Z',
+      atSample: 300,
+      details: { segmentId: 'speech', attemptId: 'attempt' },
+    },
+  ];
+  await act(async () => {
+    root.render(<DebuggerPanel copy={copy} target={target.window} onClose={() => {}} />);
+    await flush();
+  });
+  assert.ok(document.querySelector('.dlvd-timeline button[data-kind=ignored]'));
+  assert.ok(document.querySelector('.dlvd-segments .dlvd-ignored-label'));
+  assert.ok(document.querySelector('[data-category=ignored]'));
+  assert.match(document.querySelector('.dlvd-recording-events').textContent, /Ignored while muted/);
+  records[0].events = originalEvents;
+  await act(async () => {
+    root.render(<DebuggerPanel copy={copy} target={target.window} onClose={() => {}} />);
+    await flush();
+  });
   await inputValue(search, 'test transcript');
   assert.equal(
     document.querySelectorAll('.dlvd-segments tbody > tr').length,

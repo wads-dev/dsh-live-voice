@@ -72,6 +72,7 @@ const translation = {
   exportError: 'Unable to export the recording.',
   failed: 'Failed',
   help: 'Inspect saved audio, speech/silence boundaries and transcription attempts. Audio and transcripts may be sensitive. Playback is local; export includes audio and text. Inspection never changes capture; only explicit deletion removes recordings.',
+  ignoredMuted: 'Ignored while muted',
   inputStopComplete: 'Recognition/meter stop completed',
   interrupted: 'Interrupted',
   loadError: 'Unable to load recording sessions. Try refreshing.',

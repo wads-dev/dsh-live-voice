@@ -9,21 +9,23 @@ import {
 } from './eventTimelineModel.js';
 
 function EventGlyph({ kind }: { kind: string }) {
-  const path = kind.includes('command')
-    ? 'm13 2-9 12h7l-1 8 10-12h-7l1-8Z'
-    : kind.includes('wait')
-      ? 'M6 3h12M6 21h12M7 3v4l10 10v4M17 3v4L7 17v4'
-      : kind.includes('error') || kind.includes('failed')
-        ? 'M12 3 2 21h20L12 3ZM12 9v5M12 17v.1'
-        : kind.includes('cancel')
-          ? 'm6 6 12 12M6 18 18 6'
-          : kind.includes('pause') || kind.includes('interruption')
-            ? 'M8 5v14M16 5v14'
-            : kind.endsWith('end') || kind === 'input-stop-complete'
-              ? 'M5 5h14v14H5Z'
-              : kind.startsWith('capture')
-                ? 'M9 4a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0V4ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8'
-                : 'm7 4 13 8-13 8Z';
+  const path = kind.includes('ignored')
+    ? 'M3 3l18 18M9 9v3a3 3 0 0 0 5 2M15 8V5a3 3 0 0 0-5-2M6 10v2a6 6 0 0 0 10 4M12 18v4M8 22h8'
+    : kind.includes('command')
+      ? 'm13 2-9 12h7l-1 8 10-12h-7l1-8Z'
+      : kind.includes('wait')
+        ? 'M6 3h12M6 21h12M7 3v4l10 10v4M17 3v4L7 17v4'
+        : kind.includes('error') || kind.includes('failed')
+          ? 'M12 3 2 21h20L12 3ZM12 9v5M12 17v.1'
+          : kind.includes('cancel')
+            ? 'm6 6 12 12M6 18 18 6'
+            : kind.includes('pause') || kind.includes('interruption')
+              ? 'M8 5v14M16 5v14'
+              : kind.endsWith('end') || kind === 'input-stop-complete'
+                ? 'M5 5h14v14H5Z'
+                : kind.startsWith('capture')
+                  ? 'M9 4a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0V4ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8'
+                  : 'm7 4 13 8-13 8Z';
   return (
     <svg
       width="16"
@@ -79,6 +81,7 @@ export function EventTimeline({
     playback: copy.eventPlayback,
     capture: copy.eventCapture,
     command: copy.eventCommand,
+    ignored: copy.ignoredMuted,
     attention: copy.eventAttention,
   };
   const timestamp = (event: RecordingEvent) =>
@@ -165,7 +168,9 @@ export function EventTimeline({
                       ? 'error'
                       : category === 'command'
                         ? 'voice-command'
-                        : 'assistant-start'
+                        : category === 'ignored'
+                          ? 'transcription-ignored-muted'
+                          : 'assistant-start'
               }
             />
             {labels[category]}

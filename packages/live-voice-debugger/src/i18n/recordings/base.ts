@@ -65,6 +65,7 @@ export type RecordingsTranslation = {
   exportError: string;
   failed: string;
   help: string;
+  ignoredMuted: string;
   inputStopComplete: string;
   interrupted: string;
   loadError: string;

@@ -292,7 +292,14 @@ export class MeetingController {
       await engine.start({
         lang: settings.recognitionLang,
         signal: recognitionAbort.signal,
-        onResult: ({ final, interim, startedAt, paragraphBefore }) => {
+        onResult: ({
+          final,
+          interim,
+          startedAt,
+          paragraphBefore,
+          onCommandRecognized,
+          onIgnoredMuted,
+        }) => {
           if (!valid()) return;
           if (job.discardResults > 0) {
             job.discardResults--;
@@ -308,6 +315,8 @@ export class MeetingController {
                 ? startedAt + (engine.attendeeTimestampOffset || 0)
                 : startedAt,
               paragraphBefore,
+              onCommandRecognized,
+              onIgnoredMuted,
             });
           else if (final && !engine.activityManaged) input.patch({ recognizing: false });
           if (final && !interim && !engine.activityManaged) {

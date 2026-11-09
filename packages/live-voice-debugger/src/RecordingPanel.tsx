@@ -464,6 +464,7 @@ function RecordingDetail({
   };
   const eventName = (kind: string) =>
     ({
+      'transcription-ignored-muted': copy.recordings.ignoredMuted,
       'voice-command-recognized': copy.recordings.voiceCommandRecognized,
       'assistant-wait-start': copy.recordings.assistantWaitStart,
       'assistant-wait-end': copy.recordings.assistantWaitEnd,
@@ -491,6 +492,11 @@ function RecordingDetail({
       stopSpeaking: copy.recordings.commandStopSpeaking,
       clear: copy.recordings.commandClear,
     })[command] ?? command;
+  const ignoredFor = (segment: RecordingSegment) =>
+    (session.events ?? []).filter(
+      (event) =>
+        event.kind === 'transcription-ignored-muted' && event.details?.segmentId === segment.id,
+    );
   const commandsFor = (segment: RecordingSegment) =>
     (session.events ?? []).filter(
       (event) =>
@@ -578,9 +584,11 @@ function RecordingDetail({
   const segmentName = (segment: RecordingSegment) =>
     (commandsFor(segment).length
       ? copy.recordings.eventCommand
-      : segment.kind === 'speech'
-        ? copy.recordings.speech
-        : copy.recordings.silence) +
+      : ignoredFor(segment).length
+        ? copy.recordings.ignoredMuted
+        : segment.kind === 'speech'
+          ? copy.recordings.speech
+          : copy.recordings.silence) +
     ' · ' +
     duration(segment.startSample, session.sampleRate) +
     ' — ' +
@@ -757,7 +765,13 @@ function RecordingDetail({
           <button
             key={segment.id}
             type="button"
-            data-kind={commandsFor(segment).length ? 'command' : segment.kind}
+            data-kind={
+              commandsFor(segment).length
+                ? 'command'
+                : ignoredFor(segment).length
+                  ? 'ignored'
+                  : segment.kind
+            }
             aria-label={segmentName(segment)}
             title={segmentName(segment)}
             aria-pressed={selectedSegment === segment.id}
@@ -793,7 +807,8 @@ function RecordingDetail({
         <span data-kind="speech">{copy.recordings.speech}</span>
         {' · '}
         <span data-kind="silence">{copy.recordings.silence}</span> ·{' '}
-        <span data-kind="command">{copy.recordings.eventCommand}</span>
+        <span data-kind="command">{copy.recordings.eventCommand}</span> ·{' '}
+        <span data-kind="ignored">{copy.recordings.ignoredMuted}</span>
         {' · '}
         {duration(viewStart, session.sampleRate)} –{' '}
         {duration(Math.min(viewEnd, session.savedSamples), session.sampleRate)}
@@ -886,8 +901,10 @@ function RecordingDetail({
                         .map((event) => commandName(event.details!.command!))
                         .join(', ')}
                     </span>
+                  ) : ignoredFor(segment).length ? (
+                    <span className="dlvd-ignored-label">⊘ {copy.recordings.ignoredMuted}</span>
                   ) : segment.kind === 'speech' ? (
-                    copy.recordings.speech
+                    <span className="dlvd-speech-label">● {copy.recordings.speech}</span>
                   ) : (
                     copy.recordings.silence
                   )}

@@ -73,6 +73,7 @@ const translation = {
   exportError: 'Impossible d’exporter l’enregistrement.',
   failed: 'Échec',
   help: 'Inspectez l’audio sauvegardé, les limites parole/silence et les tentatives de transcription. Audio et texte peuvent être sensibles. Lecture locale ; l’export contient l’audio et le texte. L’inspection ne change pas la capture ; seule une suppression explicite efface les enregistrements.',
+  ignoredMuted: 'Ignoré en sourdine',
   inputStopComplete: 'Arrêt reconnaissance/indicateur terminé',
   interrupted: 'Interrompu',
   loadError: 'Impossible de charger les enregistrements. Actualisez la liste.',

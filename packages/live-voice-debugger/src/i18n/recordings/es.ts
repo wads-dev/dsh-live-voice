@@ -73,6 +73,7 @@ const translation = {
   exportError: 'No se pudo exportar la grabación.',
   failed: 'Fallida',
   help: 'Inspeccione audio guardado, límites de voz/silencio e intentos de transcripción. Audio y texto pueden ser sensibles. La reproducción es local; la exportación incluye audio y texto. Inspeccionar no cambia la captura; solo la eliminación explícita borra grabaciones.',
+  ignoredMuted: 'Ignorado por estar silenciado',
   inputStopComplete: 'Parada de reconocimiento/medidor completada',
   interrupted: 'Interrumpida',
   loadError: 'No se pudieron cargar las grabaciones. Intente actualizar.',

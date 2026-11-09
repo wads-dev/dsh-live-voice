@@ -37,6 +37,8 @@ test('timeline groups nearby events by semantic category without losing real tim
   assert.equal(eventCategory('assistant-wait-end'), 'waiting');
   assert.equal(eventCategory('capture-gate-failed'), 'attention');
   assert.equal(eventCategory('voice-command-recognized'), 'command');
+  assert.equal(eventCategory('transcription-ignored-muted'), 'ignored');
+  assert.equal(groupTimelineEvents([event('ignored', 500, 'transcription-ignored-muted')], 0, 1000, 360)[0].category, 'ignored');
   assert.equal(groupTimelineEvents(events, 0, 1000, 10).length, 2);
   assert.deepEqual(groupTimelineEvents(events, 400, 500, 360), []);
   assert.equal(groupTimelineEvents([event('end', 0)], 0, 0, 0).length, 1);

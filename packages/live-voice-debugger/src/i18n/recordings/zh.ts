@@ -71,6 +71,7 @@ const translation = {
   exportError: '无法导出录音。',
   failed: '失败',
   help: '查看已保存音频、语音/静音边界和转录尝试。音频和文本可能敏感。播放在本地进行；导出包含音频和文本。查看不会更改采集；只有明确删除操作才会移除录音。',
+  ignoredMuted: '静音时已忽略',
   inputStopComplete: '识别/音量计停止已完成',
   interrupted: '已中断',
   loadError: '无法加载录音会话。请刷新重试。',

@@ -8,6 +8,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ### Features
 
+- Identify recognized speech discarded by Ignoring/mute in the debugger with a separate legend, event lane, striped timeline annotation and marked segment rows. Preserve the original transcription history for recovery without copying text into diagnostic events; shared and participant sources keep the originating recording acknowledgements.
 - Customize timestamp date parts, seconds and punctuation in Conversation settings, with a live format preview and mandatory hours/minutes. Optionally label a solo input. Microphone/shared names and the always-show-name choice now stay in this browser instead of being shared through host preferences; old host names are not imported.
 - Automatically end forgotten voice capture after five minutes without recognized text across microphone, shared audio and meeting participants. Enabled by default and configurable in Conversation settings, with a one-minute advance warning, visual countdown, optional available TTS playback and Continue listening action. Both durations are editable; warning lead time must be positive and at most half the total, without an absolute cap. Preserve the composer draft and show an inactivity reason with explicit restart. Pending speech recognition gets bounded grace, and delayed timers provide a fresh warning window.
 

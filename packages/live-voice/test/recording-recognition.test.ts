@@ -223,111 +223,128 @@ test('VAD retains transition pins only and backdates confirmed silence', () => {
     ['silence-start', 300, 800],
   ]);
 });
-test('recording engine saves continuous PCM before VAD and transcribes recording ranges with audit', async () => {
-  let ingest: any;
-  let probability: any;
-  const pcm: number[] = [];
-  const attempts: any[] = [];
-  const session: any = {
-    id: 'r',
-    startedAt: new Date().toISOString(),
-    sampleRate: 16000,
-    savedSamples: 0,
-    capturedSamples: 0,
-    state: 'recording',
-    pins: [],
-    attempts,
-  };
-  const writer = {
-    session,
-    append: async (data: Float32Array) => {
-      pcm.push(...data);
-      session.capturedSamples = session.savedSamples = pcm.length;
+for (const disposition of ['command', 'ignored'])
+  test(
+    'recording engine saves continuous PCM and audits ' +
+      disposition +
+      ' once per original attempt',
+    async () => {
+      let ingest: any;
+      let probability: any;
+      const pcm: number[] = [];
+      const attempts: any[] = [];
+      const session: any = {
+        id: 'r',
+        startedAt: new Date().toISOString(),
+        sampleRate: 16000,
+        savedSamples: 0,
+        capturedSamples: 0,
+        state: 'recording',
+        pins: [],
+        attempts,
+      };
+      const writer = {
+        session,
+        append: async (data: Float32Array) => {
+          pcm.push(...data);
+          session.capturedSamples = session.savedSamples = pcm.length;
+        },
+        pin: async (kind: string, atSample: number, confirmedAtSample: number) => {
+          const pin = { id: 'p' + session.pins.length, kind, atSample, confirmedAtSample };
+          session.pins.push(pin);
+          return pin;
+        },
+        read: async (start: number, end: number) => Float32Array.from(pcm.slice(start, end)),
+        attempt: async (a: any) => {
+          const i = attempts.findIndex((x) => x.id === a.id);
+          if (i < 0) attempts.push(a);
+          else attempts[i] = a;
+        },
+        finish: async (state = 'completed') => {
+          session.state = state;
+        },
+      };
+      const results: any[] = [];
+      const requests: any[] = [];
+      const engine = new WhisperHttpRecognitionEngine({
+        meter: { context: { sampleRate: 16000 }, source: {} },
+        recordings: {
+          begin: async () => writer,
+          timeline: () => async (kind, details) => {
+            (session as any).events ??= [];
+            (session as any).events.push({ kind, details });
+          },
+        },
+        voiceDetectionEngine: 'silero',
+        voiceDetectionPreset: 'custom',
+        voiceDetectionCustomSilenceMs: 500,
+        voiceDetectionMinimumSpeechMs: 50,
+        recordingPreRollMs: 0,
+        recordingPostRollMs: 0,
+        globals: {
+          fetch: async (_url: string, request: any) => {
+            requests.push(request);
+            return { ok: true, json: async () => ({ ok: true, value: { text: 'saved speech' } }) };
+          },
+        },
+        vadAvailable: async () => true,
+        vadFactory: ({ onProbability }: any) => {
+          probability = onProbability;
+          return { release() {} };
+        },
+        vadCapture: async (_context: any, _source: any, _vad: any, onPcm: any) => {
+          ingest = onPcm;
+          return { finish: async () => {}, release() {} };
+        },
+      });
+      await engine.start({ onResult: (result: any) => results.push(result) });
+      const frame = (value: number, count: number, p: number) => {
+        const data = new Float32Array(count).fill(value);
+        ingest(data, 16000);
+        probability({ probability: p, pcm: data });
+      };
+      frame(0, 1600, 0);
+      frame(0.1, 1600, 0.9);
+      frame(0, 8000, 0);
+      await engine.finish();
+      for (let i = 0; i < 5; i++) await tick();
+      assert.equal(pcm.length, 11200);
+      assert.equal(requests.length, 1);
+      assert.deepEqual(
+        session.pins.map((p: any) => [p.kind, p.atSample]),
+        [
+          ['silence-start', 0],
+          ['speech-start', 1600],
+          ['silence-start', 3200],
+        ],
+      );
+      assert.equal(attempts[0].status, 'success');
+      assert.equal(attempts[0].text, 'saved speech');
+      assert.equal(results[0].final, 'saved speech');
+      if (disposition === 'command') {
+        results[0].onCommandRecognized('send');
+        results[0].onCommandRecognized('send');
+        results[0].onIgnoredMuted();
+      } else {
+        results[0].onIgnoredMuted();
+        results[0].onIgnoredMuted();
+      }
+      await tick();
+      assert.deepEqual((session as any).events, [
+        {
+          kind:
+            disposition === 'command' ? 'voice-command-recognized' : 'transcription-ignored-muted',
+          details: {
+            ...(disposition === 'command' ? { command: 'send' } : {}),
+            segmentId: attempts[0].segmentId,
+            attemptId: attempts[0].id,
+          },
+        },
+      ]);
+      assert.deepEqual(
+        recordingSegments(session).map((s) => s.kind),
+        ['silence', 'speech', 'silence'],
+      );
+      await engine.stop();
     },
-    pin: async (kind: string, atSample: number, confirmedAtSample: number) => {
-      const pin = { id: 'p' + session.pins.length, kind, atSample, confirmedAtSample };
-      session.pins.push(pin);
-      return pin;
-    },
-    read: async (start: number, end: number) => Float32Array.from(pcm.slice(start, end)),
-    attempt: async (a: any) => {
-      const i = attempts.findIndex((x) => x.id === a.id);
-      if (i < 0) attempts.push(a);
-      else attempts[i] = a;
-    },
-    finish: async (state = 'completed') => {
-      session.state = state;
-    },
-  };
-  const results: any[] = [];
-  const requests: any[] = [];
-  const engine = new WhisperHttpRecognitionEngine({
-    meter: { context: { sampleRate: 16000 }, source: {} },
-    recordings: {
-      begin: async () => writer,
-      timeline: () => async (kind, details) => {
-        (session as any).events ??= [];
-        (session as any).events.push({ kind, details });
-      },
-    },
-    voiceDetectionEngine: 'silero',
-    voiceDetectionPreset: 'custom',
-    voiceDetectionCustomSilenceMs: 500,
-    voiceDetectionMinimumSpeechMs: 50,
-    recordingPreRollMs: 0,
-    recordingPostRollMs: 0,
-    globals: {
-      fetch: async (_url: string, request: any) => {
-        requests.push(request);
-        return { ok: true, json: async () => ({ ok: true, value: { text: 'saved speech' } }) };
-      },
-    },
-    vadAvailable: async () => true,
-    vadFactory: ({ onProbability }: any) => {
-      probability = onProbability;
-      return { release() {} };
-    },
-    vadCapture: async (_context: any, _source: any, _vad: any, onPcm: any) => {
-      ingest = onPcm;
-      return { finish: async () => {}, release() {} };
-    },
-  });
-  await engine.start({ onResult: (result: any) => results.push(result) });
-  const frame = (value: number, count: number, p: number) => {
-    const data = new Float32Array(count).fill(value);
-    ingest(data, 16000);
-    probability({ probability: p, pcm: data });
-  };
-  frame(0, 1600, 0);
-  frame(0.1, 1600, 0.9);
-  frame(0, 8000, 0);
-  await engine.finish();
-  for (let i = 0; i < 5; i++) await tick();
-  assert.equal(pcm.length, 11200);
-  assert.equal(requests.length, 1);
-  assert.deepEqual(
-    session.pins.map((p: any) => [p.kind, p.atSample]),
-    [
-      ['silence-start', 0],
-      ['speech-start', 1600],
-      ['silence-start', 3200],
-    ],
   );
-  assert.equal(attempts[0].status, 'success');
-  assert.equal(attempts[0].text, 'saved speech');
-  assert.equal(results[0].final, 'saved speech');
-  results[0].onCommandRecognized('send');
-  results[0].onCommandRecognized('send');
-  await tick();
-  assert.deepEqual((session as any).events, [
-    {
-      kind: 'voice-command-recognized',
-      details: { command: 'send', segmentId: attempts[0].segmentId, attemptId: attempts[0].id },
-    },
-  ]);
-  assert.deepEqual(
-    recordingSegments(session).map((s) => s.kind),
-    ['silence', 'speech', 'silence'],
-  );
-  await engine.stop();
-});
