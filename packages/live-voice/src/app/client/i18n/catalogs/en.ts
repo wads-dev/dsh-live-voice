@@ -357,6 +357,10 @@ const en: LiveVoiceTranslation = {
     'Final chunks with fewer words are ignored before they reach the composer or automatic delivery.',
   'dsh-live-voice.recognition.minimumWords.label': 'Minimum words per final chunk',
   'dsh-live-voice.recognition.mode.label': 'Listening mode',
+  'dsh-live-voice.recognition.mutedWarning.body':
+    'You are speaking while this input is set to Ignoring. Your words are not being added to the message.',
+  'dsh-live-voice.recognition.mutedWarning.origin': 'DSH Live Voice · Warning',
+  'dsh-live-voice.recognition.mutedWarning.title': 'Your input is muted',
   'dsh-live-voice.recognition.planned.parakeet': 'NVIDIA Parakeet — Soon',
   'dsh-live-voice.recognition.planned.sherpa': 'sherpa-onnx Streaming — Soon',
   'dsh-live-voice.recognition.planned.vote': 'Coming Soon — vote on repo issues',

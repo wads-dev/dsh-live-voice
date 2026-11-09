@@ -333,6 +333,10 @@ const zh: LiveVoiceTranslation = {
     '字词数不足的最终转写片段会被忽略，不会进入消息输入框或自动发送流程。',
   'dsh-live-voice.recognition.minimumWords.label': '每个最终片段的最少字词数',
   'dsh-live-voice.recognition.mode.label': '聆听模式',
+  'dsh-live-voice.recognition.mutedWarning.body':
+    '此输入处于忽略模式。您的话语不会被添加到消息中。',
+  'dsh-live-voice.recognition.mutedWarning.origin': 'DSH Live Voice · 警告',
+  'dsh-live-voice.recognition.mutedWarning.title': '您正在静音状态下说话',
   'dsh-live-voice.recognition.planned.parakeet': 'NVIDIA Parakeet — 即将推出',
   'dsh-live-voice.recognition.planned.sherpa': 'sherpa-onnx 流式识别 — 即将推出',
   'dsh-live-voice.recognition.planned.vote': '即将推出 — 请在仓库议题中投票',

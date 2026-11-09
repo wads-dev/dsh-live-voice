@@ -370,6 +370,10 @@ const fr: LiveVoiceTranslation = {
     'Les segments définitifs contenant moins de mots sont ignorés avant d’atteindre la zone de rédaction ou l’envoi automatique.',
   'dsh-live-voice.recognition.minimumWords.label': 'Nombre minimal de mots par segment définitif',
   'dsh-live-voice.recognition.mode.label': 'Mode d’écoute',
+  'dsh-live-voice.recognition.mutedWarning.body':
+    'Vous parlez alors que cette entrée est sur Ignorer. Vos paroles ne sont pas ajoutées au message.',
+  'dsh-live-voice.recognition.mutedWarning.origin': 'DSH Live Voice · Avertissement',
+  'dsh-live-voice.recognition.mutedWarning.title': 'Votre entrée est en sourdine',
   'dsh-live-voice.recognition.planned.parakeet': 'NVIDIA Parakeet — Bientôt disponible',
   'dsh-live-voice.recognition.planned.sherpa': 'sherpa-onnx en continu — Bientôt disponible',
   'dsh-live-voice.recognition.planned.vote': 'Bientôt disponible — votez dans les tickets du dépôt',

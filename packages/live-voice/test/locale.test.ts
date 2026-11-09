@@ -150,8 +150,14 @@ test('localizes the plugin display name and every visible reference', () => {
       assert.ok(t(key, { version: '1.0.0' }).includes(name), locale + ': ' + key);
     }
     if (locale !== 'en') {
-      for (const value of Object.values(liveVoiceDictionaries[locale]))
+      for (const [key, value] of Object.entries(liveVoiceDictionaries[locale])) {
+        // This warning explicitly identifies the installed product across plugins.
+        if (key === 'dsh-live-voice.recognition.mutedWarning.origin') {
+          assert.ok(value.startsWith('DSH Live Voice · '));
+          continue;
+        }
         assert.ok(!value.includes('Live Voice'), locale + ': untranslated plugin name');
+      }
     }
   }
 });

@@ -354,6 +354,10 @@ const hi: LiveVoiceTranslation = {
     'कम शब्दों वाले अंतिम खंड संदेश बॉक्स या स्वचालित भेजने की प्रक्रिया तक पहुँचने से पहले ही अनदेखे कर दिए जाते हैं।',
   'dsh-live-voice.recognition.minimumWords.label': 'हर अंतिम खंड में न्यूनतम शब्द',
   'dsh-live-voice.recognition.mode.label': 'सुनने का मोड',
+  'dsh-live-voice.recognition.mutedWarning.body':
+    'आप बोल रहे हैं लेकिन यह इनपुट अनदेखा मोड में है। आपके शब्द संदेश में नहीं जोड़े जा रहे हैं।',
+  'dsh-live-voice.recognition.mutedWarning.origin': 'DSH Live Voice · चेतावनी',
+  'dsh-live-voice.recognition.mutedWarning.title': 'आपका इनपुट म्यूट है',
   'dsh-live-voice.recognition.planned.parakeet': 'NVIDIA Parakeet — जल्द आ रहा है',
   'dsh-live-voice.recognition.planned.sherpa': 'sherpa-onnx स्ट्रीमिंग — जल्द आ रहा है',
   'dsh-live-voice.recognition.planned.vote': 'जल्द आ रहा है — रिपॉज़िटरी के इश्यू में वोट दें',

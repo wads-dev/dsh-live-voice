@@ -266,6 +266,9 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.recognition.minimumWords.help': string;
   'dsh-live-voice.recognition.minimumWords.label': string;
   'dsh-live-voice.recognition.mode.label': string;
+  'dsh-live-voice.recognition.mutedWarning.body': string;
+  'dsh-live-voice.recognition.mutedWarning.origin': string;
+  'dsh-live-voice.recognition.mutedWarning.title': string;
   'dsh-live-voice.recognition.planned.parakeet': string;
   'dsh-live-voice.recognition.planned.sherpa': string;
   'dsh-live-voice.recognition.planned.vote': string;

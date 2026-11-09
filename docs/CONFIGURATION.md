@@ -36,6 +36,12 @@ At the deadline, active speech or pending recognition can defer ending by up to 
 
 After a timer gap longer than ten seconds (for example suspension or browser throttling), an expired clock provides a fresh configured warning interval instead of immediately stopping. Browsers can delay timers and audio; this is a best-effort safety feature, not a hard real-time deadline. After complete shutdown no voice listener remains to hear a resume command.
 
+## Speaking while Ignoring
+
+A compact, non-blocking DSH Live Voice warning appears after **four continuous seconds of detected speech while muted**. It uses the engine’s speech-activity callback (VAD/native speech events), not transcript length, chunk completion, or pending transcription time. No recognized text is required. Receiving an interim/final chunk does not reset the clock while speech activity remains true.
+
+Once visible, the warning stays for three continuous seconds of detected silence, even if transcription requests are pending. Speech resuming during this debounce cancels hiding and keeps the warning visible without another four-second wait. Before the warning first appears, silence still resets the initial speech interval. Unmute, stop, navigation and disposal clear it immediately. Each input has its own timer. Idle Listening and processing-only activity cannot trigger it. Detected speech includes false positives from sustained noise; this is not guaranteed acoustic classification. Engines/browsers without reliable speech-activity callbacks cannot provide a reliable pre-transcription warning. Timer throttling can delay display. The warning never automatically unmutes, edits or sends the Composer.
+
 ## Timestamp format and browser-local source identity
 
 **Conversation → Timestamps and local names** offers independent Day, Month, Year, Seconds and Punctuation switches, plus a format preview. Hours and minutes cannot be removed. Default formatting stays `[YYYY/MM/DD HH:MM:SS]`; remove the date for `[HH:MM:SS]`, then seconds for `[HH:MM]`. Disabling punctuation removes slashes/colons, for example `[20261109 1425]`; brackets and the date/time space remain. Date order stays year/month/day. Existing source-specific clock toggles enable timestamps independently. Formatting uses local speech onset and affects new blocks only.

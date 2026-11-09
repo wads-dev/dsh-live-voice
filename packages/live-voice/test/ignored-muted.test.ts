@@ -29,35 +29,58 @@ test('only nonempty muted non-command finals acknowledge ignored speech', async 
   await c.dispose();
 });
 for (const source of ['shared', 'attendee:person'])
-  test(source + ' forwards ignored and command acknowledgement to original recording', async () => {
-    let cb;
-    let ignored = 0,
-      commands = 0;
-    const m = new MeetingController({
-      composer: { getDraft: () => '', setDraft: () => assert.fail('ignored draft') },
-      settings: () => ({ recognitionFilterEnabled: false }),
-      translate: (x) => x,
-      createSource: () => ({
-        meter: {
-          provide() {},
-          start: async () => true,
-          stop: async () => {},
-          stream: { getTracks: () => [] },
-        },
-        engine: {
-          capability: async () => ({ supported: true }),
-          start: async (options) => {
-            cb = options;
+  test(
+    source + ' forwards ignored and command acknowledgement to original recording',
+    async (t) => {
+      t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000 });
+      let cb;
+      let ignored = 0,
+        commands = 0;
+      const m = new MeetingController({
+        composer: { getDraft: () => '', setDraft: () => assert.fail('ignored draft') },
+        settings: () => ({ recognitionFilterEnabled: false }),
+        translate: (x) => x,
+        createSource: () => ({
+          meter: {
+            provide() {},
+            start: async () => true,
+            stop: async () => {},
+            stream: { getTracks: () => [] },
           },
-          stop: async () => {},
-        },
-      }),
-    });
-    await m.start(source);
-    m.input(source).patch({ muted: true });
-    cb.onResult({ final: 'ignored words', onIgnoredMuted: () => ignored++ });
-    cb.onResult({ final: 'send', onCommandRecognized: () => commands++ });
-    assert.equal(ignored, 1);
-    assert.equal(commands, 1);
-    await m.dispose();
-  });
+          engine: {
+            capability: async () => ({ supported: true }),
+            start: async (options) => {
+              cb = options;
+            },
+            stop: async () => {},
+          },
+        }),
+      });
+      await m.start(source);
+      m.input(source).patch({ muted: true });
+      cb.onResult({ final: 'ignored words', onIgnoredMuted: () => ignored++ });
+      cb.onResult({ final: 'send', onCommandRecognized: () => commands++ });
+      assert.equal(ignored, 1);
+      assert.equal(commands, 1);
+      cb.onResult({ final: 'a long muted human sentence '.repeat(10) });
+      assert.equal(
+        m.input(source).getSnapshot().mutedSpeechWarning,
+        false,
+        'text length alone cannot warn',
+      );
+      cb.onActivity(true);
+      t.mock.timers.tick(4000);
+      assert.equal(
+        m.input(source).getSnapshot().mutedSpeechWarning,
+        true,
+        'activity alone triggers before the chunk',
+      );
+      cb.onActivity(false);
+      assert.equal(m.input(source).getSnapshot().mutedSpeechWarning, true);
+      t.mock.timers.tick(3000);
+      assert.equal(m.input(source).getSnapshot().mutedSpeechWarning, false);
+      await m.stop(source);
+      assert.equal(m.input(source).getSnapshot().mutedSpeechWarning, false);
+      await m.dispose();
+    },
+  );

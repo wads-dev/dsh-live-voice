@@ -1,4 +1,5 @@
 import React from 'react';
+import { MutedSpeechNotice } from './MutedSpeechNotice.js';
 import { RecoveryFeedback } from './RecoveryFeedback.js';
 import { useLanguage } from '../../../app/client/i18n/index.js';
 import { ErrorMessage, IconButton, ToggleButton } from '../../../shared/design-system/index.js';
@@ -70,6 +71,7 @@ export function ConversationStatusBar({
       }
       style={overlay ? overlayStyle : undefined}
     >
+      {state.mutedSpeechWarning && <MutedSpeechNotice source={sourceLabel} />}
       {includeSpeech && <SpeechStatusBar controller={controller} />}
       {(state.conversation || capture || state.error || error) && (
         <RecognitionBar

@@ -327,7 +327,7 @@ export class MeetingController {
         onActivity: (active) => {
           if (!valid()) return;
           if (active) input.cancelAutoSend({ preserveIntent: true });
-          input.patch({ recognizing: active });
+          input.patch({ recognizing: active, inputSpeechActive: active });
           this.onActivity?.(source, active);
           input.refreshDeliveryReadiness();
         },
@@ -487,6 +487,7 @@ export class MeetingController {
       starting: false,
       listening: false,
       recognizing: false,
+      inputSpeechActive: false,
       pendingTranscriptions: 0,
       pendingTranscriptionRequests: 0,
       pendingDeliveryTranscriptions: 0,

@@ -365,6 +365,10 @@ const es: LiveVoiceTranslation = {
     'Los fragmentos definitivos con menos palabras se descartan antes de llegar al cuadro de mensaje o al envío automático.',
   'dsh-live-voice.recognition.minimumWords.label': 'Mínimo de palabras por fragmento definitivo',
   'dsh-live-voice.recognition.mode.label': 'Modo de escucha',
+  'dsh-live-voice.recognition.mutedWarning.body':
+    'Estás hablando con esta entrada en Ignorar. Tus palabras no se añaden al mensaje.',
+  'dsh-live-voice.recognition.mutedWarning.origin': 'DSH Live Voice · Aviso',
+  'dsh-live-voice.recognition.mutedWarning.title': 'Tu entrada está silenciada',
   'dsh-live-voice.recognition.planned.parakeet': 'NVIDIA Parakeet — Próximamente',
   'dsh-live-voice.recognition.planned.sherpa': 'sherpa-onnx en continuo — Próximamente',
   'dsh-live-voice.recognition.planned.vote':

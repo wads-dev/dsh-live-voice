@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { MAX_RECOVERY_ATTEMPTS, recoveryDelayMs, isRetryableVoiceError } from './recovery.ts';
+import { MutedSpeechWarning } from './mutedSpeechWarning.js';
 import { TranscriptDraft } from './transcript.ts';
 import { normalizeSettings } from './settings.ts';
 import { SPEECH_QUEUE_PREFETCH_LIMIT } from '../speak/services/speechQueue.js';
@@ -72,6 +73,7 @@ export class VoiceCoordinator {
       conversation: false,
       listening: false,
       recognizing: false,
+      inputSpeechActive: false,
       pendingTranscriptions: 0,
       pendingTranscriptionRequests: undefined,
       pendingDeliveryTranscriptions: undefined,
@@ -99,6 +101,9 @@ export class VoiceCoordinator {
       settings: normalizeSettings(settings),
       timestamps: normalizeSettings(settings).timestampsEnabled,
     };
+    this.mutedSpeechWarning = new MutedSpeechWarning(() => {
+      if (!this.disposed) this.patch({});
+    });
     this.autoSendTimer = null;
     this.autoSendDraft = null;
     this.holdToTalkRelease = false;
@@ -120,6 +125,11 @@ export class VoiceCoordinator {
   }
   patch(next) {
     this.snapshot = { ...this.snapshot, ...next };
+    this.snapshot.mutedSpeechWarning =
+      this.mutedSpeechWarning?.update({
+        ...this.snapshot,
+        navigationPaused: this.navigationPaused,
+      }) ?? false;
     this._auditSpeechWait();
     for (const listener of this.listeners) {
       try {
@@ -353,6 +363,7 @@ export class VoiceCoordinator {
       listening: false,
       starting: false,
       recognizing: false,
+      inputSpeechActive: false,
       pendingTranscriptions: 0,
       pendingTranscriptionRequests: 0,
       pendingDeliveryTranscriptions: 0,
@@ -644,7 +655,7 @@ export class VoiceCoordinator {
             } else
               this.assistantSpeechNotBefore =
                 Date.now() + this.snapshot.settings.assistantSpeechDelaySeconds * 1000;
-            this.patch({ recognizing: active });
+            this.patch({ recognizing: active, inputSpeechActive: active });
             this._handleSpeechInterruption(this._speechActivity());
             if (!active) {
               this.refreshDeliveryReadiness();
@@ -685,6 +696,7 @@ export class VoiceCoordinator {
             starting: false,
             listening: false,
             recognizing: false,
+            inputSpeechActive: false,
             error: message(error),
           });
         }
@@ -1025,6 +1037,7 @@ export class VoiceCoordinator {
     this.patch({
       listening: false,
       recognizing: false,
+      inputSpeechActive: false,
       pendingTranscriptions: 0,
       pendingTranscriptionRequests: 0,
       pendingDeliveryTranscriptions: 0,
@@ -1212,6 +1225,7 @@ export class VoiceCoordinator {
         listening: false,
         starting: false,
         recognizing: false,
+        inputSpeechActive: false,
         inputError: message(error),
         error: message(error),
       });
@@ -1914,6 +1928,7 @@ export class VoiceCoordinator {
     this.cancelAutoSend();
     this._cancelAssistantSpeechTimer();
     this.disposed = true;
+    this.mutedSpeechWarning.reset();
     this.listeners.clear();
     await this.endConversation(true);
   }

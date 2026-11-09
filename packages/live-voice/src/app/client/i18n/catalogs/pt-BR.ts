@@ -360,6 +360,10 @@ const ptBR: LiveVoiceTranslation = {
     'Trechos finais com menos palavras são ignorados antes de chegarem ao editor ou ao envio automático.',
   'dsh-live-voice.recognition.minimumWords.label': 'Mínimo de palavras por trecho final',
   'dsh-live-voice.recognition.mode.label': 'Modo de escuta',
+  'dsh-live-voice.recognition.mutedWarning.body':
+    'Esta entrada está no modo Ignorando. Sua fala não está sendo adicionada à mensagem.',
+  'dsh-live-voice.recognition.mutedWarning.origin': 'DSH Live Voice · Aviso',
+  'dsh-live-voice.recognition.mutedWarning.title': 'Você está falando no mudo',
   'dsh-live-voice.recognition.planned.parakeet': 'NVIDIA Parakeet — Em breve',
   'dsh-live-voice.recognition.planned.sherpa': 'sherpa-onnx Streaming — Em breve',
   'dsh-live-voice.recognition.planned.vote': 'Em breve — vote nas issues do repositório',

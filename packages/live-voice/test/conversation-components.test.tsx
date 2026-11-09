@@ -93,6 +93,31 @@ for (const sourceIcon of ['mic', 'meeting']) {
   );
 }
 
+test('muted speech warning is a prominent transient portal without stealing focus', async (t) => {
+  const c = controllerFixture({
+    conversation: true,
+    listening: true,
+    muted: true,
+    mutedSpeechWarning: true,
+  });
+  c.meter = { level: () => 0 };
+  await fixture(
+    t,
+    <LiveVoiceTranslationProvider>
+      <ConversationStatusBar controller={c} includeSpeech={false} sourceLabel="My microphone" />
+    </LiveVoiceTranslationProvider>,
+  );
+  const warning = document.querySelector('.dlv-muted-warning');
+  assert.equal(warning.getAttribute('role'), 'alert');
+  assert.equal(warning.getAttribute('aria-live'), 'assertive');
+  assert.match(warning.textContent, /Your input is muted/);
+  assert.match(warning.querySelector('.dlv-muted-warning-origin').textContent, /DSH Live Voice/);
+  assert.equal(warning.querySelector('path').getAttribute('d'), iconPaths.micOff);
+  assert.match(warning.textContent, /My microphone/);
+  await act(async () => c.patch({ mutedSpeechWarning: false }));
+  assert.equal(document.querySelector('.dlv-muted-warning'), null);
+});
+
 test('conversation waveform preserves canvas contract without a canvas implementation', async (t) => {
   const root = await fixture(t, <Waveform controller={{ meter: { level: () => 0 } }} enabled />);
   assert.equal(root.querySelector('canvas').className, 'dlv-wave');

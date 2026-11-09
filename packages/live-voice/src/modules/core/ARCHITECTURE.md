@@ -1,5 +1,7 @@
 # Core voice domain
 
+`mutedSpeechWarning.ts` owns an four-second continuous detected-speech clock per input. Coordinator patches re-evaluate it; only engine onActivity drives explicit `inputSpeechActive`, independently of result chunks and transcription backlog. Before first display, silence resets the speech timer; after display, a three-second trailing-silence debounce avoids flicker and resumed speech cancels hiding. Lifecycle transitions clear immediately. No recognized text is required or retained, and no automatic unmute occurs. Shared input policies use the same activity contract.
+
 `timestamp.ts` owns the pure local-clock formatter and normalization: date parts, seconds and separators are optional; hours/minutes remain mandatory. Defaults preserve the legacy format.
 
 `core` owns policy and reusable voice-domain state, not DSH slot/route registration or provider-specific presentation. `coordinator.ts` serializes input transitions, owns conversation state and speech queues, and invalidates stale async work with generations. `ownership.ts` arbitrates microphone and speaker use between sessions and Settings self-tests. `transcript.ts` enforces append-only final recognition text (interim hypotheses never own or rewrite composer content), `microphone.ts` manages capture and activity, `filters.ts` handles voice commands and speech text filtering, and `settings.ts` normalizes persisted values and defaults.
