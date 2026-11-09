@@ -352,6 +352,13 @@ test('integrated primary recordings tab separates sources, plays silence, export
     2,
     'partially visible speech and its attempts remain',
   );
+  assert.deepEqual(
+    [...document.querySelectorAll('[data-recording-event]')].map(
+      (row) => row.dataset.recordingEvent,
+    ),
+    ['command'],
+    'event table follows the same selected window as timeline',
+  );
   const search = document.querySelector('input[type=search]');
   await inputValue(search, 'test transcript');
   assert.equal(document.querySelectorAll('.dlvd-segments tbody > tr').length, 2);
@@ -363,6 +370,11 @@ test('integrated primary recordings tab separates sources, plays silence, export
     'search is limited to the selected window',
   );
   await inputValue(search, '');
+  assert.equal(
+    document.querySelectorAll('[data-recording-event]').length,
+    0,
+    'events outside narrowed window are hidden',
+  );
   assert.equal(document.querySelectorAll('.dlvd-segments tbody > tr').length, 1);
   await act(async () => document.querySelector('.dlvd-window-reset').click());
   for (let i = 0; i < 3; i++) await key(ranges[0], 'PageUp');
@@ -380,6 +392,11 @@ test('integrated primary recordings tab separates sources, plays silence, export
   await act(async () => reset.click());
   assert.equal(rangeValue(ranges[0]), '0');
   assert.equal(rangeValue(ranges[1]), '900');
+  assert.equal(
+    document.querySelectorAll('[data-recording-event]').length,
+    3,
+    'reset restores original events including the right-edge event',
+  );
   assert.equal(document.querySelectorAll('.dlvd-timeline button').length, 3);
   await inputValue(search, 'test transcript');
   assert.equal(

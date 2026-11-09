@@ -13,6 +13,7 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 ### Improvements
 
+- Filter the debugger event table by the selected timeline window as well as the existing segment list and transcript search. Reset restores every original event, including right-edge playback events.
 - Make Ignoring easier to notice with a red-tinted button background in light and dark themes, with crossed-out microphone/meeting icons and accessible state.
 
 ## [0.7.2] - 2026-11-08

@@ -573,6 +573,7 @@ function RecordingDetail({
     [visibleSegments, search],
   );
   const inWindow = (sample: number) => sample >= viewStart && sample <= viewEnd;
+  const visibleEvents = (session.events ?? []).filter((event) => inWindow(event.atSample));
   const position = (sample: number) => ((sample - viewStart) / viewLength) * 100 + '%';
   const segmentName = (segment: RecordingSegment) =>
     (commandsFor(segment).length
@@ -825,7 +826,7 @@ function RecordingDetail({
           </tr>
         </thead>
         <tbody>
-          {(session.events ?? []).map((event) => (
+          {visibleEvents.map((event) => (
             <tr
               key={event.id}
               data-recording-event={event.id}
