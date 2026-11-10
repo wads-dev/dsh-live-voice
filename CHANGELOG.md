@@ -13,9 +13,9 @@ Roadmap only — not implemented or released. Scope and delivery timing may chan
 #### Features
 
 - [ ] Bring recording-session management into the main plugin with a friendlier interface for reviewing saved audio and recovering ignored speech, without requiring the optional debugger.
-- [ ] Add a direct entry point on each source bar to open the corresponding recording session.
+- [ ] Evolve the source-bar diagnostic shortcut into a direct entry point for the main-plugin session manager, without requiring the optional debugger.
 
-## [0.8.0] - Unreleased
+## [0.8.0] - 2026-11-10
 
 ### Live Voice
 
