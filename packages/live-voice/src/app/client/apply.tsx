@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React from 'react';
+import { spokenInactivityWarning } from './i18n/spokenWarning.js';
 import { VoiceInactivity } from '../../modules/conversation/models/inactivity.js';
 import { InactivityNotice } from '../../modules/conversation/components/InactivityNotice.js';
 import {
@@ -97,12 +98,16 @@ export function apply(ctx) {
   let inactivityEnding = false;
   const inactivity = new VoiceInactivity({
     warn: (seconds) => {
-      const text = t('dsh-live-voice.settings.autoEnd.warning', { seconds });
       const c = meetingEntry?.controller;
+      const { text, lang } = spokenInactivityWarning(
+        c?.getSnapshot().settings.lang ?? preferences.getSnapshot().lang,
+        ctx.locale?.getSnapshot?.().active,
+        seconds,
+      );
       // Do not replace assistant playback or a manually paused speech queue.
       const s = c?.getSnapshot();
       if (c && !s.speaking && !s.paused && !s.speechRunActive && !c.queue.length)
-        run(c, c.play(text, null, true));
+        run(c, c.play(text, null, true, { lang }));
       return text;
     },
     end: () => {

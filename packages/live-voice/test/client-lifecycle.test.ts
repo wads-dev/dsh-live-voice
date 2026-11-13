@@ -1940,8 +1940,8 @@ test('global inactivity warns, accepts continuation and ends microphone and meet
     this.patch('shared', { listening: false });
   });
   const playback = [];
-  t.mock.method(c, 'play', async (text) => {
-    playback.push(text);
+  t.mock.method(c, 'play', async (text, _id, _manual, options) => {
+    playback.push({ text, lang: options?.lang });
   });
   t.mock.method(c, 'endConversation', async () => {
     c.patch({ listening: false, conversation: false });
@@ -1953,6 +1953,9 @@ test('global inactivity warns, accepts continuation and ends microphone and meet
   await advance(241);
   assert.match(document.querySelector('.dlv-inactivity-notice').textContent, /60|59/);
   assert.equal(playback.length, 1);
+  assert.match(playback[0].text, /Nenhuma transcrição/);
+  assert.equal(playback[0].lang, 'pt-BR');
+  assert.match(document.querySelector('.dlv-inactivity-notice').textContent, /Voice capture/);
   await act(async () => c.composer.onRecognizedText('I am still here'));
   assert.equal(document.querySelector('.dlv-inactivity-notice'), null);
   await advance(240);

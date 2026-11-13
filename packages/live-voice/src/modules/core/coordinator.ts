@@ -1077,9 +1077,9 @@ export class VoiceCoordinator {
     this.prefetchItems.clear();
   }
 
-  _speechPreparationKey() {
+  _speechPreparationKey(item = {}) {
     const { engine, voice, lang, rate, outputDeviceId } = this.snapshot.settings;
-    return JSON.stringify([engine, voice, lang, rate, outputDeviceId]);
+    return JSON.stringify([engine, voice, item.lang ?? lang, rate, outputDeviceId]);
   }
   _resetStaleSpeechItem(item, key) {
     if (item.preparationKey === key) return;
@@ -1100,14 +1100,14 @@ export class VoiceCoordinator {
       lang: this.snapshot.settings.lang,
       outputDeviceId: this.snapshot.settings.outputDeviceId,
     };
-    const key = this._speechPreparationKey();
     for (const item of this.queue.slice(0, SPEECH_QUEUE_PREFETCH_LIMIT)) {
+      const key = this._speechPreparationKey(item);
       this._resetStaleSpeechItem(item, key);
       if (item.prepared || item.preparing) continue;
       this.prefetchItems.add(item);
       const signal = this.prefetchController.signal;
       item.preparing = engine
-        .prepare(item.text, { ...options, signal })
+        .prepare(item.text, { ...options, lang: item.lang ?? options.lang, signal })
         .then((prepared) => {
           if (item.preparationKey === key) item.preparing = null;
           if (
@@ -1542,10 +1542,10 @@ export class VoiceCoordinator {
     this._syncSpeechSegments();
     return this.play(first, messageId, true);
   }
-  async play(text, messageId, manual = false) {
+  async play(text, messageId, manual = false, speechOptions = {}) {
     if (this.disposed || !text.trim()) return;
     if (this.snapshot.speaking) {
-      this.queue.push({ text, id: messageId, manual });
+      this.queue.push({ text, id: messageId, manual, lang: speechOptions.lang });
       this._prefetchSpeech();
       this._syncSpeechSegments();
       return;
@@ -1553,7 +1553,7 @@ export class VoiceCoordinator {
     const item =
       this.activeSpeechItem?.text === text
         ? this.activeSpeechItem
-        : { text, id: messageId, manual };
+        : { text, id: messageId, manual, lang: speechOptions.lang };
     if (!this.speechHistory.includes(item)) this.speechHistory.push(item);
     this.speechCursor = this.speechHistory.indexOf(item);
     const epoch = ++this.speechEpoch;
@@ -1572,7 +1572,7 @@ export class VoiceCoordinator {
     let playbackStarted = false;
     let playbackFinished = false;
     const engine = this.engines[this.snapshot.settings.engine];
-    this._resetStaleSpeechItem(item, this._speechPreparationKey());
+    this._resetStaleSpeechItem(item, this._speechPreparationKey(item));
     item.engine = engine;
     if (!engine) {
       this.queue.unshift(item);
@@ -1635,6 +1635,7 @@ export class VoiceCoordinator {
             this.patch({ speechLoading: false });
           }
         },
+        lang: item.lang ?? this.snapshot.settings.lang,
         voice: this.snapshot.settings.voice || undefined,
         rate: this.snapshot.settings.rate,
         volume: this.snapshot.settings.volume,

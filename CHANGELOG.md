@@ -15,6 +15,14 @@ Roadmap only — not implemented or released. Scope and delivery timing may chan
 - [ ] Bring recording-session management into the main plugin with a friendlier interface for reviewing saved audio and recovering ignored speech, without requiring the optional debugger.
 - [ ] Evolve the source-bar diagnostic shortcut into a direct entry point for the main-plugin session manager, without requiring the optional debugger.
 
+## [0.8.1] - Unreleased
+
+### Live Voice
+
+#### Fixes
+
+- Speak the inactivity warning in the configured TTS language instead of the interface language. Keep visual notices in the interface language; when no warning translation exists for the TTS language, use the interface language for both warning text and synthesis without changing saved speech preferences.
+
 ## [0.8.0] - 2026-11-10
 
 ### Live Voice
