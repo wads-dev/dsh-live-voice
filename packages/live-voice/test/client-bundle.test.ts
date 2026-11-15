@@ -44,6 +44,7 @@ test('built bundle registers independently in the DSH lazy module loader', async
     slots.map((s) => s.meta.name),
     [
       'settings.section',
+      'settings.section.icon',
       'conversation.input.right',
       'conversation.input.dock',
       'conversation.session.header.utilities',

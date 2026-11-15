@@ -15,6 +15,12 @@ Roadmap only — not implemented or released. Scope and delivery timing may chan
 - [ ] Bring recording-session management into the main plugin with a friendlier interface for reviewing saved audio and recovering ignored speech, without requiring the optional debugger.
 - [ ] Evolve the source-bar diagnostic shortcut into a direct entry point for the main-plugin session manager, without requiring the optional debugger.
 
+## [NEXT] - Unreleased
+
+### Improvements
+
+- Identify Live Voice in the DSH settings menu with a microphone-and-audio-waves icon instead of the generic settings gear, using the official section-icon slot and theme colors.
+
 ## [0.8.1] - 2026-11-15
 
 ### Live Voice
