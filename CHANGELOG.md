@@ -15,9 +15,13 @@ Roadmap only — not implemented or released. Scope and delivery timing may chan
 - [ ] Bring recording-session management into the main plugin with a friendlier interface for reviewing saved audio and recovering ignored speech, without requiring the optional debugger.
 - [ ] Evolve the source-bar diagnostic shortcut into a direct entry point for the main-plugin session manager, without requiring the optional debugger.
 
-## [0.8.1] - Unreleased
+## [0.8.1] - 2026-11-15
 
 ### Live Voice
+
+#### Improvements
+
+- Confirm compatibility with DeepSeek Harness v0.2.2-rc.3.
 
 #### Fixes
 
