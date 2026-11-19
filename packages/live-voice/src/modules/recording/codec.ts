@@ -9,6 +9,7 @@ export type RecordingErrorCode =
   | 'not-found'
   | 'active-recording'
   | 'sealed'
+  | 'archive-gap'
   | 'invalid-range'
   | 'disposed';
 export class RecordingRepositoryError extends Error {

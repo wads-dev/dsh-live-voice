@@ -388,6 +388,7 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.qwen.hostHelp':
     'Qwen3 ASR + TTS सर्वर की पूरे होस्ट पर लागू होने वाली सेटिंग्स। कोई भी HTTP या HTTPS बेस URL दर्ज करें जिस तक DSH होस्ट पहुँच सके। ब्राउज़र प्रमाणीकरण वाले DSH रूटों के ज़रिए इसे एक्सेस करता है।',
   'dsh-live-voice.recognition.qwen.label': 'Qwen3 ASR · HTTP API',
+  'dsh-live-voice.recognition.recordingWarning': "पूरी रिकॉर्डिंग सहेजी नहीं जा सकी। ट्रांसक्रिप्शन जारी है; संग्रह में कुछ ऑडियो उपलब्ध नहीं है।",
   'dsh-live-voice.recognition.silenceDetection.chunkPause':
     'ट्रांसक्रिप्शन से पहले: {milliseconds} ms',
   'dsh-live-voice.recognition.silenceDetection.customHelp':
@@ -431,6 +432,7 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'वाक् पहचान उपलब्ध नहीं है',
   'dsh-live-voice.recognition.status.waiting': 'प्रतीक्षा में',
   'dsh-live-voice.recognition.status.waitingCommand': 'कमांड की प्रतीक्षा में',
+  'dsh-live-voice.recognition.transcriptionGap': "ऑडियो उपलब्ध न होने के कारण कुछ बोली का लिप्यंतरण नहीं हो सका। सुनना जारी है।",
   'dsh-live-voice.recognition.voiceCommands.help':
     'वाक्यांशों को अल्पविराम से अलग करें। मिलान में बड़े-छोटे अक्षर, उच्चारण चिह्न, विराम चिह्न और अतिरिक्त स्पेस अनदेखे किए जाते हैं। पूरा अंतिम खंड मेल खाना चाहिए।',
   'dsh-live-voice.recognition.whisper.captureHelp':

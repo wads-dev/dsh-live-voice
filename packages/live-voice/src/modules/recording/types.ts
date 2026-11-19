@@ -105,6 +105,9 @@ export interface RecordingSession {
   sampleRate: number;
   capturedSamples: number;
   savedSamples: number;
+  /** Unavailable half-open sample ranges on the original capture timeline. */
+  archiveGaps?: { startSample: number; endSample: number }[];
+  archiveEndSample?: number;
   audioBytes?: number; // Saved encoded payload, not database overhead or transient PCM.
   storage?: 'indexeddb' | 'memory';
   starred?: boolean; // Protected from automatic retention; manual deletion remains available.
@@ -167,6 +170,7 @@ export interface RecordingWriter {
   attempt(value: RecordingAttempt): Promise<void>;
   read(startSample: number, endSample: number): Promise<Float32Array>;
   finish(state?: 'completed' | 'interrupted' | 'failed', error?: string): Promise<void>;
+  markArchiveGap?(startSample: number, endSample: number): Promise<void>;
 }
 export interface RecordingRepository extends RecordingService {
   begin(input: {
@@ -190,7 +194,7 @@ export function recordingSegments(session: RecordingSession): RecordingSegment[]
       id: pin.id,
       kind: pin.kind === 'speech-start' ? 'speech' : 'silence',
       startSample: pin.atSample,
-      endSample: Math.min(pins[i + 1]?.atSample ?? session.savedSamples, session.savedSamples),
+      endSample: Math.min(pins[i + 1]?.atSample ?? (session.archiveEndSample ?? session.savedSamples), session.archiveEndSample ?? session.savedSamples),
       open: i === pins.length - 1 && session.state === 'recording',
       attempts: session.attempts.filter((a) => a.segmentId === pin.id),
     }))

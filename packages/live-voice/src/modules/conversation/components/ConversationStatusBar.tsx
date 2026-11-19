@@ -156,6 +156,12 @@ export function ConversationStatusBar({
           ) : null}
         </RecognitionBar>
       )}
+      {state.recordingWarning && (
+        <div role="status" aria-live="polite">{(recognition as any).recordingWarning()}</div>
+      )}
+      {state.transcriptionGap && (
+        <div role="alert">{(recognition as any).transcriptionGap()}</div>
+      )}
       <RecoveryFeedback
         recovery={state.inputRecovery}
         detail={state.inputError}

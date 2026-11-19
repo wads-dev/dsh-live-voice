@@ -388,6 +388,7 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.qwen.hostHelp':
     'Host-wide settings for the Qwen3 ASR + TTS server. Enter any HTTP or HTTPS base URL reachable from the DSH host. The browser accesses it through authenticated DSH routes.',
   'dsh-live-voice.recognition.qwen.label': 'Qwen3 ASR · HTTP API',
+  'dsh-live-voice.recognition.recordingWarning': "Recording could not be saved completely. Transcription continues; some audio is unavailable in the archive.",
   'dsh-live-voice.recognition.silenceDetection.chunkPause':
     'Before transcribing: {milliseconds} ms',
   'dsh-live-voice.recognition.silenceDetection.customHelp':
@@ -432,6 +433,7 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'Speech recognition unavailable',
   'dsh-live-voice.recognition.status.waiting': 'Waiting',
   'dsh-live-voice.recognition.status.waitingCommand': 'Waiting for command',
+  'dsh-live-voice.recognition.transcriptionGap': "Some speech could not be transcribed because its audio was unavailable. Listening continues.",
   'dsh-live-voice.recognition.voiceCommands.help':
     'Separate phrases with commas. Matching ignores capitalization, accents, punctuation, and extra spaces. The entire final chunk must match.',
   'dsh-live-voice.recognition.whisper.captureHelp':

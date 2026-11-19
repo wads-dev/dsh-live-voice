@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { MAX_RECOVERY_ATTEMPTS, recoveryDelayMs, isRetryableVoiceError } from './recovery.ts';
+import { reportVoiceError } from './diagnosticsErrors.js';
 import { MutedSpeechWarning } from './mutedSpeechWarning.js';
 import { TranscriptDraft } from './transcript.ts';
 import { normalizeSettings } from './settings.ts';
@@ -337,6 +338,7 @@ export class VoiceCoordinator {
     });
   }
   _recoverInput(error) {
+    reportVoiceError('recognition.failure', error, { source: 'microphone', stage: 'recovery', attempt: this.inputRecoveryAttempt || 0 });
     if (this.navigationPaused) {
       // Keep the recording and remaining STT queue; only an attached chat may
       // decide to retry or replace its capture resources.
@@ -381,6 +383,7 @@ export class VoiceCoordinator {
         await this._releaseInput();
         this.inputReleaseError = null;
       } catch (cleanup) {
+        reportVoiceError('recognition.teardown', cleanup, { source: 'microphone', stage: 'teardown' });
         this.inputReleaseError = cleanup;
         if (generation === this.inputRecoveryGeneration)
           this.patch({
@@ -611,6 +614,7 @@ export class VoiceCoordinator {
         }
         if (!started) throw new Error('Microphone metering could not start.');
         this.transcript.reset();
+        this.patch({ recordingWarning: false, transcriptionGap: false });
         await this.recognition.start({
           lang,
           signal: controller.signal,
@@ -661,6 +665,12 @@ export class VoiceCoordinator {
               this.refreshDeliveryReadiness();
               this._drain();
             }
+          },
+          onRecordingWarning: () => {
+            if (valid()) this.patch({ recordingWarning: true });
+          },
+          onTranscriptionGap: () => {
+            if (valid()) this.patch({ transcriptionGap: true });
           },
           onError: (error) => {
             if (!valid()) return;
@@ -1673,6 +1683,7 @@ export class VoiceCoordinator {
         item.prepared?.dispose?.();
         item.prepared = null;
         const attempt = this.snapshot.speechRecovery?.attempt || 0;
+        reportVoiceError('speech.failure', error, { source: 'speech', stage: 'playback', attempt });
         const generation = (this.speechRecoveryGeneration || 0) + 1;
         this.speechRecoveryGeneration = generation;
         this.patch({

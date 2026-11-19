@@ -84,7 +84,7 @@ export function apply(ctx) {
       void append(kind, details).catch(() => {
         // Metadata failures must be visible without blocking or cancelling playback.
         for (const entry of controllers.values())
-          entry.controller.patch({ error: t('dsh-live-voice.recording.error.failed') });
+          entry.controller.patch({ recordingWarning: true });
       });
     };
   };

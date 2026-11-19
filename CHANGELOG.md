@@ -4,6 +4,20 @@ All notable changes to DSH Live Voice are documented here. This English changelo
 
 [Product overview](README.md) · [Visão geral em português](README.pt.md) · [简体中文概览](README.zh-CN.md)
 
+## Unreleased
+
+### Live Voice
+
+#### Fixes
+
+- Keep listening when recording storage fails, retry archival writes where safe, and warn when audio or transcription cannot be recovered.
+
+### Live Voice Debugger
+
+#### Features
+
+- Review a bounded local history of structured voice errors in the optional debugger, without retaining audio or transcript content in the error log.
+
 ## [0.9.0] - Planned
 
 Roadmap only — not implemented or released. Scope and delivery timing may change.

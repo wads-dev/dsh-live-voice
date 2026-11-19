@@ -7,6 +7,17 @@ export type CommonsTranslation = {
   diagnostics: string;
   empty: string;
   error: string;
+  errorCause: string;
+  errorEmpty: string;
+  errorJournalTitle: string;
+  errorJournalUnavailable: string;
+  errorLoading: string;
+  errorName: string;
+  errorNewer: string;
+  errorNonPersistent: string;
+  errorOlder: string;
+  errorOperation: string;
+  errorTime: string;
   eventsClear: string;
   eventsPause: string;
   eventsResume: string;

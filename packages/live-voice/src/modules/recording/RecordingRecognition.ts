@@ -1,4 +1,6 @@
 import { voiceNetworkFailure } from '../core/networkFailure.js';
+import { beginResilientWriter } from './resilientWriter.js';
+import { reportVoiceError } from '../core/diagnosticsErrors.js';
 import { transcriptionContextHeader } from '../recognition/transcriptionContext.js';
 import { transcriptionRequestMetadata } from './requestMetadata.js';
 import type {
@@ -36,6 +38,8 @@ interface RecognitionCallbacks {
   }): void;
   onActivity?(active: boolean): void;
   onError?(error: Error): void;
+  onRecordingWarning?(): void;
+  onTranscriptionGap?(): void;
   onProcessingChange?(state: Processing): void;
 }
 interface RecordingEngine {
@@ -127,7 +131,7 @@ export async function startRecordingRecognition(
   options: RecognitionCallbacks,
   capture: { silero: boolean; encode(pcm: Float32Array, rate: number): ArrayBuffer },
 ) {
-  const { signal, lang = engine.lang, onResult, onActivity, onError, onProcessingChange } = options;
+  const { signal, lang = engine.lang, onResult, onActivity, onError, onProcessingChange, onRecordingWarning, onTranscriptionGap } = options;
   const rate = engine.meter.context.sampleRate;
   const policy = {
     enabled: engine.recordingEnabled !== false,
@@ -137,8 +141,7 @@ export async function startRecordingRecognition(
     postRollMs: Math.max(TRANSCRIPTION_BOUNDARY_MARGIN_MS, engine.recordingPostRollMs ?? 320),
   };
   const generation = engine.startGeneration;
-  const writer = await engine.recordings
-    .begin({
+  const writer = await beginResilientWriter(engine.recordings, {
       sourceId: engine.sourceId ?? 'microphone',
       kind: engine.inputSource ?? 'microphone',
       label: engine.sourceLabel ?? engine.inputSource ?? 'microphone',
@@ -156,10 +159,7 @@ export async function startRecordingRecognition(
         postRollMs: policy.postRollMs,
         bitrate: policy.bitrate,
       },
-    })
-    .catch((error) => {
-      throw new Error(engine.recordingErrorMessage(error));
-    });
+    }, signal, () => engine.startGeneration === generation, () => onRecordingWarning?.());
   if (engine.startGeneration !== generation || signal?.aborted) {
     await writer.finish('interrupted');
     throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
@@ -220,7 +220,9 @@ export async function startRecordingRecognition(
     abort: () => {},
   };
   engine.session = session;
-  const commandTimeline = engine.recordings.timeline(writer.session.id);
+  const commandTimeline = (writer as RecordingWriter & {
+    timeline?: ReturnType<RecordingRepository['timeline']>;
+  }).timeline ?? engine.recordings.timeline(writer.session.id);
   const valid = () => engine.session === session && !signal?.aborted;
   // Range descriptors only: future post-roll must never block serialized PCM writes.
   const awaitingTail: RecordingAttempt[] = [];
@@ -255,7 +257,7 @@ export async function startRecordingRecognition(
   const failure = (error: unknown) => {
     if (!valid()) return;
     captureFailure = asError(error).message;
-    onError?.(new Error(engine.recordingErrorMessage(error)));
+    onError?.(new Error(engine.recordingErrorMessage(error), { cause: error }));
     void engine.stop();
   };
   const serialize = (task: () => Promise<void>, preserve = false, speech = false) => {
@@ -473,7 +475,7 @@ export async function startRecordingRecognition(
                 void commandTimeline('transcription-ignored-muted', {
                   segmentId: attempt.segmentId,
                   attemptId: attempt.id,
-                }).catch((error) => onError?.(new Error(engine.recordingErrorMessage(error))));
+                }).catch((error) => reportVoiceError('recording.timeline', error, { source: engine.inputSource, recordingId: writer.session.id, stage: 'event' }));
               },
               onCommandRecognized: (command) => {
                 if (commandRecorded) return;
@@ -482,7 +484,7 @@ export async function startRecordingRecognition(
                   command,
                   segmentId: attempt.segmentId,
                   attemptId: attempt.id,
-                }).catch((error) => onError?.(new Error(engine.recordingErrorMessage(error))));
+                }).catch((error) => reportVoiceError('recording.timeline', error, { source: engine.inputSource, recordingId: writer.session.id, stage: 'event' }));
               },
             });
         } catch (error) {
@@ -494,7 +496,13 @@ export async function startRecordingRecognition(
               finishedAt: new Date().toISOString(),
             })
             .catch(failure);
-          if (valid() && asError(error).name !== 'AbortError') onError?.(asError(error));
+          if (valid() && asError(error).name !== 'AbortError') {
+            if ((error as { code?: string })?.code === 'audio-gap') {
+              reportVoiceError('recognition.audio-gap', error, { source: engine.inputSource, recordingId: writer.session.id, stage: 'transcription' });
+              onTranscriptionGap?.();
+            }
+            else onError?.(asError(error));
+          }
         } finally {
           if (session.activeRequest === request) session.activeRequest = null;
           notify();
@@ -542,7 +550,7 @@ export async function startRecordingRecognition(
   const terminalVadFailure = (error: unknown) => {
     if (!valid() || stopping || session.finished) return;
     captureFailure = asError(error).message;
-    onError?.(new Error(engine.vadErrorMessage(error)));
+    onError?.(new Error(engine.vadErrorMessage(error), { cause: error }));
     void engine.stop();
   };
   const installSilero = async () => {
@@ -683,7 +691,7 @@ export async function startRecordingRecognition(
         session.vad?.release();
       } catch (error) {
         captureFailure = asError(error).message;
-        if (valid()) onError?.(new Error(engine.vadErrorMessage(error)));
+        if (valid()) onError?.(new Error(engine.vadErrorMessage(error), { cause: error }));
         void engine.stop();
       } finally {
         session.finishing = false;
@@ -774,6 +782,7 @@ export async function startRecordingRecognition(
     if (asError(error).name === 'AbortError') throw error;
     throw new Error(
       capture.silero ? engine.vadErrorMessage(error) : engine.recordingErrorMessage(error),
+      { cause: error },
     );
   }
   return session;
