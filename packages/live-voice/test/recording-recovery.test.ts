@@ -190,6 +190,76 @@ test('old PCM is read from healthy archive after rolling window eviction', async
   await writer.finish();
 });
 
+test('archive read exceeding one second retains and returns old PCM', async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let release: () => void = () => {}, started: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const reading = new Promise<void>((resolve) => { started = resolve; });
+  repo.begin = async (value) => {
+    const archive = await begin(value), read = archive.read.bind(archive);
+    archive.read = async (start, end) => { started(); await gate; return read(start, end); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array(16000).fill(0.5));
+  for (let i = 0; i < 80; i++) {
+    await writer.append(new Float32Array(16000));
+    for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+  }
+  const pending = writer.read(0, 1);
+  await reading;
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+  release();
+  assert.equal((await pending)[0], 0.5);
+  await writer.finish();
+});
+
+test('cancelled pending archive read never retries or delivers its late result', async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let release: () => void = () => {}, started: () => void = () => {}, calls = 0;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const reading = new Promise<void>((resolve) => { started = resolve; });
+  repo.begin = async (value) => {
+    const archive = await begin(value), read = archive.read.bind(archive);
+    archive.read = async (start, end) => { calls++; started(); await gate; return read(start, end); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array(16000).fill(0.5));
+  for (let i = 0; i < 80; i++) {
+    await writer.append(new Float32Array(16000));
+    for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+  }
+  const controller = new AbortController();
+  const pending = writer.read(0, 1, controller.signal);
+  await reading;
+  controller.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  release();
+  for (let i = 0; i < 8; i++) await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 1);
+  await writer.finish();
+});
+
+test('resolved transient archive reads retry without concurrent operations', async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let calls = 0;
+  repo.begin = async (value) => {
+    const archive = await begin(value), read = archive.read.bind(archive);
+    archive.read = async (start, end) => { if (++calls < 3) throw new Error('temporary'); return read(start, end); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array(16000).fill(0.5));
+  for (let i = 0; i < 80; i++) {
+    await writer.append(new Float32Array(16000));
+    for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.equal((await writer.read(0, 1))[0], 0.5);
+  assert.equal(calls, 3);
+  await writer.finish();
+});
+
 test('dropped PCM is reconciled before pin metadata', async () => {
   const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
   let release: () => void = () => {};
@@ -240,13 +310,16 @@ test('gap write rejection still finishes and releases the archive writer', async
   assert.equal((await repo.list())[0].state, 'failed');
 });
 
-test('unavailable evicted audio surfaces a nonfatal transcription gap', async () => {
+test('unavailable evicted audio surfaces a nonfatal transcription gap', { timeout: 10000 }, async (t) => {
   const repo = mockRecordingRepository();
   let release: (value: any) => void = () => {};
   const gate = new Promise<any>((resolve) => { release = resolve; });
   const begin = repo.begin.bind(repo);
   repo.begin = async () => gate;
   let ingest: any, classify: any, gaps = 0, errors = 0, releaseFirst: (value: string) => void = () => {};
+  let gapObserved: () => void = () => {}, firstStarted: () => void = () => {};
+  const gapEvent = new Promise<void>((resolve) => { gapObserved = resolve; });
+  const firstRequest = new Promise<void>((resolve) => { firstStarted = resolve; });
   let requestCount = 0;
   const engine = new WhisperHttpRecognitionEngine({ recordings: repo,
     meter: { context: { sampleRate: 16000 }, source: {} }, voiceDetectionEngine: 'silero',
@@ -255,15 +328,16 @@ test('unavailable evicted audio surfaces a nonfatal transcription gap', async ()
     vadFactory: (options) => { classify = options.onProbability; return { release() {} }; },
     vadCapture: async (_c, _s, _v, onPcm) => { ingest = onPcm; return { finish: async () => {}, release() {} }; },
   });
+  t.after(async () => { releaseFirst('cleanup'); await engine.stop(); });
   engine.transcribePcm = async () => ++requestCount === 1
-    ? new Promise<string>((resolve) => { releaseFirst = resolve; }) : 'later';
-  await engine.start({ onTranscriptionGap: () => gaps++, onError: () => errors++ });
+    ? new Promise<string>((resolve) => { releaseFirst = resolve; firstStarted(); }) : 'later';
+  await engine.start({ onTranscriptionGap: () => { gaps++; gapObserved(); }, onError: () => errors++ });
   const frame = (seconds: number, p: number) => {
     const pcm = new Float32Array(seconds * 16000).fill(p ? 0.1 : 0);
     ingest(pcm, 16000); classify({ probability: p, pcm });
   };
   frame(0.1, 0.9); frame(1, 0);
-  for (let i = 0; i < 8; i++) await new Promise((resolve) => setImmediate(resolve));
+  await firstRequest;
   assert.equal(requestCount, 1);
   frame(0.1, 0.9); frame(1, 0);
   for (let i = 0; i < 80; i++) {
@@ -271,11 +345,18 @@ test('unavailable evicted audio surfaces a nonfatal transcription gap', async ()
     for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
   }
   releaseFirst('first');
-  await new Promise((resolve) => setTimeout(resolve, 1100));
+  // Once the archive appears it has a real gap for the evicted speech.
+  const archive = await begin(input);
+  archive.markArchiveGap = async () => {};
+  archive.append = async () => {};
+  archive.pin = async (kind, atSample, confirmedAtSample) => ({ id: crypto.randomUUID(), kind, atSample, confirmedAtSample, delaySamples: confirmedAtSample - atSample });
+  archive.attempt = async () => {};
+  archive.read = async () => { throw Object.assign(new Error('gap'), { code: 'archive-gap' }); };
+  release(archive);
+  await gapEvent;
   assert.equal(gaps, 1);
   assert.equal(errors, 0);
   await engine.stop();
-  release(await begin(input));
 });
 
 test('cancelled storage retry cannot open a replacement writer', async () => {

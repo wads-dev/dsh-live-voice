@@ -414,7 +414,7 @@ export async function startRecordingRecognition(
         session.activeRequest = request;
         notify();
         try {
-          const pcm = await writer.read(attempt.startSample, attempt.endSample);
+          const pcm = await writer.read(attempt.startSample, attempt.endSample, request.signal);
           if (!valid()) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
           let text: string;
           if (engine.transcribePcm) {

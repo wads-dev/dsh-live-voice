@@ -592,6 +592,7 @@ export class VoiceCoordinator {
             started = await this.meter.start({ signal: controller.signal });
           }
         } catch (error) {
+          if (valid()) reportVoiceError('capture.failure', error, { source: 'microphone', stage: 'start' });
           if (valid())
             this.patch({
               capabilities: {
@@ -1605,6 +1606,7 @@ export class VoiceCoordinator {
     });
     this._syncSpeechSegments();
     let failed = false;
+    let speechStage = 'gate';
     try {
       await this.speechBarrier;
       if (this.speechStopError) throw this.speechStopError;
@@ -1629,6 +1631,7 @@ export class VoiceCoordinator {
       // A pause can arrive while the initial capture gate is still settling.
       if (this.snapshot.paused) await this._restorePausedSpeechInput(epoch, this.controlEpoch);
       const queued = item;
+      speechStage = 'prepare';
       if (queued?.preparing) await queued.preparing;
       if (epoch !== this.speechEpoch || this.disposed) return;
       if (queued?.prepareError) throw queued.prepareError;
@@ -1665,6 +1668,7 @@ export class VoiceCoordinator {
       if (epoch !== this.speechEpoch || this.disposed) return;
       this.speechLaunchPending = false;
       options.volume = this.snapshot.settings.volume;
+      speechStage = 'playback';
       if (queued?.prepared && typeof engine.playPrepared === 'function') {
         const prepared = queued.prepared;
         this.prefetchItems.delete(queued);
@@ -1683,7 +1687,7 @@ export class VoiceCoordinator {
         item.prepared?.dispose?.();
         item.prepared = null;
         const attempt = this.snapshot.speechRecovery?.attempt || 0;
-        reportVoiceError('speech.failure', error, { source: 'speech', stage: 'playback', attempt });
+        reportVoiceError('speech.failure', error, { source: 'speech', stage: speechStage, attempt });
         const generation = (this.speechRecoveryGeneration || 0) + 1;
         this.speechRecoveryGeneration = generation;
         this.patch({

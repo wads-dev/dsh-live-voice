@@ -148,9 +148,32 @@ export async function beginResilientWriter(
           const mapped = pinIds.get(work.attempt.segmentId);
           if (mapped) await observed('attempt', () => archive!.attempt({ ...work.attempt, segmentId: mapped }));
         } else if (work.kind === 'read') {
-          if (!work.expired) {
-            try { work.resolve(await observed('read', () => archive!.read(work.start, work.end))); }
-            catch (error) { work.reject(error); }
+          // Retry only after an operation has settled: a timed-out or cancelled
+          // caller must never cause a concurrent duplicate archive read.
+          for (let attempt = 0; !work.expired; attempt++) {
+            try {
+              const pcm = await observed('read', () => archive!.read(work.start, work.end));
+              if (!work.expired) work.resolve(pcm);
+              break;
+            } catch (error) {
+              const failure = error as { code?: string; archiveWriteFailure?: boolean };
+              const code = failure?.code;
+              if (failure?.archiveWriteFailure) {
+                // A failed read-side flush poisoned the writer and its partial
+                // page is ambiguous. Do not retry or fabricate the lost tail.
+                warn('read-flush', error, attempt);
+                cursor = archive.session.archiveEndSample ?? archive.session.savedSamples;
+                reconcile = true;
+                if (!work.expired) work.reject(error);
+                break;
+              }
+              if (work.expired) break;
+              if (attempt >= MAX_RECOVERY_ATTEMPTS || code === 'archive-gap' || code === 'invalid-range' || code === 'not-found' || code === 'disposed') {
+                work.reject(error);
+                break;
+              }
+              await delay(attempt + 1);
+            }
           }
         } else {
           const details = work.details ? { ...work.details } : undefined;
@@ -233,7 +256,9 @@ export async function beginResilientWriter(
       return pin;
     },
     async attempt(value) { enqueue({ kind: 'attempt', attempt: structuredClone(value) }); },
-    async read(start, end) {
+    async read(start, end, readSignal) {
+      const cancelled = () => Object.assign(new Error('Cancelled'), { name: 'AbortError' });
+      if (readSignal?.aborted) throw cancelled();
       const out = new Float32Array(end - start);
       let covered = start;
       for (const chunk of chunks) {
@@ -248,13 +273,24 @@ export async function beginResilientWriter(
       // read behind its writes, but never make recognition wait indefinitely.
       return new Promise<Float32Array>((resolve, reject) => {
         const error = () => Object.assign(new Error('Live transcription audio is unavailable.'), { code: 'audio-gap', retryable: false });
+        let settled = false;
+        const cleanup = () => { clearTimeout(timer); readSignal?.removeEventListener('abort', abort); };
+        const abort = () => {
+          if (settled) return;
+          settled = true;
+          work.expired = true;
+          cleanup();
+          reject(cancelled());
+        };
         const work: Extract<Work, { kind: 'read' }> = {
           kind: 'read', start, end, expired: false,
-          resolve: (pcm) => { clearTimeout(timer); resolve(pcm); },
-          reject: () => { clearTimeout(timer); reject(error()); },
+          resolve: (pcm) => { if (settled) return; settled = true; cleanup(); resolve(pcm); },
+          reject: () => { if (settled) return; settled = true; cleanup(); reject(error()); },
         };
-        const timer = setTimeout(() => { work.expired = true; reject(error()); }, 1000);
-        enqueue(work);
+        const timer = setTimeout(() => { work.expired = true; work.reject(error()); }, 15000);
+        readSignal?.addEventListener('abort', abort, { once: true });
+        if (readSignal?.aborted) abort();
+        else enqueue(work);
       });
     },
     async finish(state = 'completed', error) {

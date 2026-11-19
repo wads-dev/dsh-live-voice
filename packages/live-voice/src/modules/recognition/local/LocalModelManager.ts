@@ -1,3 +1,4 @@
+import { reportVoiceError } from '../../core/diagnosticsErrors.js';
 import { browserAsrModels, findBrowserAsrModel, type BrowserAsrDevice } from './modelCatalog.js';
 import {
   BrowserAsrError,
@@ -191,6 +192,7 @@ export class LocalModelManager {
       });
       this.patch(key, { phase: 'downloaded', loaded: model.bytes, cached: true });
     } catch (error) {
+      if (!abort.signal.aborted) reportVoiceError('browser-local.download', error, { source: 'browser-local', stage: 'download' });
       this.patch(key, {
         phase: abort.signal.aborted ? 'absent' : 'error',
         error: abort.signal.aborted
@@ -332,6 +334,8 @@ export class LocalModelManager {
       this.telemetry.event(key, 'load', 'success', metrics.loadMs);
       this.patch(key, { phase: 'ready', device });
     } catch (error) {
+      if (!signal?.aborted && (error as any)?.code !== 'cancelled')
+        reportVoiceError('browser-local.load', error, { source: 'browser-local', stage: 'load' });
       metrics.error = this.telemetry.code(error);
       metrics.loadMs = this.telemetry.clock() - started;
       this.telemetry.event(
@@ -399,6 +403,8 @@ export class LocalModelManager {
         this.telemetry.event(key, 'transcribe', 'success', metrics.lastMs);
         return result.text as string;
       } catch (error) {
+        if (!signal?.aborted && (error as any)?.code !== 'cancelled')
+          reportVoiceError('browser-local.transcribe', error, { source: 'browser-local', stage: 'transcription' });
         metrics.failed++;
         metrics.error = this.telemetry.code(error);
         this.telemetry.event(

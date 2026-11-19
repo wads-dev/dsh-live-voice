@@ -125,6 +125,7 @@ test('unavailable storage retains only 64 newest pending entries and recovers', 
   for (let n = 0; n < 70; n++) event(target, 'e' + n);
   const page = await journal.list({ limit: 50 });
   assert.equal(page.persistent, false);
+  assert.equal(page.dropped, 7);
   assert.equal(page.items.length, 50);
   assert.equal((await journal.list({ offset: 50, limit: 50 })).items.length, 14);
   assert.equal((await journal.list({ operation: 'first' })).items.length, 0);

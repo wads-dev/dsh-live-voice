@@ -7,8 +7,12 @@ export type CommonsTranslation = {
   diagnostics: string;
   empty: string;
   error: string;
+  errorAttempt: string;
   errorCause: string;
+  errorCode: string;
+  errorDropped: string;
   errorEmpty: string;
+  errorFrames: string;
   errorJournalTitle: string;
   errorJournalUnavailable: string;
   errorLoading: string;
@@ -17,6 +21,8 @@ export type CommonsTranslation = {
   errorNonPersistent: string;
   errorOlder: string;
   errorOperation: string;
+  errorStage: string;
+  errorStatus: string;
   errorTime: string;
   eventsClear: string;
   eventsPause: string;

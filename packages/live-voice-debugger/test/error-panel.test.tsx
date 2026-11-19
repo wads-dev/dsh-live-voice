@@ -15,7 +15,7 @@ test('error tab renders only structured fields, updates, paginates and unsubscri
   let listener, offset = -1, persistent = false;
   const journal = {
     subscribe(fn) { listener = fn; return () => { listener = null; }; },
-    async list(query) { offset = query.offset; return { persistent, nextOffset: offset ? null : 20, items: [{ id: '1', at: 1700000000000, operation: 'voice.capture', context: { recordingId: 'secret-recording' }, exception: { name: 'TypeError', message: 'secret message', frames: ['secret frame'], cause: { name: 'AbortError', message: 'secret cause' } } }] }; },
+    async list(query) { offset = query.offset; return { persistent, dropped: 3, nextOffset: offset ? null : 20, items: [{ id: '1', at: 1700000000000, operation: 'voice.capture', context: { recordingId: 'secret-recording', stage: 'encode', attempt: 2, status: 503 }, exception: { name: 'TypeError', code: 'ENCODE_FAILED', message: 'secret message', frames: ['12:34', '/secret/path:56:78', 'secret frame'], cause: { name: 'AbortError', message: 'secret cause' } } }] }; },
   };
   const root = createRoot(document.getElementById('root'));
   for (const [locale, copy] of Object.entries(dictionaries)) {
@@ -27,7 +27,12 @@ test('error tab renders only structured fields, updates, paginates and unsubscri
     assert.equal(panel.hidden, false);
     assert.match(panel.textContent, /TypeError/); assert.match(panel.textContent, /AbortError/); assert.match(panel.textContent, /voice.capture/);
     assert.ok(panel.textContent.includes(copy.commons.errorNonPersistent));
+    assert.ok(panel.textContent.includes(copy.commons.errorDropped + ": 3"));
     assert.doesNotMatch(panel.textContent, /secret/);
+    for (const [label, value] of [[copy.commons.errorCode, 'ENCODE_FAILED'], [copy.commons.errorStage, 'encode'], [copy.commons.errorAttempt, '2'], [copy.commons.errorStatus, '503'], [copy.commons.errorFrames, '12:34']]) {
+      const dt = [...panel.querySelectorAll('dt')].find(node => node.textContent === label);
+      assert.equal(dt.nextElementSibling.textContent, value);
+    }
     assert.equal(panel.querySelector('time').dateTime, '2023-11-14T22:13:20.000Z');
   }
   const copy = dictionaries['pt-BR'];

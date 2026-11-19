@@ -168,7 +168,7 @@ export interface RecordingWriter {
     confirmedAtSample: number,
   ): Promise<RecordingPin>;
   attempt(value: RecordingAttempt): Promise<void>;
-  read(startSample: number, endSample: number): Promise<Float32Array>;
+  read(startSample: number, endSample: number, signal?: AbortSignal): Promise<Float32Array>;
   finish(state?: 'completed' | 'interrupted' | 'failed', error?: string): Promise<void>;
   markArchiveGap?(startSample: number, endSample: number): Promise<void>;
 }

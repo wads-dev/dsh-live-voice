@@ -4,6 +4,9 @@ import type { DebuggerTranslation } from './i18n/index.js';
 
 type Page = Awaited<ReturnType<VoiceErrorJournal['list']>>;
 const token = (value: unknown) => typeof value === 'string' && /^[a-z0-9][a-z0-9_.:-]{0,95}$/i.test(value) ? value : '—';
+const integer = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : '—';
+const code = (value: unknown) => typeof value === 'number' ? integer(value) : token(value);
+const frames = (value: unknown) => Array.isArray(value) ? value.slice(0, 12).filter((frame): frame is string => typeof frame === 'string' && /^\d{1,8}:\d{1,8}$/.test(frame)).join(', ') || '—' : '—';
 
 export function ErrorPanel({ journal, copy, locale }: { journal?: VoiceErrorJournal; copy: DebuggerTranslation; locale: string }) {
   const [offset, setOffset] = React.useState(0);
@@ -29,6 +32,7 @@ export function ErrorPanel({ journal, copy, locale }: { journal?: VoiceErrorJour
   if (!page) return <p role="status">{c.errorLoading}</p>;
   return <div className="dlvd-scroll" tabIndex={0}>
     {!page.persistent && <p role="status">{c.errorNonPersistent}</p>}
+    {typeof page.dropped === 'number' && Number.isSafeInteger(page.dropped) && page.dropped > 0 && <p role="status">{c.errorDropped}: {page.dropped}</p>}
     {!page.items.length && <p>{c.errorEmpty}</p>}
     <div className="dlvd-history">
       {page.items.map((entry) => {
@@ -42,6 +46,11 @@ export function ErrorPanel({ journal, copy, locale }: { journal?: VoiceErrorJour
             <dt>{c.errorOperation}</dt><dd><code>{token(entry.operation)}</code></dd>
             <dt>{c.errorName}</dt><dd><code>{token(entry.exception.name)}</code></dd>
             <dt>{c.errorCause}</dt><dd><code>{causes.join(' → ') || '—'}</code></dd>
+            <dt>{c.errorCode}</dt><dd><code>{code(entry.exception.code)}</code></dd>
+            <dt>{c.errorStage}</dt><dd><code>{token(entry.context.stage)}</code></dd>
+            <dt>{c.errorAttempt}</dt><dd>{integer(entry.context.attempt)}</dd>
+            <dt>{c.errorStatus}</dt><dd>{integer(entry.context.status)}</dd>
+            <dt>{c.errorFrames}</dt><dd><code>{frames(entry.exception.frames)}</code></dd>
           </dl>
         </section>;
       })}

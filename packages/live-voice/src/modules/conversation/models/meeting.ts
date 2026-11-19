@@ -255,6 +255,7 @@ export class MeetingController {
       await this.startRecognition(source, job, settings);
     } catch (error) {
       if (valid()) {
+        reportVoiceError('meeting.start', error, { source: source === 'microphone' ? 'microphone' : source === 'shared' ? 'shared' : 'participant', stage: 'start' });
         this.patch(source, {
           error:
             source !== 'microphone' && error.message === 'No shared audio track was returned.'
@@ -371,7 +372,7 @@ export class MeetingController {
     }
   }
   recognitionFailed(source, job, error) {
-    reportVoiceError('recognition.failure', error, { source: 'shared', stage: 'recovery', attempt: job.retries || 0 });
+    reportVoiceError('recognition.failure', error, { source: source === 'microphone' ? 'microphone' : source === 'shared' ? 'shared' : 'participant', stage: 'recovery', attempt: job.retries || 0 });
     // Invalidate callbacks immediately, before teardown or a delayed restart.
     job.recognitionAbort?.abort();
     this.patch(source, {

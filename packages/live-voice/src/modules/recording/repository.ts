@@ -980,7 +980,14 @@ export function createRecordingRepository(
                 try {
                   await flush();
                 } catch (error) {
-                  return fail(error);
+                  try { return await fail(error); }
+                  catch (failure) {
+                    throw Object.assign(new Error('Recording flush failed during archive read.', { cause: failure }), {
+                      name: 'RecordingRepositoryError',
+                      code: (failure as RecordingRepositoryError).code,
+                      archiveWriteFailure: true,
+                    });
+                  }
                 }
               }
               return readRange(store, session, start, end);

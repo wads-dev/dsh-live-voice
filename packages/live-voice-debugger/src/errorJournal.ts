@@ -13,6 +13,7 @@ export function createVoiceErrorJournal(target: Window) {
   let dbOpening: Promise<IDBDatabase> | null = null;
   let retryAt = 0;
   let sequence = 0;
+  let dropped = 0;
   const pending = new Map<string, Row>();
   const listeners = new Set<() => void>();
   const notify = () => { for (const cb of listeners) { try { cb(); } catch { /* Ignore viewer errors. */ } } };
@@ -73,7 +74,10 @@ export function createVoiceErrorJournal(target: Window) {
   const unbind = installVoiceErrorSink(target as unknown as { [key: symbol]: unknown }, (event) => {
     if (disposed) return;
     const id = String(event.at).padStart(16, '0') + ':' + journalId + ':' + String(++sequence).padStart(12, '0');
-    if (pending.size >= PENDING) pending.delete(pending.keys().next().value!);
+    if (pending.size >= PENDING) {
+      pending.delete(pending.keys().next().value!);
+      dropped++;
+    }
     pending.set(id, { ...event, id });
     flush();
   });
@@ -94,7 +98,7 @@ export function createVoiceErrorJournal(target: Window) {
       const all = [...new Map([...rows, ...pending.values()].map((row) => [row.id, row])).values()]
         .sort((a, b) => a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
         .filter((row) => (!query.operation || row.operation === query.operation) && (!query.recordingId || row.context.recordingId === query.recordingId));
-      return { items: all.slice(offset, offset + limit), nextOffset: offset + limit < all.length ? offset + limit : null, persistent: readable && retryAt === 0 };
+      return { items: all.slice(offset, offset + limit), nextOffset: offset + limit < all.length ? offset + limit : null, persistent: readable && retryAt === 0, dropped };
     },
     dispose() { disposed = true; unbind(); listeners.clear(); if (retryTimer !== null) clearTimeout(retryTimer); pending.clear(); db?.close(); db = null; },
   };

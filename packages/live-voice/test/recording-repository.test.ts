@@ -5,6 +5,7 @@ import {
   RecordingRepositoryError,
 } from '../src/modules/recording/repository.js';
 import { createMemoryStore } from '../src/modules/recording/storage.js';
+import { beginResilientWriter } from '../src/modules/recording/resilientWriter.js';
 import type { AudioPage } from '../src/modules/recording/codec.js';
 import { recordingTranscriber } from '../src/modules/recognition/recordingTranscriber.js';
 
@@ -105,6 +106,46 @@ const input = (sourceId = 'microphone') => ({
   label: 'Test source',
   sampleRate: 16000,
   policy: { enabled: false, keepPrevious: 0, bitrate: 24000, preRollMs: 100, postRollMs: 100 },
+});
+
+test('real repository read-flush failure warns and reconciles before later writes', { timeout: 10000 }, async () => {
+  const codecs = fakeCodecs();
+  const Encoder = globalThis.AudioEncoder;
+  let failNext = false;
+  class FaultEncoder extends Encoder {
+    configure(config: AudioEncoderConfig) {
+      if (failNext) { failNext = false; throw new Error('injected flush failure'); }
+      return super.configure(config);
+    }
+  }
+  Object.defineProperty(globalThis, 'AudioEncoder', { value: FaultEncoder, configurable: true });
+  const repo = createRecordingRepository();
+  let warnings = 0;
+  try {
+    const writer = await beginResilientWriter(repo, input(), undefined, () => true, () => warnings++);
+    await writer.append(new Float32Array(16000).fill(0.5));
+    for (let i = 0; i < 80; i++) {
+      await writer.append(new Float32Array(16000));
+      for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+    }
+    await writer.append(new Float32Array(4000).fill(0.25));
+    for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+    failNext = true;
+    await assert.rejects(writer.read(0, 1), { code: 'audio-gap' });
+    assert.equal(warnings, 1);
+    await writer.append(new Float32Array(16000));
+    await writer.finish();
+    let saved = (await repo.list())[0];
+    while (saved.state === 'recording') {
+      await new Promise((resolve) => setImmediate(resolve));
+      saved = (await repo.list())[0];
+    }
+    assert.deepEqual(saved.archiveGaps, [{ startSample: 81 * 16000, endSample: 81 * 16000 + 4000 }]);
+    assert.equal(saved.archiveEndSample, 82 * 16000 + 4000);
+    assert.equal(saved.savedSamples, 82 * 16000);
+    assert.equal(saved.state, 'failed');
+    assert.equal((await repo.audio(saved.id, 81 * 16000 + 4000, 82 * 16000 + 4000)).size > 44, true);
+  } finally { await repo.dispose(); codecs.restore(); }
 });
 
 test('starred names survive audio writes and timeline events survive capture gating', async () => {
