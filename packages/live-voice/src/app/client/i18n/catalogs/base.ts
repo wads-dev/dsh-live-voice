@@ -320,6 +320,7 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.recognition.status.unavailable': string;
   'dsh-live-voice.recognition.status.waiting': string;
   'dsh-live-voice.recognition.status.waitingCommand': string;
+  'dsh-live-voice.recognition.transcriptionBufferWarning': string;
   'dsh-live-voice.recognition.transcriptionGap': string;
   'dsh-live-voice.recognition.voiceCommands.help': string;
   'dsh-live-voice.recognition.whisper.captureHelp': string;

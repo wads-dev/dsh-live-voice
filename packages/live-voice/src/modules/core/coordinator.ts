@@ -615,7 +615,7 @@ export class VoiceCoordinator {
         }
         if (!started) throw new Error('Microphone metering could not start.');
         this.transcript.reset();
-        this.patch({ recordingWarning: false, transcriptionGap: false });
+        this.patch({ recordingWarning: false, transcriptionGap: false, transcriptionBufferWarning: false });
         await this.recognition.start({
           lang,
           signal: controller.signal,
@@ -672,6 +672,9 @@ export class VoiceCoordinator {
           },
           onTranscriptionGap: () => {
             if (valid()) this.patch({ transcriptionGap: true });
+          },
+          onTranscriptionBufferWarning: () => {
+            if (valid()) this.patch({ transcriptionBufferWarning: true });
           },
           onError: (error) => {
             if (!valid()) return;

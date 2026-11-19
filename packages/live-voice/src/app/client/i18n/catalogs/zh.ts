@@ -403,6 +403,7 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': '语音识别不可用',
   'dsh-live-voice.recognition.status.waiting': '等待中',
   'dsh-live-voice.recognition.status.waitingCommand': '等待命令',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "转写缓冲区已满。较早的语音将依赖录音存档，可能无法获取。",
   'dsh-live-voice.recognition.transcriptionGap': "由于音频不可用，部分语音无法转写。聆听仍在继续。",
   'dsh-live-voice.recognition.voiceCommands.help':
     '用逗号分隔短语。匹配时忽略大小写、重音符号、标点和多余空格。整个最终片段必须完全匹配。',

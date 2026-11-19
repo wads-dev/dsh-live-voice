@@ -445,6 +445,7 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'Reconocimiento de voz no disponible',
   'dsh-live-voice.recognition.status.waiting': 'Esperando',
   'dsh-live-voice.recognition.status.waitingCommand': 'Esperando comando',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "El búfer de transcripción está lleno. El audio anterior dependerá del archivo de grabación y podría no estar disponible.",
   'dsh-live-voice.recognition.transcriptionGap': "No se pudo transcribir parte de la voz porque el audio no estaba disponible. La escucha continúa.",
   'dsh-live-voice.recognition.voiceCommands.help':
     'Separa las frases con comas. La comparación ignora mayúsculas, acentos, puntuación y espacios adicionales. Debe coincidir todo el fragmento definitivo.',

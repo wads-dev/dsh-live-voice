@@ -40,6 +40,7 @@ interface RecognitionCallbacks {
   onError?(error: Error): void;
   onRecordingWarning?(): void;
   onTranscriptionGap?(): void;
+  onTranscriptionBufferWarning?(): void;
   onProcessingChange?(state: Processing): void;
 }
 interface RecordingEngine {
@@ -98,7 +99,7 @@ interface RecognitionSession {
   finished: boolean;
   finishing: boolean;
   finishPromise: Promise<void> | null;
-  transcriptionQueue: RecordingAttempt[];
+  transcriptionQueue: QueuedTranscription[];
   activeRequest: AbortController | null;
   draining: boolean;
   signal?: AbortSignal;
@@ -125,13 +126,17 @@ import { voiceDetectionSilenceMs, voiceDetectionParagraphMs } from '../core/sett
 /** Minimum context on each transcription boundary; independent of VAD pin positions. */
 export const TRANSCRIPTION_BOUNDARY_MARGIN_MS = 800;
 const uid = () => crypto.randomUUID();
-/** Audio ownership stays with the recording; the queue only holds range references. */
+type QueuedTranscription = { attempt: RecordingAttempt; pcm?: Float32Array };
+// Counts include the active request; never grow with meeting duration.
+export const TRANSCRIPTION_SNAPSHOT_MAX_BYTES = 16 * 1024 * 1024;
+export const TRANSCRIPTION_SNAPSHOT_MAX_ENTRIES = 64;
+/** Range snapshots are bounded; overflow falls back to the archive. */
 export async function startRecordingRecognition(
   engine: RecordingEngine,
   options: RecognitionCallbacks,
   capture: { silero: boolean; encode(pcm: Float32Array, rate: number): ArrayBuffer },
 ) {
-  const { signal, lang = engine.lang, onResult, onActivity, onError, onProcessingChange, onRecordingWarning, onTranscriptionGap } = options;
+  const { signal, lang = engine.lang, onResult, onActivity, onError, onProcessingChange, onRecordingWarning, onTranscriptionGap, onTranscriptionBufferWarning } = options;
   const rate = engine.meter.context.sampleRate;
   const policy = {
     enabled: engine.recordingEnabled !== false,
@@ -226,6 +231,17 @@ export async function startRecordingRecognition(
   const valid = () => engine.session === session && !signal?.aborted;
   // Range descriptors only: future post-roll must never block serialized PCM writes.
   const awaitingTail: RecordingAttempt[] = [];
+  const memoryWriter = writer as RecordingWriter & { snapshot(start: number, end: number): Float32Array | null };
+  let snapshotBytes = 0;
+  let snapshotEntries = 0;
+  let snapshotWarning = false;
+  let activeEntry: QueuedTranscription | null = null;
+  const releaseSnapshot = (entry: QueuedTranscription) => {
+    if (!entry.pcm) return;
+    snapshotBytes -= entry.pcm.byteLength;
+    snapshotEntries--;
+    entry.pcm = undefined;
+  };
   let stopping = false;
   let recoveryPending = false;
   let captureFailure: string | undefined;
@@ -337,7 +353,19 @@ export async function startRecordingRecognition(
       await writer.attempt(attempt);
       if (!valid()) return;
       awaitingTail.shift();
-      session.transcriptionQueue.push(attempt);
+      const entry: QueuedTranscription = { attempt };
+      const bytes = (attempt.endSample - attempt.startSample) * Float32Array.BYTES_PER_ELEMENT;
+      if (bytes <= TRANSCRIPTION_SNAPSHOT_MAX_BYTES - snapshotBytes && snapshotEntries < TRANSCRIPTION_SNAPSHOT_MAX_ENTRIES) {
+        const pcm = memoryWriter.snapshot(attempt.startSample, attempt.endSample);
+        if (pcm) { entry.pcm = pcm; snapshotBytes += pcm.byteLength; snapshotEntries++; }
+      } else if (!snapshotWarning) {
+        snapshotWarning = true;
+        reportVoiceError('recognition.snapshot-limit', new Error('Transcription buffer limit reached.'), {
+          source: engine.inputSource, recordingId: writer.session.id, stage: 'backlog',
+        });
+        onTranscriptionBufferWarning?.();
+      }
+      session.transcriptionQueue.push(entry);
       notify();
     }
     void drain();
@@ -409,12 +437,14 @@ export async function startRecordingRecognition(
     session.draining = true;
     try {
       while (valid() && session.transcriptionQueue.length) {
-        const attempt = session.transcriptionQueue.shift()!;
+        const entry = session.transcriptionQueue.shift()!;
+        const { attempt } = entry;
+        activeEntry = entry;
         const request = new AbortController();
         session.activeRequest = request;
         notify();
         try {
-          const pcm = await writer.read(attempt.startSample, attempt.endSample, request.signal);
+          const pcm = entry.pcm ?? await writer.read(attempt.startSample, attempt.endSample, request.signal);
           if (!valid()) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
           let text: string;
           if (engine.transcribePcm) {
@@ -504,6 +534,8 @@ export async function startRecordingRecognition(
             else onError?.(asError(error));
           }
         } finally {
+          releaseSnapshot(entry);
+          if (activeEntry === entry) activeEntry = null;
           if (session.activeRequest === request) session.activeRequest = null;
           notify();
         }
@@ -706,6 +738,7 @@ export async function startRecordingRecognition(
     awaitingTail.length = 0;
     await recovering;
     session.activeRequest?.abort();
+    if (activeEntry) releaseSnapshot(activeEntry);
     if (session.finishing || session.captureSuspended) session.capture?.release();
     else {
       try {
@@ -717,15 +750,17 @@ export async function startRecordingRecognition(
     session.finished = true;
     session.vad?.release();
     detector.finish();
-    for (const attempt of session.transcriptionQueue.splice(0))
+    for (const entry of session.transcriptionQueue.splice(0)) {
+      releaseSnapshot(entry);
       await writer
         .attempt({
-          ...attempt,
+          ...entry.attempt,
           status: 'error',
           error: 'cancelled',
           finishedAt: new Date().toISOString(),
         })
         .catch(() => {});
+    }
     await session.tail;
     await writer.finish(captureFailure ? 'failed' : 'completed', captureFailure).catch(() => {});
     stopping = false;

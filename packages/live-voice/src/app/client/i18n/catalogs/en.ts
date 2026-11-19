@@ -433,6 +433,7 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'Speech recognition unavailable',
   'dsh-live-voice.recognition.status.waiting': 'Waiting',
   'dsh-live-voice.recognition.status.waitingCommand': 'Waiting for command',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "The transcription buffer is full. Older speech will rely on the recording archive and may be unavailable.",
   'dsh-live-voice.recognition.transcriptionGap': "Some speech could not be transcribed because its audio was unavailable. Listening continues.",
   'dsh-live-voice.recognition.voiceCommands.help':
     'Separate phrases with commas. Matching ignores capitalization, accents, punctuation, and extra spaces. The entire final chunk must match.',

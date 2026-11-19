@@ -138,6 +138,7 @@ export class WhisperHttpRecognitionEngine {
     onProcessingChange,
     onRecordingWarning,
     onTranscriptionGap,
+    onTranscriptionBufferWarning,
   } = {}) {
     await this.stop();
     const startGeneration = (this.startGeneration = (this.startGeneration || 0) + 1);
@@ -167,7 +168,7 @@ export class WhisperHttpRecognitionEngine {
       throw new Error('This browser cannot capture PCM audio for Whisper HTTP.');
     const recording = await startRecordingRecognition(
       this,
-      { lang, signal, onResult, onActivity, onError, onProcessingChange, onRecordingWarning, onTranscriptionGap },
+      { lang, signal, onResult, onActivity, onError, onProcessingChange, onRecordingWarning, onTranscriptionGap, onTranscriptionBufferWarning },
       { silero, encode: encodeMonoPcm16Wav },
     );
     if (this.startGeneration !== startGeneration || signal?.aborted) throw abortError();

@@ -438,6 +438,7 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'Reconhecimento de voz indisponível',
   'dsh-live-voice.recognition.status.waiting': 'Aguardando',
   'dsh-live-voice.recognition.status.waitingCommand': 'Esperando comando',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "O buffer de transcrição está cheio. Falas anteriores dependerão do arquivo de gravação e podem ficar indisponíveis.",
   'dsh-live-voice.recognition.transcriptionGap': "Não foi possível transcrever parte da fala porque o áudio não estava disponível. A escuta continua.",
   'dsh-live-voice.recognition.voiceCommands.help':
     'Separe as frases por vírgulas. A correspondência ignora maiúsculas, acentos, pontuação e espaços extras. Todo o trecho final deve coincidir.',

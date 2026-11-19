@@ -232,7 +232,26 @@ export async function beginResilientWriter(
     });
   }
   signal?.addEventListener('abort', () => { if (!sealed) void writer.finish('interrupted'); }, { once: true });
-  const writer: RecordingWriter & { timeline: (kind: import('./types.js').RecordingEventKind, details?: import('./types.js').RecordingEventDetails) => Promise<void> } = {
+  const snapshot = (start: number, end: number): Float32Array | null => {
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start) return null;
+    if (start < end && (!chunks.length || chunks[0].start > start || session.capturedSamples < end)) return null;
+    const out = new Float32Array(end - start);
+    let covered = start;
+    for (const chunk of chunks) {
+      const from = Math.max(start, chunk.start), to = Math.min(end, chunk.start + chunk.data.length);
+      if (to <= from) continue;
+      if (from > covered) return null;
+      out.set(chunk.data.subarray(from - chunk.start, to - chunk.start), from - start);
+      covered = Math.max(covered, to);
+      if (covered >= end) return out;
+    }
+    return covered >= end ? out : null;
+  };
+  const writer: RecordingWriter & {
+    timeline: (kind: import('./types.js').RecordingEventKind, details?: import('./types.js').RecordingEventDetails) => Promise<void>;
+    snapshot: typeof snapshot;
+  } = {
+    snapshot,
     async timeline(event, details) { enqueue({ kind: 'event', event, details }); },
     get session() { return structuredClone(session); },
     async append(pcm) {
@@ -259,16 +278,8 @@ export async function beginResilientWriter(
     async read(start, end, readSignal) {
       const cancelled = () => Object.assign(new Error('Cancelled'), { name: 'AbortError' });
       if (readSignal?.aborted) throw cancelled();
-      const out = new Float32Array(end - start);
-      let covered = start;
-      for (const chunk of chunks) {
-        const from = Math.max(start, chunk.start), to = Math.min(end, chunk.start + chunk.data.length);
-        if (to <= from) continue;
-        if (from > covered) break;
-        out.set(chunk.data.subarray(from - chunk.start, to - chunk.start), from - start);
-        covered = Math.max(covered, to);
-      }
-      if (covered >= end) return out;
+      const available = snapshot(start, end);
+      if (available) return available;
       // Old backlogged speech may still be in a healthy archive. Serialize the
       // read behind its writes, but never make recognition wait indefinitely.
       return new Promise<Float32Array>((resolve, reject) => {

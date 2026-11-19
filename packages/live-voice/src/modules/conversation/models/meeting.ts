@@ -52,7 +52,7 @@ export class MeetingController {
         this.inputs.get(source) ||
         (next.listening || next.starting || next.error ? this.input(source) : null);
       const policy = {};
-      for (const key of ['starting', 'listening', 'error', 'inputRecovery', 'inputError', 'recordingWarning', 'transcriptionGap'])
+      for (const key of ['starting', 'listening', 'error', 'inputRecovery', 'inputError', 'recordingWarning', 'transcriptionGap', 'transcriptionBufferWarning'])
         if (Object.hasOwn(next, key)) policy[key] = next[key];
       if (Object.hasOwn(next, 'pending')) policy.pendingTranscriptions = next.pending;
       if (Object.hasOwn(next, 'transcribing'))
@@ -291,7 +291,7 @@ export class MeetingController {
       !recognitionAbort.signal.aborted;
     input.recognition.activityManaged = engine.activityManaged === true;
     try {
-      this.patch(source, { recordingWarning: false, transcriptionGap: false });
+      this.patch(source, { recordingWarning: false, transcriptionGap: false, transcriptionBufferWarning: false });
       await engine.start({
         lang: settings.recognitionLang,
         signal: recognitionAbort.signal,
@@ -351,6 +351,9 @@ export class MeetingController {
         },
         onTranscriptionGap: () => {
           if (valid()) this.patch(source, { transcriptionGap: true });
+        },
+        onTranscriptionBufferWarning: () => {
+          if (valid()) this.patch(source, { transcriptionBufferWarning: true });
         },
         onError: (error) => {
           if (valid()) this.recognitionFailed(source, job, error);

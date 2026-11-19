@@ -453,6 +453,7 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'Reconnaissance vocale indisponible',
   'dsh-live-voice.recognition.status.waiting': 'En attente',
   'dsh-live-voice.recognition.status.waitingCommand': 'En attente de commande',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "Le tampon de transcription est plein. Les paroles précédentes dépendront de l’archive et pourraient être indisponibles.",
   'dsh-live-voice.recognition.transcriptionGap': "Une partie de la parole n’a pas pu être transcrite car son audio était indisponible. L’écoute continue.",
   'dsh-live-voice.recognition.voiceCommands.help':
     'Séparez les expressions par des virgules. La comparaison ignore la casse, les accents, la ponctuation et les espaces superflus. Le segment définitif entier doit correspondre.',

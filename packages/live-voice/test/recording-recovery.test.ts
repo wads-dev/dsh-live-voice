@@ -310,6 +310,48 @@ test('gap write rejection still finishes and releases the archive writer', async
   assert.equal((await repo.list())[0].state, 'failed');
 });
 
+test('queued speech survives rolling-window eviction while archive is unavailable', { timeout: 10000 }, async (t) => {
+  const repo = mockRecordingRepository();
+  let releaseArchive: (value: any) => void = () => {};
+  const gate = new Promise<any>((resolve) => { releaseArchive = resolve; });
+  const begin = repo.begin.bind(repo);
+  repo.begin = async () => gate;
+  let ingest: any, classify: any, releaseFirst: (value: string) => void = () => {};
+  let firstStarted: () => void = () => {}, delivered: () => void = () => {};
+  const firstRequest = new Promise<void>((resolve) => { firstStarted = resolve; });
+  const secondResult = new Promise<void>((resolve) => { delivered = resolve; });
+  const results: string[] = [];
+  let requests = 0, gaps = 0;
+  const engine = new WhisperHttpRecognitionEngine({ recordings: repo,
+    meter: { context: { sampleRate: 16000 }, source: {} }, voiceDetectionEngine: 'silero',
+    voiceDetectionPreset: 'short', voiceDetectionMinimumSpeechMs: 50,
+    vadAvailable: async () => true,
+    vadFactory: (options) => { classify = options.onProbability; return { release() {} }; },
+    vadCapture: async (_c, _s, _v, onPcm) => { ingest = onPcm; return { finish: async () => {}, release() {} }; },
+  });
+  t.after(async () => { releaseFirst('cleanup'); await engine.stop(); releaseArchive(await begin(input)); });
+  engine.transcribePcm = async () => ++requests === 1
+    ? new Promise<string>((resolve) => { releaseFirst = resolve; firstStarted(); }) : 'second';
+  await engine.start({ onTranscriptionGap: () => gaps++, onResult: (result) => {
+    results.push(result.final); if (results.length === 2) delivered();
+  } });
+  const frame = (seconds: number, p: number) => {
+    const pcm = new Float32Array(seconds * 16000).fill(p ? 0.1 : 0);
+    ingest(pcm, 16000); classify({ probability: p, pcm });
+  };
+  frame(0.1, 0.9); frame(1, 0);
+  await firstRequest;
+  frame(0.1, 0.9); frame(1, 0);
+  for (let i = 0; i < 80; i++) {
+    frame(1, 0);
+    for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+  }
+  releaseFirst('first');
+  await secondResult;
+  assert.deepEqual(results, ['first', 'second']);
+  assert.equal(gaps, 0);
+});
+
 test('unavailable evicted audio surfaces a nonfatal transcription gap', { timeout: 10000 }, async (t) => {
   const repo = mockRecordingRepository();
   let release: (value: any) => void = () => {};
@@ -331,7 +373,8 @@ test('unavailable evicted audio surfaces a nonfatal transcription gap', { timeou
   t.after(async () => { releaseFirst('cleanup'); await engine.stop(); });
   engine.transcribePcm = async () => ++requestCount === 1
     ? new Promise<string>((resolve) => { releaseFirst = resolve; firstStarted(); }) : 'later';
-  await engine.start({ onTranscriptionGap: () => { gaps++; gapObserved(); }, onError: () => errors++ });
+  let bufferWarnings = 0;
+  await engine.start({ onTranscriptionGap: () => { gaps++; gapObserved(); }, onError: () => errors++, onTranscriptionBufferWarning: () => bufferWarnings++ });
   const frame = (seconds: number, p: number) => {
     const pcm = new Float32Array(seconds * 16000).fill(p ? 0.1 : 0);
     ingest(pcm, 16000); classify({ probability: p, pcm });
@@ -340,6 +383,16 @@ test('unavailable evicted audio surfaces a nonfatal transcription gap', { timeou
   await firstRequest;
   assert.equal(requestCount, 1);
   frame(0.1, 0.9); frame(1, 0);
+  for (let i = 0; i < 80; i++) {
+    frame(1, 0);
+    for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+  }
+  // Force overflow of the bounded snapshot queue so at least one range uses
+  // archive fallback after the rolling window has advanced.
+  for (let i = 0; i < 70; i++) {
+    frame(0.1, 0.9); frame(1, 0);
+    for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+  }
   for (let i = 0; i < 80; i++) {
     frame(1, 0);
     for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
@@ -355,6 +408,7 @@ test('unavailable evicted audio surfaces a nonfatal transcription gap', { timeou
   release(archive);
   await gapEvent;
   assert.equal(gaps, 1);
+  assert.equal(bufferWarnings, 1);
   assert.equal(errors, 0);
   await engine.stop();
 });

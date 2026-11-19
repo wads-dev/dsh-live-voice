@@ -432,6 +432,7 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'वाक् पहचान उपलब्ध नहीं है',
   'dsh-live-voice.recognition.status.waiting': 'प्रतीक्षा में',
   'dsh-live-voice.recognition.status.waitingCommand': 'कमांड की प्रतीक्षा में',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "ट्रांसक्रिप्शन बफ़र भर गया है। पहले की आवाज़ के लिए रिकॉर्डिंग संग्रह पर निर्भर रहना होगा और वह अनुपलब्ध हो सकती है।",
   'dsh-live-voice.recognition.transcriptionGap': "ऑडियो उपलब्ध न होने के कारण कुछ बोली का लिप्यंतरण नहीं हो सका। सुनना जारी है।",
   'dsh-live-voice.recognition.voiceCommands.help':
     'वाक्यांशों को अल्पविराम से अलग करें। मिलान में बड़े-छोटे अक्षर, उच्चारण चिह्न, विराम चिह्न और अतिरिक्त स्पेस अनदेखे किए जाते हैं। पूरा अंतिम खंड मेल खाना चाहिए।',
