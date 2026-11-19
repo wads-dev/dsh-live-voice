@@ -260,6 +260,95 @@ test('stalled append does not block engine transcription or stop', async () => {
   for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
 });
 
+test('abort drains capture boundary before archive finish without accepting later PCM', { timeout: 10000 }, async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let ingest: any, drainStarted: () => void = () => {}, releaseDrain: () => void = () => {}, archiveFinished: () => void = () => {};
+  const started = new Promise<void>((resolve) => { drainStarted = resolve; });
+  const drain = new Promise<void>((resolve) => { releaseDrain = resolve; });
+  const ended = new Promise<void>((resolve) => { archiveFinished = resolve; });
+  let boundary: any, finishCalls = 0, appendsAfterAbort = 0, gapCalls = 0;
+  const controller = new AbortController();
+  repo.begin = async (value) => {
+    const archive = await begin(value), append = archive.append.bind(archive), finish = archive.finish.bind(archive);
+    archive.append = async (pcm) => { if (controller.signal.aborted) appendsAfterAbort++; await append(pcm); };
+    archive.markArchiveGap = async () => { gapCalls++; };
+    archive.finish = async (state, error, metadata) => { boundary = metadata; finishCalls++; await finish(state, error); archiveFinished(); };
+    return archive;
+  };
+  const engine = new WhisperHttpRecognitionEngine({ recordings: repo,
+    meter: { context: { sampleRate: 16000 }, source: {} }, voiceDetectionEngine: 'silero',
+    vadAvailable: async () => true,
+    vadFactory: () => ({ release() {} }),
+    vadCapture: async (_c, _s, _v, onPcm) => {
+      ingest = onPcm;
+      return { finish: async () => { drainStarted(); await drain; onPcm(new Float32Array(3).fill(0.5), 16000); }, release() {} };
+    },
+  });
+  await engine.start({ signal: controller.signal });
+  ingest(new Float32Array(2), 16000);
+  for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  await started;
+  // This callback races the abort but is not delivered by capture.finish.
+  // The capture owns the drain window, so the producer must not send new input after stopping.
+  assert.equal(finishCalls, 0);
+  releaseDrain();
+  await ended;
+  assert.equal(boundary.atSample, 5);
+  assert.equal(boundary.markMissingTail, true);
+  assert.equal(finishCalls, 1);
+  assert.equal(appendsAfterAbort, 0);
+  assert.equal(gapCalls, 0);
+  ingest(new Float32Array(10), 16000);
+  for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(boundary.atSample, 5);
+  await engine.stop();
+});
+
+test('abort drain yields to timers with queued audio and pending append', { timeout: 10000 }, async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let releaseAppend: () => void = () => {}, appendStarted: () => void = () => {}, releaseCapture: () => void = () => {};
+  let captureStarted: () => void = () => {}, archiveFinished: () => void = () => {};
+  const appendGate = new Promise<void>((resolve) => { releaseAppend = resolve; });
+  const started = new Promise<void>((resolve) => { appendStarted = resolve; });
+  const captureGate = new Promise<void>((resolve) => { releaseCapture = resolve; });
+  const draining = new Promise<void>((resolve) => { captureStarted = resolve; });
+  const finished = new Promise<void>((resolve) => { archiveFinished = resolve; });
+  let ingest: any, appendCalls = 0, finishCalls = 0;
+  repo.begin = async (value) => {
+    const archive = await begin(value), finish = archive.finish.bind(archive);
+    archive.append = async () => { appendCalls++; appendStarted(); await appendGate; };
+    archive.finish = async (...args) => { finishCalls++; await finish(...args); archiveFinished(); };
+    return archive;
+  };
+  const controller = new AbortController();
+  const engine = new WhisperHttpRecognitionEngine({ recordings: repo,
+    meter: { context: { sampleRate: 16000 }, source: {} }, voiceDetectionEngine: 'silero',
+    vadAvailable: async () => true, vadFactory: () => ({ release() {} }),
+    vadCapture: async (_c, _s, _v, onPcm) => {
+      ingest = onPcm;
+      return { finish: async () => { captureStarted(); await captureGate; onPcm(new Float32Array(2), 16000); }, release() {} };
+    },
+  });
+  await engine.start({ signal: controller.signal });
+  ingest(new Float32Array(2), 16000);
+  await started;
+  ingest(new Float32Array(2), 16000);
+  for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  await draining;
+  releaseAppend();
+  // A macrotask must run while capture.finish is still awaiting its drain.
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(appendCalls, 1);
+  assert.equal(finishCalls, 0);
+  releaseCapture();
+  await finished;
+  assert.equal(appendCalls, 1);
+  assert.equal(finishCalls, 1);
+  await engine.stop();
+});
+
 test('abort during archive gap backoff does not resume queued audio', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
@@ -475,6 +564,44 @@ test('drop followed by retained audio does not mark a false tail gap', async () 
   release();
   for (let i = 0; i < 12; i++) await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(gaps, [[16000, 144000]]);
+});
+
+test('backlogged and post-finish events retain occurrence time and sample boundary', { timeout: 10000 }, async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 100000 });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let release: () => void = () => {}, start: () => void = () => {}, ended: () => void = () => {}, lateDone: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const pending = new Promise<void>((resolve) => { start = resolve; });
+  const finished = new Promise<void>((resolve) => { ended = resolve; });
+  const late = new Promise<void>((resolve) => { lateDone = resolve; });
+  const events: any[] = [];
+  let end: any, calls = 0;
+  repo.begin = async (value) => {
+    const archive = await begin(value);
+    archive.append = async () => { if (++calls === 1) { start(); await gate; } };
+    archive.recordEvent = async (event) => { events.push(event); if (events.length === 2) lateDone(); };
+    archive.finish = async (_state, _error, metadata) => { end = metadata; ended(); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {}) as any;
+  await writer.append(new Float32Array(3));
+  await pending;
+  t.mock.timers.tick(1000);
+  await writer.timeline('assistant-start');
+  await writer.append(new Float32Array(2));
+  t.mock.timers.tick(1000);
+  await writer.finish();
+  t.mock.timers.tick(5000);
+  release();
+  await finished;
+  assert.deepEqual(end, { occurredAt: new Date(102000).toISOString(), atSample: 5 });
+  assert.equal(events[0].occurredAt, new Date(101000).toISOString());
+  assert.equal(events[0].atSample, 3);
+  t.mock.timers.tick(1000);
+  await writer.timeline('assistant-end');
+  await late;
+  assert.equal(events[1].occurredAt, new Date(108000).toISOString());
+  assert.equal(events[1].atSample, 5);
 });
 
 test('late attempts remain writable after archive finish', async () => {

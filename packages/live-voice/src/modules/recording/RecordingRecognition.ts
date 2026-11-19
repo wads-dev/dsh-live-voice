@@ -165,6 +165,7 @@ export async function startRecordingRecognition(
         bitrate: policy.bitrate,
       },
     }, signal, () => engine.startGeneration === generation, () => onRecordingWarning?.());
+  (writer as RecordingWriter & { captureDrainOwner(): void }).captureDrainOwner();
   if (engine.startGeneration !== generation || signal?.aborted) {
     await writer.finish('interrupted');
     throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
@@ -243,9 +244,10 @@ export async function startRecordingRecognition(
     entry.pcm = undefined;
   };
   let stopping = false;
+  let drainingCapture = false;
   let recoveryPending = false;
   let captureFailure: string | undefined;
-  const captureValid = () => engine.session === session || stopping;
+  const captureValid = () => drainingCapture || (engine.session === session && !stopping && !signal?.aborted);
   const notify = () => {
     if (valid())
       session.onProcessingChange?.({
@@ -715,11 +717,12 @@ export async function startRecordingRecognition(
         await session.capture?.finish();
         if (!valid()) return;
         session.finished = true;
+        const captureEnd = { occurredAt: new Date(Date.now()).toISOString(), atSample: session.capturedSamples };
         detector.finish();
         // Capture is drained: release remaining ranges using only the real available tail.
         await serialize(releaseCapturedRanges);
         await session.tail;
-        await writer.finish();
+        await writer.finish('completed', undefined, captureEnd);
         session.vad?.release();
       } catch (error) {
         captureFailure = asError(error).message;
@@ -741,13 +744,17 @@ export async function startRecordingRecognition(
     if (activeEntry) releaseSnapshot(activeEntry);
     if (session.finishing || session.captureSuspended) session.capture?.release();
     else {
+      drainingCapture = true;
       try {
         await session.capture?.finish();
       } catch {
         session.capture?.release();
+      } finally {
+        drainingCapture = false;
       }
     }
     session.finished = true;
+    const captureEnd = { occurredAt: new Date(Date.now()).toISOString(), atSample: session.capturedSamples };
     session.vad?.release();
     detector.finish();
     for (const entry of session.transcriptionQueue.splice(0)) {
@@ -762,7 +769,7 @@ export async function startRecordingRecognition(
         .catch(() => {});
     }
     await session.tail;
-    await writer.finish(captureFailure ? 'failed' : 'completed', captureFailure).catch(() => {});
+    await writer.finish(captureFailure ? 'failed' : 'completed', captureFailure, captureEnd).catch(() => {});
     stopping = false;
   };
   session.abort = () => engine.stop();

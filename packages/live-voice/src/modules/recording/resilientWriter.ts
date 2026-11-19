@@ -10,7 +10,7 @@ type Work =
   | { kind: 'audio'; start: number; data: Float32Array }
   | { kind: 'pin'; pin: RecordingPin }
   | { kind: 'attempt'; attempt: RecordingAttempt }
-  | { kind: 'event'; event: import('./types.js').RecordingEventKind; details?: import('./types.js').RecordingEventDetails }
+  | { kind: 'event'; event: import('./types.js').RecordingEvent }
   | { kind: 'read'; start: number; end: number; expired: boolean; resolve: (pcm: Float32Array) => void; reject: (error: unknown) => void };
 
 /** Archive I/O is a separate, single-owner queue: it never gates capture or STT. */
@@ -39,8 +39,12 @@ export async function beginResilientWriter(
   let worker: Promise<void> | null = null;
   let sealed = false;
   let aborted = false;
+  let captureDrainOwned = false;
+  let holdAbortCleanup = false;
   let finalState: 'completed' | 'interrupted' | 'failed' = 'completed';
   let finalError: string | undefined;
+  let captureEnd: { occurredAt: string; atSample: number; markMissingTail?: boolean } | undefined;
+  let boundTimeline: ReturnType<RecordingRepository['timeline']> | undefined;
   let warned = false;
   let stopped = false;
   let hadGap = false;
@@ -138,6 +142,7 @@ export async function beginResilientWriter(
       try {
         archive = await observed('begin', () => repository.begin({ ...input, startedAt: session.startedAt }));
         archiveId = archive.session.id;
+        boundTimeline = repository.timeline(archiveId);
         session.id = archiveId;
         // The captured sample clock is immutable even if an external
         // repository ignores the requested timestamp. Its archive timestamps
@@ -236,13 +241,20 @@ export async function beginResilientWriter(
           }
           if (!work.expired && (aborted || signal?.aborted)) work.reject(new Error('Archive unavailable.'));
         } else {
-          const details = work.details ? { ...work.details } : undefined;
-          if (details?.segmentId) {
-            const mapped = pinIds.get(details.segmentId);
-            if (!mapped) continue;
-            details.segmentId = mapped;
+          const event = structuredClone(work.event);
+          if (event.details?.segmentId) {
+            const mapped = pinIds.get(event.details.segmentId);
+            if (!mapped) { metadataIncomplete = true; warn('event', new Error('Archive event references an unavailable pin.')); continue; }
+            event.details.segmentId = mapped;
           }
-          await observed('event', () => repository.timeline(archive!.session.id)(work.event, details));
+          if (archive.recordEvent) await observed('event', () => archive!.recordEvent!(event));
+          else {
+            // A legacy writer cannot represent the original boundary/time.
+            // Preserve its historical event behavior, but never claim fidelity.
+            metadataIncomplete = true;
+            warn('event-clock', new Error('Archive cannot preserve event occurrence metadata.'));
+            await observed('event', () => boundTimeline!(event.kind, event.details));
+          }
         }
         failures = 0;
       } catch (error) {
@@ -278,7 +290,7 @@ export async function beginResilientWriter(
         else if (!alive()) { stopped = true; break; }
       }
     }
-    if ((sealed && !finalized) || stopped) {
+    if ((sealed && !finalized) || (stopped && !holdAbortCleanup)) {
       if (aborted || signal?.aborted) stopped = true;
       const end = session.capturedSamples;
       let gapFailed = false;
@@ -296,7 +308,9 @@ export async function beginResilientWriter(
       // race a still-pending gap with finish: this runs only after rejection.
       try {
         const incomplete = stopped || hadGap || gapFailed || metadataIncomplete || aborted || Boolean(signal?.aborted);
-        await observed('finish', () => archive!.finish(incomplete ? 'failed' : finalState, incomplete ? 'archive-incomplete' : finalError));
+        const endMetadata = captureEnd && (aborted || signal?.aborted)
+          ? { ...captureEnd, markMissingTail: true } : captureEnd;
+        await observed('finish', () => archive!.finish(incomplete ? 'failed' : finalState, incomplete ? 'archive-incomplete' : finalError, endMetadata));
       } catch (error) { warn('finish', error); }
       finalized = true;
       if (stopped) {
@@ -307,16 +321,20 @@ export async function beginResilientWriter(
     }
   }
   function kick() {
-    if (worker || stopped) return;
+    // During an owned abort drain, queued work is frozen. finish() is the only
+    // wakeup that may resume cleanup; otherwise a nonempty queue spins forever.
+    if (worker || holdAbortCleanup || (stopped && !(sealed && aborted && !finalized))) return;
     worker = run().catch((error) => { stopped = true; warn('worker', error); }).finally(() => {
       worker = null;
-      if (!stopped && (queue.length || (sealed && archive && !finalized))) kick();
+      if (holdAbortCleanup) return;
+      if ((!stopped && (queue.length || (sealed && archive && !finalized))) || (stopped && aborted && sealed && archive && !finalized)) kick();
     });
   }
   signal?.addEventListener('abort', () => {
     aborted = true;
+    if (captureDrainOwned && !sealed) holdAbortCleanup = true;
     cancelRetryWait?.();
-    if (!sealed) void writer.finish('interrupted');
+    if (!sealed && !captureDrainOwned) void writer.finish('interrupted');
   }, { once: true });
   const snapshot = (start: number, end: number): Float32Array | null => {
     if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start) return null;
@@ -336,9 +354,17 @@ export async function beginResilientWriter(
   const writer: RecordingWriter & {
     timeline: (kind: import('./types.js').RecordingEventKind, details?: import('./types.js').RecordingEventDetails) => Promise<void>;
     snapshot: typeof snapshot;
+    captureDrainOwner(): void;
   } = {
+    captureDrainOwner() { captureDrainOwned = true; },
     snapshot,
-    async timeline(event, details) { enqueue({ kind: 'event', event, details }); },
+    async timeline(kind, details) {
+      enqueue({ kind: 'event', event: {
+        id: crypto.randomUUID(), kind,
+        ...(details ? { details: structuredClone(details) } : {}),
+        occurredAt: new Date(Date.now()).toISOString(), atSample: session.capturedSamples,
+      } });
+    },
     get session() { return structuredClone(session); },
     async append(pcm) {
       if (sealed) return;
@@ -390,12 +416,14 @@ export async function beginResilientWriter(
         else enqueue(work);
       });
     },
-    async finish(state = 'completed', error) {
+    async finish(state = 'completed', error, actualEnd) {
       if (sealed) return;
       sealed = true;
+      holdAbortCleanup = false;
       cancelRetryWait?.();
       finalState = state;
       finalError = error;
+      captureEnd = actualEnd ?? { occurredAt: new Date(Date.now()).toISOString(), atSample: session.capturedSamples };
       session.state = state;
       kick();
     },

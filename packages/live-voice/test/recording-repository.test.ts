@@ -108,6 +108,46 @@ const input = (sourceId = 'microphone') => ({
   policy: { enabled: false, keepPrevious: 0, bitrate: 24000, preRollMs: 100, postRollMs: 100 },
 });
 
+test('writer event capability retains occurrence and cannot resurrect deleted recording', async () => {
+  const codecs = fakeCodecs(), repo = createRecordingRepository();
+  try {
+    const writer = await repo.begin(input());
+    await writer.append(new Float32Array(16000));
+    const end = { occurredAt: '2020-01-02T03:04:05.000Z', atSample: 16000 };
+    await writer.finish('completed', undefined, end);
+    const event = { id: crypto.randomUUID(), kind: 'voice-command-recognized' as const,
+      occurredAt: '2020-01-02T03:04:06.000Z', atSample: 1234,
+      details: { command: 'send' as const } };
+    await writer.recordEvent!(event);
+    const saved = (await repo.get(writer.session.id))!;
+    assert.equal(saved.endedAt, end.occurredAt);
+    assert.deepEqual(saved.events?.find((item) => item.kind === 'capture-end'),
+      { id: saved.events?.find((item) => item.kind === 'capture-end')?.id, kind: 'capture-end', occurredAt: end.occurredAt, atSample: 16000 });
+    assert.deepEqual(saved.events?.at(-1), event);
+    await repo.remove(writer.session.id);
+    await assert.rejects(writer.recordEvent!(event), { code: 'not-found' });
+    assert.equal(await repo.get(writer.session.id), null);
+  } finally { await repo.dispose(); codecs.restore(); }
+});
+
+test('aborted capture end records unsaved tail as explicit gap', async () => {
+  const codecs = fakeCodecs(), repo = createRecordingRepository();
+  try {
+    const writer = await repo.begin(input());
+    await writer.append(new Float32Array(1000));
+    await writer.finish('failed', 'archive-incomplete', {
+      occurredAt: '2020-01-02T03:04:05.000Z', atSample: 1500, markMissingTail: true,
+    });
+    const session = (await repo.get(writer.session.id))!;
+    assert.equal(session.savedSamples, 1000);
+    assert.equal(session.capturedSamples, 1500);
+    assert.equal(session.archiveEndSample, 1500);
+    assert.deepEqual(session.archiveGaps, [{ startSample: 1000, endSample: 1500 }]);
+    assert.equal(session.events?.find((event) => event.kind === 'capture-end')?.atSample, 1500);
+    await assert.rejects(repo.audio(writer.session.id, 1000, 1500), { code: 'archive-gap' });
+  } finally { await repo.dispose(); codecs.restore(); }
+});
+
 test('repository accepts original capture time and preserves legacy begin behavior', async () => {
   const codecs = fakeCodecs(), repo = createRecordingRepository();
   try {

@@ -846,10 +846,10 @@ export function createRecordingRepository(
           const captured = session.capturedSamples;
           session = await store.update(
             id,
-            (current) => ({
-              ...change(current),
-              capturedSamples: Math.max(current.capturedSamples, captured),
-            }),
+            (current) => {
+              const next = change(current);
+              return { ...next, capturedSamples: Math.max(next.capturedSamples, current.capturedSamples, captured) };
+            },
             page,
           );
           publish();
@@ -1036,8 +1036,31 @@ export function createRecordingRepository(
               lastGapRequest = { start: startSample, end: endSample };
             });
           },
-          finish(state = 'completed', error) {
+          recordEvent(value) {
+            const afterFinish = sealed;
+            try {
+              check();
+              if (!Number.isSafeInteger(value.atSample) || value.atSample < 0 ||
+                  !Number.isFinite(Date.parse(value.occurredAt)))
+                throw new RecordingRepositoryError('invalid-range', 'The recording event is invalid.');
+            } catch (error) { return Promise.reject(error); }
+            const copy = structuredClone(value);
+            return enqueue(async () => {
+              const releaseEvent = afterFinish && store !== memory ? await holdLock(id) : () => {};
+              try {
+                await update((current) => ({
+                  ...current,
+                  events: [...(current.events ?? []), copy],
+                }));
+              } finally { releaseEvent(); }
+            });
+          },
+          finish(state = 'completed', error, captureEnd) {
             if (finishPromise) return finishPromise;
+            const endedAt = captureEnd?.occurredAt ?? now();
+            const endSample = captureEnd?.atSample ?? session.capturedSamples;
+            if (!Number.isFinite(Date.parse(endedAt)) || !Number.isSafeInteger(endSample) || endSample < 0)
+              return Promise.reject(new RecordingRepositoryError('invalid-range', 'The capture end is invalid.'));
             sealed = true;
             finishPromise = enqueue(async () => {
               try {
@@ -1050,16 +1073,24 @@ export function createRecordingRepository(
                 }
                 await update((current) => ({
                   ...current,
+                  capturedSamples: Math.max(current.capturedSamples, endSample),
+                  ...(captureEnd?.markMissingTail && endSample > (current.archiveEndSample ?? current.savedSamples)
+                    ? {
+                        archiveEndSample: endSample,
+                        archiveGaps: [...(current.archiveGaps ?? []), {
+                          startSample: current.archiveEndSample ?? current.savedSamples, endSample,
+                        }],
+                      } : {}),
                   state: fatal ? 'failed' : state,
                   error: fatal?.code ?? error,
-                  endedAt: now(),
+                  endedAt,
                   events: [
                     ...(current.events ?? []),
                     {
                       id: crypto.randomUUID(),
                       kind: 'capture-end',
-                      occurredAt: now(),
-                      atSample: current.capturedSamples,
+                      occurredAt: endedAt,
+                      atSample: endSample,
                     },
                   ],
                 }));

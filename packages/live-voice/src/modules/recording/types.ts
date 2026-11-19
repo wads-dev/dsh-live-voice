@@ -169,7 +169,9 @@ export interface RecordingWriter {
   ): Promise<RecordingPin>;
   attempt(value: RecordingAttempt): Promise<void>;
   read(startSample: number, endSample: number, signal?: AbortSignal): Promise<Float32Array>;
-  finish(state?: 'completed' | 'interrupted' | 'failed', error?: string): Promise<void>;
+  finish(state?: 'completed' | 'interrupted' | 'failed', error?: string, captureEnd?: { occurredAt: string; atSample: number; markMissingTail?: boolean }): Promise<void>;
+  /** Bound writer-owned event capability, valid after finish while the recording exists. */
+  recordEvent?(event: RecordingEvent): Promise<void>;
   markArchiveGap?(startSample: number, endSample: number): Promise<void>;
 }
 export interface RecordingRepository extends RecordingService {
