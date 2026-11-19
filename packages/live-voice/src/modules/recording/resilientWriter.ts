@@ -2,6 +2,10 @@ import { reportVoiceError } from '../core/diagnosticsErrors.js';
 import { MAX_RECOVERY_ATTEMPTS, recoveryDelayMs, isRetryableVoiceError } from '../core/recovery.js';
 import type { RecordingRepository, RecordingWriter, RecordingSession, RecordingPin, RecordingAttempt } from './types.js';
 
+/** Low-frequency probes after the initial bounded retry burst. */
+export const ARCHIVE_RETRY_PROBE_MS = 30_000;
+const ARCHIVE_QUEUE_MAX_ITEMS = 512;
+
 type Work =
   | { kind: 'audio'; start: number; data: Float32Array }
   | { kind: 'pin'; pin: RecordingPin }
@@ -20,7 +24,7 @@ export async function beginResilientWriter(
   if (!valid() || signal?.aborted) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
   const session: RecordingSession = {
     id: crypto.randomUUID(), sourceId: input.sourceId, kind: input.kind, label: input.label,
-    participant: input.participant, sampleRate: input.sampleRate, startedAt: new Date().toISOString(),
+    participant: input.participant, sampleRate: input.sampleRate, startedAt: new Date(Date.now()).toISOString(),
     state: 'recording', capturedSamples: 0, savedSamples: 0, persistent: false,
     codec: 'unavailable', pins: [], attempts: [],
   };
@@ -40,6 +44,7 @@ export async function beginResilientWriter(
   let stopped = false;
   let hadGap = false;
   let retries = 0;
+  let cancelBeginWait: (() => void) | undefined;
   let finalized = false;
   let archiveId: string | undefined;
   let cursor = 0;
@@ -63,6 +68,23 @@ export async function beginResilientWriter(
       if (signal?.aborted || sealed) done();
     });
   };
+  const waitForBeginRetry = async (ms: number) => {
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', done);
+        cancelBeginWait = undefined;
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      cancelBeginWait = done;
+      signal?.addEventListener('abort', done, { once: true });
+      if (!alive()) done();
+    });
+  };
   const enqueue = (work: Work) => {
     if (stopped || (sealed && work.kind !== 'event' && work.kind !== 'attempt' && work.kind !== 'read')) {
       if (work.kind === 'read') work.reject(new Error('Archive unavailable.'));
@@ -73,6 +95,16 @@ export async function beginResilientWriter(
         const dropped = work.data.length - queueLimit;
         work = { kind: 'audio', start: work.start + dropped, data: work.data.slice(dropped) };
         warn('backpressure', Object.assign(new Error('Archive backlog exceeded its limit.'), { name: 'StorageBackpressure' }));
+      }
+      if (queue.length >= ARCHIVE_QUEUE_MAX_ITEMS) {
+        const index = queue.findIndex((item) => item.kind === 'audio');
+        if (index < 0) {
+          warn('backpressure', new Error('Archive queue exceeded its item limit.'));
+          return;
+        }
+        const dropped = queue.splice(index, 1)[0] as Extract<Work, { kind: 'audio' }>;
+        queueSamples -= dropped.data.length;
+        warn('backpressure', new Error('Archive queue exceeded its item limit.'));
       }
       queueSamples += work.data.length;
       queue.push(work);
@@ -85,7 +117,7 @@ export async function beginResilientWriter(
       }
     } else {
       // Metadata is also bounded when storage is stuck. Audio gaps and a warning remain explicit.
-      if (queue.length >= 512) {
+      if (queue.length >= ARCHIVE_QUEUE_MAX_ITEMS) {
         if (work.kind === 'read') work.reject(new Error('Archive backlog exceeded its limit.'));
         warn('metadata', new Error('Archive metadata backlog exceeded its limit.')); return;
       }
@@ -94,13 +126,18 @@ export async function beginResilientWriter(
     kick();
   };
   async function run() {
-    while (!archive && (alive() || (!archiveAttempted && !signal?.aborted)) && retries <= MAX_RECOVERY_ATTEMPTS) {
+    while (!archive && (alive() || (!archiveAttempted && !signal?.aborted))) {
       archiveAttempted = true;
       try {
-        archive = await observed('begin', () => repository.begin(input));
+        archive = await observed('begin', () => repository.begin({ ...input, startedAt: session.startedAt }));
         archiveId = archive.session.id;
         session.id = archiveId;
-        session.startedAt = archive.session.startedAt;
+        // The captured sample clock is immutable even if an external
+        // repository ignores the requested timestamp. Its archive timestamps
+        // will be inconsistent; surface the mismatch rather than rewriting STT.
+        if (Date.parse(archive.session.startedAt) !== Date.parse(session.startedAt)) {
+          warn('start-clock', new Error('Archive did not preserve the capture start time.'));
+        }
         session.persistent = archive.session.persistent;
         session.codec = archive.session.codec;
         session.storage = archive.session.storage;
@@ -108,9 +145,11 @@ export async function beginResilientWriter(
         break;
       } catch (error) {
         warn('begin', error, retries);
-        const transient = (error as { code?: string })?.code === 'storage-failed' || isRetryableVoiceError(error);
-        if (!transient || retries >= MAX_RECOVERY_ATTEMPTS || !alive()) { stopped = true; break; }
-        await delay(++retries);
+        const code = (error as { code?: string })?.code;
+        const transient = code === 'storage-failed' || code === 'quota-exceeded' || code === 'memory-limit' || isRetryableVoiceError(error);
+        if (!transient || !alive()) { stopped = true; break; }
+        retries = Math.min(retries + 1, MAX_RECOVERY_ATTEMPTS + 1);
+        await waitForBeginRetry(retries <= MAX_RECOVERY_ATTEMPTS ? recoveryDelayMs(retries) : ARCHIVE_RETRY_PROBE_MS);
       }
     }
     if (!archive) { stopped = true; queue.length = 0; queueSamples = 0; return; }
@@ -307,6 +346,7 @@ export async function beginResilientWriter(
     async finish(state = 'completed', error) {
       if (sealed) return;
       sealed = true;
+      cancelBeginWait?.();
       finalState = state;
       finalError = error;
       session.state = state;

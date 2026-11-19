@@ -701,6 +701,46 @@ test('integrated primary recordings tab separates sources, plays silence, export
   assert.equal(current.listeners.size, 0);
 });
 
+test('sparse archive uses capture offsets and disables actions across gaps and retry margins', async (t) => {
+  const dom = new JSDOM('<div id="root"></div>');
+  const previous = { window: globalThis.window, document: globalThis.document, IS_REACT_ACT_ENVIRONMENT: globalThis.IS_REACT_ACT_ENVIRONMENT };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true });
+  t.after(() => { Object.assign(globalThis, previous); dom.window.close(); });
+  const record = session();
+  record.savedSamples = 900;
+  record.archiveEndSample = 1000;
+  record.archiveGaps = [{ startSample: 100, endSample: 150 }, { startSample: 600, endSample: 650 }];
+  record.pins = [
+    { id: 'a', kind: 'silence-start', atSample: 0, confirmedAtSample: 0, delaySamples: 0 },
+    { id: 'b', kind: 'speech-start', atSample: 200, confirmedAtSample: 200, delaySamples: 0 },
+    { id: 'c', kind: 'speech-start', atSample: 300, confirmedAtSample: 300, delaySamples: 0 },
+    { id: 'd', kind: 'silence-start', atSample: 500, confirmedAtSample: 500, delaySamples: 0 },
+  ];
+  const current = service([record]);
+  let audioCalls = 0, retryCalls = 0;
+  current.audio = async () => { audioCalls++; return new Blob(['audio']); };
+  current.retranscribe = async () => { retryCalls++; };
+  dom.window[RECORDING_KEY] = current;
+  const root = createRoot(document.getElementById('root'));
+  const copy = copyFor('en');
+  await act(async () => { root.render(<DebuggerPanel copy={copy} onClose={() => {}} />); await flush(); });
+  const group = document.querySelector('[aria-label="' + copy.recordings.archiveGaps + '"]');
+  assert.equal(group.querySelectorAll('li').length, 2);
+  assert.equal(document.querySelectorAll('.dlvd-archive-gap').length, 2);
+  assert.equal(document.querySelectorAll('.dlvd-archive-gap')[1].style.left, '60%');
+  assert.ok([...document.querySelectorAll('[role=slider]')].some(slider => slider.getAttribute('aria-valuemax') === '1000'));
+  const buttons = [...document.querySelectorAll('.dlvd-timeline button')];
+  assert.equal(buttons[0].disabled, true); assert.equal(buttons[1].disabled, false); assert.equal(buttons[3].disabled, true);
+  const segmentRows = [...document.querySelectorAll('.dlvd-segments tbody tr')].filter(r => r.querySelector('.dlvd-segment-action'));
+  assert.equal(segmentRows[1].querySelectorAll('button')[0].disabled, false);
+  assert.equal(segmentRows[1].querySelectorAll('button')[2].disabled, true);
+  assert.equal(segmentRows[2].querySelectorAll('button')[2].disabled, false);
+  await act(async () => { buttons[0].click(); segmentRows[1].querySelectorAll('button')[2].click(); await flush(); });
+  assert.equal(audioCalls, 0); assert.equal(retryCalls, 0);
+  assert.equal([...document.querySelectorAll('button')].find(b => b.textContent === copy.recordings.playSession).disabled, true);
+  await act(async () => root.unmount());
+});
+
 test('recording actions localize errors and reject late playback after selection or disposal', async (t) => {
   const dom = new JSDOM('<div id="root"></div>');
   const previous = {

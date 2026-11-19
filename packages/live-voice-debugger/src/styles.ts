@@ -1,4 +1,5 @@
 export const styles = `
+.dlvd-archive-gap{position:absolute;top:0;bottom:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(135deg,#ef7c7caa 0 4px,#381b1baa 4px 8px)}
 .dlvd-error-entry{border-top:1px solid var(--dsw-alias-border-l1,#ffffff0f);padding:8px 0;overflow-wrap:anywhere}.dlvd-error-entry dl{margin:0}
 
 .dlvd-recording-columns>[hidden]{display:none!important}.dlvd-recording-columns[data-layout=list],.dlvd-recording-columns[data-layout=session]{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}.dlvd-recording-columns[data-layout=session]>.dlvd-recording-detail{border:0;padding:0}.dlvd-layout-control{white-space:nowrap}

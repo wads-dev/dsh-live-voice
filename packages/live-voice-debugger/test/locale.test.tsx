@@ -66,6 +66,8 @@ test('all 696 translated messages are preserved exactly in typed per-module per-
                   'errorOlder',
                   'errorOperation',
                   'errorTime',
+                  'recordingArchiveGap',
+                  'recordingArchiveGaps',
                   'recordingViewLayout',
                   'recordingViewList',
                   'recordingViewSession',

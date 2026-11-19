@@ -404,6 +404,15 @@ function RecordingDetail({
   React.useEffect(() => {
     setName(session.name ?? '');
   }, [session.id, session.name, service]);
+  const archiveEnd = session.archiveEndSample ?? session.savedSamples;
+  const gaps = session.archiveGaps ?? [];
+  const crossesGap = (start: number, end: number) =>
+    gaps.some((gap) => gap.startSample < end && gap.endSample > start);
+  const segmentUnavailable = (segment: RecordingSegment) => crossesGap(segment.startSample, segment.endSample);
+  const retryUnavailable = (segment: RecordingSegment) => {
+    const margin = (ms?: number) => Math.round((Math.max(800, ms ?? 0) * session.sampleRate) / 1000);
+    return crossesGap(Math.max(0, segment.startSample - margin(session.configuration?.preRollMs)), Math.min(archiveEnd, segment.endSample + margin(session.configuration?.postRollMs)));
+  };
   const [selectedSegment, setSelectedSegment] = React.useState('');
   const [selectedEvents, setSelectedEvents] = React.useState<string[]>([]);
   const clearPlayback = (player = audio.current) => {
@@ -437,6 +446,7 @@ function RecordingDetail({
     };
   }, [service, session.id]);
   const play = async (segment?: RecordingSegment, autoplay = true) => {
+    if (segment ? segmentUnavailable(segment) : crossesGap(0, archiveEnd)) return;
     clearPlayback();
     const token = generation.current;
     const request = playGeneration.current;
@@ -482,7 +492,7 @@ function RecordingDetail({
     }
   };
   const downloadSegment = async (segment: RecordingSegment) => {
-    if (downloading || exporting) return;
+    if (downloading || exporting || segmentUnavailable(segment)) return;
     const token = generation.current;
     setDownloading(true);
     setError(null);
@@ -506,7 +516,7 @@ function RecordingDetail({
     }
   };
   const retranscribe = async (segment: RecordingSegment) => {
-    if (!service.retranscribe || retry.current) return;
+    if (!service.retranscribe || retry.current || retryUnavailable(segment)) return;
     const controller = new AbortController();
     retry.current = controller;
     const token = generation.current;
@@ -666,7 +676,7 @@ function RecordingDetail({
   };
   const [search, setSearch] = React.useState('');
   React.useEffect(() => setSearch(''), [session.id, service]);
-  const length = Math.max(1, session.savedSamples);
+  const length = Math.max(1, archiveEnd);
   const [windowStart, setWindowStart] = React.useState(0);
   // null follows the live right edge until the user explicitly chooses an end.
   const [windowEnd, setWindowEnd] = React.useState<number | null>(null);
@@ -718,7 +728,8 @@ function RecordingDetail({
           </button>
           <button
             type="button"
-            disabled={playing || deleting || !session.savedSamples}
+            disabled={playing || deleting || !session.savedSamples || crossesGap(0, archiveEnd)}
+            title={crossesGap(0, archiveEnd) ? copy.recordings.archiveGap : undefined}
             onClick={() => void play()}
           >
             {copy.recordings.playSession}
@@ -859,9 +870,9 @@ function RecordingDetail({
 
       <TimelineWindow
         key={session.id}
-        total={session.savedSamples}
+        total={archiveEnd}
         start={viewStart}
-        end={Math.min(viewEnd, session.savedSamples)}
+        end={Math.min(viewEnd, archiveEnd)}
         copy={copy.recordings}
         format={(sample) => duration(sample, session.sampleRate)}
         onChange={(start, end) => {
@@ -873,6 +884,10 @@ function RecordingDetail({
           setWindowEnd(null);
         }}
       />
+      {gaps.length > 0 && <section aria-label={copy.recordings.archiveGaps}>
+        <h4>{copy.recordings.archiveGaps}</h4>
+        <ul>{gaps.map((gap, index) => <li key={index}>{duration(gap.startSample, session.sampleRate)} — {duration(gap.endSample, session.sampleRate)}</li>)}</ul>
+      </section>}
       <div className="dlvd-timeline" role="group" aria-label={copy.recordings.timeline}>
         {visibleSegments.map((segment) => (
           <button
@@ -886,7 +901,7 @@ function RecordingDetail({
                   : segment.kind
             }
             aria-label={segmentName(segment)}
-            title={segmentName(segment)}
+            title={segmentUnavailable(segment) ? copy.recordings.archiveGap : segmentName(segment)}
             aria-pressed={selectedSegment === segment.id}
             style={{
               left: position(Math.max(viewStart, segment.startSample)),
@@ -896,11 +911,15 @@ function RecordingDetail({
                   100 +
                 '%',
             }}
-            disabled={deleting || segment.endSample <= segment.startSample}
+            disabled={deleting || segment.endSample <= segment.startSample || segmentUnavailable(segment)}
             onClick={() => void play(segment, false)}
           />
         ))}
-        {eventIntervals(session.events ?? [], session.savedSamples)
+        {gaps.filter((gap) => gap.endSample > viewStart && gap.startSample < viewEnd).map((gap, index) => <span
+          key={index} className="dlvd-archive-gap" aria-hidden="true"
+          style={{ left: position(Math.max(viewStart, gap.startSample)), width: ((Math.min(viewEnd, gap.endSample) - Math.max(viewStart, gap.startSample)) / viewLength) * 100 + '%' }}
+        />)}
+        {eventIntervals(session.events ?? [], archiveEnd)
           .filter((range) => range.end > viewStart && range.start < viewEnd)
           .map((range, index) => (
             <span
@@ -1126,8 +1145,8 @@ function RecordingDetail({
                     <button
                       type="button"
                       className="dlvd-segment-action"
-                      title={copy.recordings.play}
-                      disabled={deleting || segment.endSample <= segment.startSample}
+                      title={segmentUnavailable(segment) ? copy.recordings.archiveGap : copy.recordings.play}
+                      disabled={deleting || segment.endSample <= segment.startSample || segmentUnavailable(segment)}
                       aria-label={
                         copy.recordings.play +
                         ' · ' +
@@ -1146,9 +1165,10 @@ function RecordingDetail({
                         downloading ||
                         exporting ||
                         deleting ||
+                        segmentUnavailable(segment) ||
                         segment.endSample <= segment.startSample
                       }
-                      title={copy.recordings.download}
+                      title={segmentUnavailable(segment) ? copy.recordings.archiveGap : copy.recordings.download}
                       aria-label={copy.recordings.download + ' · ' + segmentName(segment)}
                       onClick={() => void downloadSegment(segment)}
                     >
@@ -1163,10 +1183,11 @@ function RecordingDetail({
                           !!retrying ||
                           session.state === 'recording' ||
                           segment.open ||
+                          retryUnavailable(segment) ||
                           segment.endSample <= segment.startSample ||
                           segment.attempts.some((a) => a.status === 'pending')
                         }
-                        title={copy.recordings.retranscribeHelp}
+                        title={retryUnavailable(segment) ? copy.recordings.archiveGap : copy.recordings.retranscribeHelp}
                         aria-label={copy.recordings.retranscribe + ' · ' + segmentName(segment)}
                         onClick={() => void retranscribe(segment)}
                       >

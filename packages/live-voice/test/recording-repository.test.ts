@@ -108,6 +108,22 @@ const input = (sourceId = 'microphone') => ({
   policy: { enabled: false, keepPrevious: 0, bitrate: 24000, preRollMs: 100, postRollMs: 100 },
 });
 
+test('repository accepts original capture time and preserves legacy begin behavior', async () => {
+  const codecs = fakeCodecs(), repo = createRecordingRepository();
+  try {
+    const original = '2020-01-02T03:04:05.000Z';
+    const delayed = await repo.begin({ ...input(), startedAt: original });
+    assert.equal(delayed.session.startedAt, original);
+    assert.equal(delayed.session.events?.[0].occurredAt, original);
+    await delayed.finish();
+    const before = Date.now();
+    const legacy = await repo.begin(input());
+    assert.ok(Date.parse(legacy.session.startedAt) >= before);
+    assert.ok(Number.isFinite(Date.parse(legacy.session.startedAt)));
+    await legacy.finish();
+  } finally { await repo.dispose(); codecs.restore(); }
+});
+
 test('real repository read-flush failure warns and reconciles before later writes', { timeout: 10000 }, async () => {
   const codecs = fakeCodecs();
   const Encoder = globalThis.AudioEncoder;

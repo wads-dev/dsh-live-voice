@@ -794,7 +794,9 @@ export function createRecordingRepository(
           label: input.label,
           ...(participant ? { participant } : {}),
           sampleRate,
-          startedAt: now(),
+          startedAt: input.startedAt && Number.isFinite(Date.parse(input.startedAt))
+            ? new Date(input.startedAt).toISOString()
+            : now(),
           createdOrder: ++creationSequence,
           state: 'recording',
           capturedSamples: 0,
@@ -807,7 +809,7 @@ export function createRecordingRepository(
           pins: [],
           attempts: [],
           events: [
-            { id: crypto.randomUUID(), kind: 'capture-start', occurredAt: now(), atSample: 0 },
+            { id: crypto.randomUUID(), kind: 'capture-start', occurredAt: input.startedAt && Number.isFinite(Date.parse(input.startedAt)) ? new Date(input.startedAt).toISOString() : now(), atSample: 0 },
           ],
           keepPrevious: Math.max(1, Math.floor(policy.keepPrevious)),
         };

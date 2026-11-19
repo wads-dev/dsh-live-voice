@@ -3,6 +3,8 @@ const translation = {
   active: 'Recording',
   aliasAtCapture: 'Alias at capture',
   allSources: 'All sources',
+  archiveGap: "Audio unavailable in this range",
+  archiveGaps: "Unavailable audio ranges",
   assistantCancel: 'Assistant speech cancelled',
   assistantEnd: 'Assistant playback ended',
   assistantError: 'Assistant speech failed',

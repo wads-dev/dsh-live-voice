@@ -178,6 +178,8 @@ export interface RecordingRepository extends RecordingService {
     kind: RecordingKind;
     label: string;
     participant?: RecordingParticipant;
+    /** Original capture start, including when archive creation is delayed. */
+    startedAt?: string;
     sampleRate: number;
     policy: RecordingPolicy;
     configuration?: RecordingSession['configuration'];

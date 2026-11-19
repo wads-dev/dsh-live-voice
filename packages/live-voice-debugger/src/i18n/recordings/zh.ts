@@ -3,6 +3,8 @@ const translation = {
   active: '正在录制',
   aliasAtCapture: '采集时的别名',
   allSources: '所有来源',
+  archiveGap: "此区间的音频不可用",
+  archiveGaps: "不可用的音频区间",
   assistantCancel: '助手语音已取消',
   assistantEnd: '助手播放结束',
   assistantError: '助手语音失败',

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { beginResilientWriter } from '../src/modules/recording/resilientWriter.js';
+import { ARCHIVE_RETRY_PROBE_MS, beginResilientWriter } from '../src/modules/recording/resilientWriter.js';
 import { mockRecordingRepository } from './helpers/recording.js';
 import { WhisperHttpRecognitionEngine } from '../src/modules/recognition/engines/whisper/WhisperRecognitionEngine.js';
 
@@ -66,6 +66,99 @@ test('transient begin failures retry a bounded number of times', async () => {
   const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
   await new Promise((resolve) => setTimeout(resolve, 800));
   assert.equal(calls, 3);
+  await writer.finish();
+});
+
+test('periodic archive probes recover after initial retry budget with initial gap', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 100000 });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let calls = 0, active = 0, peak = 0, archiveInput: any;
+  const gaps: number[][] = [], writes: number[] = [];
+  repo.begin = async (value) => {
+    calls++; active++; peak = Math.max(peak, active);
+    try {
+      if (calls <= 4) throw Object.assign(new Error('temporary'), { code: 'storage-failed' });
+      archiveInput = value;
+      const archive = await begin(value);
+      archive.markArchiveGap = async (start, end) => { gaps.push([start, end]); };
+      archive.append = async (pcm) => { writes.push(pcm.length); };
+      return archive;
+    } finally { active--; }
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  const originalStart = writer.session.startedAt;
+  await writer.append(new Float32Array(16000 * 10));
+  for (const ms of [250, 500, 1000]) {
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    t.mock.timers.tick(ms);
+  }
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  assert.equal(calls, 4);
+  t.mock.timers.tick(ARCHIVE_RETRY_PROBE_MS - 1);
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  assert.equal(calls, 4);
+  t.mock.timers.tick(1);
+  for (let i = 0; i < 30; i++) await Promise.resolve();
+  assert.equal(calls, 5);
+  assert.equal(peak, 1);
+  assert.equal(archiveInput.startedAt, originalStart);
+  assert.equal(writer.session.startedAt, originalStart);
+  assert.deepEqual(gaps, [[0, 32000]]);
+  assert.deepEqual(writes, [128000]);
+  await writer.finish();
+});
+
+test('late third-party begin cannot change the capture clock', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 100000 });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let release: (value: any) => void = () => {}, warnings = 0;
+  const gate = new Promise<any>((resolve) => { release = resolve; });
+  repo.begin = async () => gate;
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => warnings++);
+  const start = writer.session.startedAt;
+  await writer.append(new Float32Array([0.5]));
+  t.mock.timers.tick(5000);
+  const legacy = await begin({ ...input, startedAt: undefined });
+  assert.notEqual(legacy.session.startedAt, start);
+  release(legacy);
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(writer.session.startedAt, start);
+  assert.equal(warnings, 1);
+  await writer.finish();
+});
+
+test('finish or cancellation stops periodic probes immediately', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const stop of ['finish', 'abort']) {
+    const repo = mockRecordingRepository();
+    let calls = 0;
+    repo.begin = async () => { calls++; throw Object.assign(new Error('temporary'), { code: 'storage-failed' }); };
+    const controller = new AbortController();
+    const writer = await beginResilientWriter(repo, input, controller.signal, () => true, () => {});
+    for (const ms of [250, 500, 1000]) {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      t.mock.timers.tick(ms);
+    }
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    assert.equal(calls, 4);
+    if (stop === 'abort') controller.abort(); else await writer.finish();
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    t.mock.timers.tick(ARCHIVE_RETRY_PROBE_MS * 2);
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    assert.equal(calls, 4);
+  }
+});
+
+test('permanent archive failure is not retried periodically', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const repo = mockRecordingRepository();
+  let calls = 0;
+  repo.begin = async () => { calls++; throw Object.assign(new Error('unsupported'), { code: 'codec-unsupported' }); };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  t.mock.timers.tick(ARCHIVE_RETRY_PROBE_MS * 2);
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  assert.equal(calls, 1);
   await writer.finish();
 });
 
