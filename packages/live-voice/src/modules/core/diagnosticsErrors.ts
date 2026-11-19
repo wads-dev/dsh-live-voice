@@ -41,6 +41,8 @@ const errorCodes = new Set([
   'invalid-audio', 'invalid-audio-track', 'invalid-command', 'invalid-model', 'model-busy',
   'model-missing', 'restart-limit', 'runtime-outdated', 'runtime-unavailable', 'storage-failed',
   'unavailable', 'participants-limit', 'overloaded',
+  'codec-unsupported', 'codec-failed', 'storage-unavailable', 'quota-exceeded', 'memory-limit',
+  'not-found', 'active-recording', 'sealed', 'archive-gap', 'invalid-range', 'disposed',
 ]);
 const safeCode = (value: unknown): string | number | undefined => {
   if (typeof value === 'number') return Number.isInteger(value) && value >= 0 && value <= 25 ? value : undefined;
