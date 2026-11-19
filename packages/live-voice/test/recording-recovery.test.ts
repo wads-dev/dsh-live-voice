@@ -23,11 +23,11 @@ test('storage begin failure keeps bounded live PCM readable without an archive',
 test('append failure preserves live transcription and marks archive gap at finish', async () => {
   const repo = mockRecordingRepository();
   const begin = repo.begin.bind(repo);
-  let gap: number[] | undefined;
+  const gaps: number[][] = [];
   repo.begin = async (value) => {
     const writer = await begin(value);
     writer.append = async () => { throw new Error('storage failure'); };
-    writer.markArchiveGap = async (start, end) => { gap = [start, end]; };
+    writer.markArchiveGap = async (start, end) => { gaps.push([start, end]); };
     return writer;
   };
   let ingest: any, classify: any, warning = 0, errors = 0;
@@ -52,7 +52,7 @@ test('append failure preserves live transcription and marks archive gap at finis
   assert.equal(errors, 0);
   await engine.stop();
   await new Promise((resolve) => setTimeout(resolve, 300));
-  assert.deepEqual(gap, [0, 17600]);
+  assert.deepEqual(gaps, [[0, 1600], [1600, 17600]]);
 });
 
 test('transient begin failures retry a bounded number of times', async () => {
@@ -145,7 +145,7 @@ test('finish or cancellation stops periodic probes immediately', async (t) => {
     for (let i = 0; i < 8; i++) await Promise.resolve();
     t.mock.timers.tick(ARCHIVE_RETRY_PROBE_MS * 2);
     for (let i = 0; i < 8; i++) await Promise.resolve();
-    assert.equal(calls, 4);
+    assert.equal(calls, stop === 'abort' ? 4 : 5);
   }
 });
 
@@ -160,6 +160,52 @@ test('permanent archive failure is not retried periodically', async (t) => {
   for (let i = 0; i < 8; i++) await Promise.resolve();
   assert.equal(calls, 1);
   await writer.finish();
+});
+
+test('normal finish during pending begin retries once after settled rejection', async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let rejectFirst: (reason: unknown) => void = () => {}, calls = 0, active = 0, peak = 0;
+  let finished: () => void = () => {};
+  const done = new Promise<void>((resolve) => { finished = resolve; });
+  const pending = new Promise<any>((_resolve, reject) => { rejectFirst = reject; });
+  repo.begin = async (value) => {
+    calls++; active++; peak = Math.max(active, peak);
+    try {
+      if (calls === 1) return await pending;
+      const archive = await begin(value), finish = archive.finish.bind(archive);
+      archive.finish = async (...args) => { await finish(...args); finished(); };
+      return archive;
+    } finally { active--; }
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array([0.5]));
+  await writer.finish();
+  assert.equal(calls, 1);
+  rejectFirst(Object.assign(new Error('temporary'), { code: 'storage-failed' }));
+  await done;
+  assert.equal(calls, 2);
+  assert.equal(peak, 1);
+  assert.equal((await repo.list())[0].capturedSamples, 1);
+});
+
+test('abort during pending begin never starts replacement or writes late writer', async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let release: (value: any) => void = () => {}, calls = 0, writes = 0, finishes = 0;
+  const pending = new Promise<any>((resolve) => { release = resolve; });
+  repo.begin = async () => { calls++; return pending; };
+  const controller = new AbortController();
+  const writer = await beginResilientWriter(repo, input, controller.signal, () => true, () => {});
+  await writer.append(new Float32Array([0.5]));
+  controller.abort();
+  const archive = await begin(input), finish = archive.finish.bind(archive);
+  archive.append = async () => { writes++; };
+  archive.markArchiveGap = async () => { writes++; };
+  archive.finish = async (...args) => { finishes++; await finish(...args); };
+  release(archive);
+  for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 1);
+  assert.equal(writes, 0);
+  assert.equal(finishes, 1);
 });
 
 test('stalled begin never blocks PCM or stop and late writer is sealed once', async () => {
@@ -212,6 +258,179 @@ test('stalled append does not block engine transcription or stop', async () => {
   await engine.stop();
   release();
   for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+});
+
+test('abort during archive gap backoff does not resume queued audio', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let appendCalls = 0, gapCalls = 0, finishes = 0;
+  repo.begin = async (value) => {
+    const archive = await begin(value);
+    archive.append = async () => { appendCalls++; throw Object.assign(new Error('quota'), { code: 'quota-exceeded' }); };
+    archive.markArchiveGap = async () => { gapCalls++; };
+    archive.finish = async () => { finishes++; };
+    return archive;
+  };
+  const controller = new AbortController();
+  const writer = await beginResilientWriter(repo, input, controller.signal, () => true, () => {});
+  await writer.append(new Float32Array([1]));
+  await writer.append(new Float32Array([2]));
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(appendCalls, 1);
+  controller.abort();
+  for (let i = 0; i < 30; i++) await Promise.resolve();
+  t.mock.timers.tick(ARCHIVE_RETRY_PROBE_MS);
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(appendCalls, 1);
+  assert.equal(gapCalls, 0);
+  assert.equal(finishes, 1);
+});
+
+for (const kind of ['audio', 'pin'] as const) test('abort while gap is pending never starts ' + kind, { timeout: 10000 }, async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let releaseGap: () => void = () => {}, gapStarted: () => void = () => {}, finishDone: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { releaseGap = resolve; });
+  const started = new Promise<void>((resolve) => { gapStarted = resolve; });
+  const done = new Promise<void>((resolve) => { finishDone = resolve; });
+  let appends = 0, pins = 0, gaps = 0, finishes = 0;
+  repo.begin = async (value) => {
+    const archive = await begin(value);
+    archive.append = async () => { appends++; throw Object.assign(new Error('quota'), { code: 'quota-exceeded' }); };
+    archive.markArchiveGap = async () => { gaps++; gapStarted(); await gate; };
+    archive.pin = async (pinKind, atSample, confirmedAtSample) => {
+      pins++;
+      return { id: 'p', kind: pinKind, atSample, confirmedAtSample, delaySamples: 0 };
+    };
+    archive.finish = async () => { finishes++; finishDone(); };
+    return archive;
+  };
+  const controller = new AbortController();
+  const writer = await beginResilientWriter(repo, input, controller.signal, () => true, () => {});
+  await writer.append(new Float32Array([1]));
+  if (kind === 'audio') await writer.append(new Float32Array([2]));
+  else await writer.pin('speech-start', 1, 1);
+  await started;
+  controller.abort();
+  releaseGap();
+  await done;
+  assert.equal(appends, 1);
+  assert.equal(pins, 0);
+  assert.equal(gaps, 1);
+  assert.equal(finishes, 1);
+});
+
+test('stop during gap backoff gives retained PCM one final archive attempt', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let appendCalls = 0, gapCalls = 0, finished = '', finishDone: () => void = () => {};
+  const done = new Promise<void>((resolve) => { finishDone = resolve; });
+  const writes: number[] = [], gaps: number[][] = [];
+  repo.begin = async (value) => {
+    const archive = await begin(value);
+    archive.append = async (pcm) => {
+      if (++appendCalls === 1) throw Object.assign(new Error('quota'), { code: 'quota-exceeded' });
+      writes.push(pcm[0]);
+    };
+    archive.markArchiveGap = async (start, end) => {
+      if (++gapCalls === 1) throw Object.assign(new Error('quota'), { code: 'quota-exceeded' });
+      gaps.push([start, end]);
+    };
+    archive.finish = async (state) => { finished = state ?? ''; finishDone(); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array([1, 1, 1]));
+  await writer.append(new Float32Array([2, 2]));
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  t.mock.timers.tick(250);
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(gapCalls, 1);
+  await writer.finish();
+  await done;
+  assert.equal(appendCalls, 2);
+  assert.deepEqual(gaps, [[0, 3]]);
+  assert.deepEqual(writes, [2]);
+  assert.equal(finished, 'failed');
+});
+
+test('stop during begin backoff makes one final bounded open attempt', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let calls = 0, finishDone: () => void = () => {};
+  const done = new Promise<void>((resolve) => { finishDone = resolve; });
+  repo.begin = async (value) => {
+    if (++calls === 1) throw Object.assign(new Error('quota'), { code: 'quota-exceeded' });
+    const archive = await begin(value), finish = archive.finish.bind(archive);
+    archive.finish = async (...args) => { await finish(...args); finishDone(); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array([0.5]));
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  await writer.finish();
+  await done;
+  assert.equal(calls, 2);
+  assert.equal((await repo.list())[0].capturedSamples, 1);
+});
+
+test('gap outage beyond retry burst resumes without replaying failed PCM', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let appendCalls = 0, gapCalls = 0, active = 0, peak = 0, finished = '';
+  const gaps: number[][] = [], writes: number[] = [];
+  repo.begin = async (value) => {
+    const archive = await begin(value);
+    archive.append = async (pcm) => {
+      active++; peak = Math.max(peak, active);
+      try { if (++appendCalls === 1) throw Object.assign(new Error('quota'), { code: 'quota-exceeded' }); writes.push(pcm[0]); }
+      finally { active--; }
+    };
+    archive.markArchiveGap = async (start, end) => {
+      active++; peak = Math.max(peak, active);
+      try { if (++gapCalls <= 4) throw Object.assign(new Error('quota'), { code: 'quota-exceeded' }); gaps.push([start, end]); }
+      finally { active--; }
+    };
+    archive.finish = async (state) => { finished = state ?? ''; };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => {});
+  await writer.append(new Float32Array([1, 1, 1]));
+  await writer.append(new Float32Array([2, 2]));
+  for (const ms of [250, 500, 1000, ARCHIVE_RETRY_PROBE_MS]) {
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    t.mock.timers.tick(ms);
+  }
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(gapCalls, 4);
+  t.mock.timers.tick(ARCHIVE_RETRY_PROBE_MS);
+  for (let i = 0; i < 30; i++) await Promise.resolve();
+  assert.equal(gapCalls, 5);
+  assert.equal(appendCalls, 2);
+  assert.equal(peak, 1);
+  assert.deepEqual(gaps, [[0, 3]]);
+  assert.deepEqual(writes, [2]);
+  await writer.finish();
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(finished, 'failed');
+});
+
+test('metadata write failure warns and makes finished archive incomplete', async () => {
+  const repo = mockRecordingRepository(), begin = repo.begin.bind(repo);
+  let warnings = 0, finished = '', finishDone: () => void = () => {};
+  const done = new Promise<void>((resolve) => { finishDone = resolve; });
+  repo.begin = async (value) => {
+    const archive = await begin(value);
+    archive.pin = async () => { throw Object.assign(new Error('metadata failed'), { code: 'storage-failed' }); };
+    archive.finish = async (state) => { finished = state ?? ''; finishDone(); };
+    return archive;
+  };
+  const writer = await beginResilientWriter(repo, input, undefined, () => true, () => warnings++);
+  await writer.pin('silence-start', 0, 0);
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+  await writer.finish();
+  await done;
+  assert.equal(warnings, 1);
+  assert.equal(finished, 'failed');
 });
 
 test('successful append after failure uses original absolute sample offsets', async () => {

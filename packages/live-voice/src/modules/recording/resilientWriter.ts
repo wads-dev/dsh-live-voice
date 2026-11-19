@@ -38,18 +38,20 @@ export async function beginResilientWriter(
   let archiveAttempted = false;
   let worker: Promise<void> | null = null;
   let sealed = false;
+  let aborted = false;
   let finalState: 'completed' | 'interrupted' | 'failed' = 'completed';
   let finalError: string | undefined;
   let warned = false;
   let stopped = false;
   let hadGap = false;
+  let metadataIncomplete = false;
   let retries = 0;
-  let cancelBeginWait: (() => void) | undefined;
+  let cancelRetryWait: (() => void) | undefined;
   let finalized = false;
   let archiveId: string | undefined;
   let cursor = 0;
   let reconcile = false;
-  const alive = () => !sealed && valid() && !signal?.aborted;
+  const alive = () => !sealed && !aborted && valid() && !signal?.aborted;
   const warn = (stage: string, error: unknown, attempt = 0) => {
     reportVoiceError('recording.storage', error, { source: input.kind, recordingId: archive?.session.id, stage, attempt });
     if (!warned && valid() && !signal?.aborted) { warned = true; warning(); }
@@ -68,7 +70,7 @@ export async function beginResilientWriter(
       if (signal?.aborted || sealed) done();
     });
   };
-  const waitForBeginRetry = async (ms: number) => {
+  const waitForRetry = async (ms: number) => {
     await new Promise<void>((resolve) => {
       let settled = false;
       const done = () => {
@@ -76,11 +78,11 @@ export async function beginResilientWriter(
         settled = true;
         clearTimeout(timer);
         signal?.removeEventListener('abort', done);
-        cancelBeginWait = undefined;
+        cancelRetryWait = undefined;
         resolve();
       };
       const timer = setTimeout(done, ms);
-      cancelBeginWait = done;
+      cancelRetryWait = done;
       signal?.addEventListener('abort', done, { once: true });
       if (!alive()) done();
     });
@@ -119,6 +121,7 @@ export async function beginResilientWriter(
       // Metadata is also bounded when storage is stuck. Audio gaps and a warning remain explicit.
       if (queue.length >= ARCHIVE_QUEUE_MAX_ITEMS) {
         if (work.kind === 'read') work.reject(new Error('Archive backlog exceeded its limit.'));
+        if (work.kind !== 'read') metadataIncomplete = true;
         warn('metadata', new Error('Archive metadata backlog exceeded its limit.')); return;
       }
       queue.push(work);
@@ -126,7 +129,11 @@ export async function beginResilientWriter(
     kick();
   };
   async function run() {
-    while (!archive && (alive() || (!archiveAttempted && !signal?.aborted))) {
+    let finalBeginAttempt = false;
+    let finalBeginUsed = false;
+    while (!archive && !aborted && !signal?.aborted && (alive() || !archiveAttempted || (sealed && finalBeginAttempt))) {
+      if (finalBeginAttempt) finalBeginUsed = true;
+      finalBeginAttempt = false;
       archiveAttempted = true;
       try {
         archive = await observed('begin', () => repository.begin({ ...input, startedAt: session.startedAt }));
@@ -147,21 +154,29 @@ export async function beginResilientWriter(
         warn('begin', error, retries);
         const code = (error as { code?: string })?.code;
         const transient = code === 'storage-failed' || code === 'quota-exceeded' || code === 'memory-limit' || isRetryableVoiceError(error);
-        if (!transient || !alive()) { stopped = true; break; }
+        if (!transient || aborted || signal?.aborted || finalBeginUsed) { stopped = true; break; }
+        if (sealed) { finalBeginAttempt = true; continue; }
+        if (!alive()) { stopped = true; break; }
         retries = Math.min(retries + 1, MAX_RECOVERY_ATTEMPTS + 1);
-        await waitForBeginRetry(retries <= MAX_RECOVERY_ATTEMPTS ? recoveryDelayMs(retries) : ARCHIVE_RETRY_PROBE_MS);
+        await waitForRetry(retries <= MAX_RECOVERY_ATTEMPTS ? recoveryDelayMs(retries) : ARCHIVE_RETRY_PROBE_MS);
+        if (sealed && !aborted && !signal?.aborted) finalBeginAttempt = true;
       }
     }
     if (!archive) { stopped = true; queue.length = 0; queueSamples = 0; return; }
     let failures = 0;
+    let finalRetry = false;
+    let deferred: Work | null = null;
     if (!archiveId) archiveId = archive.session.id;
-    while (queue.length && !stopped) {
-      const work = queue.shift()!;
+    while ((deferred || queue.length) && !stopped && !aborted && !signal?.aborted) {
+      const work = deferred ?? queue.shift()!;
+      deferred = null;
       if (work.kind === 'audio') queueSamples -= work.data.length;
+      let stage: Work['kind'] | 'gap' = work.kind;
       try {
         if (work.kind === 'audio') {
           if (reconcile || work.start > cursor) {
             if (!archive.markArchiveGap) throw Object.assign(new Error('Sparse archive recovery unavailable.'), { retryable: false });
+            stage = 'gap';
             await observed('gap', () => archive!.markArchiveGap!(cursor, work.start));
             hadGap = true;
             cursor = archive.session.archiveEndSample ?? work.start;
@@ -169,6 +184,8 @@ export async function beginResilientWriter(
             if (cursor !== work.start)
               throw Object.assign(new Error('Archive gap exceeded the next audio boundary.'), { retryable: false });
           }
+          if (aborted || signal?.aborted) break;
+          stage = 'audio';
           await observed('append', () => archive!.append(work.data));
           cursor = work.start + work.data.length;
           session.savedSamples = archive.session.savedSamples;
@@ -176,11 +193,14 @@ export async function beginResilientWriter(
           const target = Math.max(cursor, work.pin.confirmedAtSample);
           if (reconcile || target > cursor) {
             if (!archive.markArchiveGap) throw Object.assign(new Error('Sparse archive recovery unavailable.'), { retryable: false });
+            stage = 'gap';
             await observed('gap', () => archive!.markArchiveGap!(cursor, target));
             cursor = archive.session.archiveEndSample ?? target;
             reconcile = false;
             hadGap = true;
           }
+          if (aborted || signal?.aborted) break;
+          stage = 'pin';
           const p = await observed('pin', () => archive!.pin(work.pin.kind, work.pin.atSample, work.pin.confirmedAtSample));
           pinIds.set(work.pin.id, p.id);
         } else if (work.kind === 'attempt') {
@@ -189,10 +209,10 @@ export async function beginResilientWriter(
         } else if (work.kind === 'read') {
           // Retry only after an operation has settled: a timed-out or cancelled
           // caller must never cause a concurrent duplicate archive read.
-          for (let attempt = 0; !work.expired; attempt++) {
+          for (let attempt = 0; !work.expired && !aborted && !signal?.aborted; attempt++) {
             try {
               const pcm = await observed('read', () => archive!.read(work.start, work.end));
-              if (!work.expired) work.resolve(pcm);
+              if (!work.expired && !aborted && !signal?.aborted) work.resolve(pcm);
               break;
             } catch (error) {
               const failure = error as { code?: string; archiveWriteFailure?: boolean };
@@ -214,6 +234,7 @@ export async function beginResilientWriter(
               await delay(attempt + 1);
             }
           }
+          if (!work.expired && (aborted || signal?.aborted)) work.reject(new Error('Archive unavailable.'));
         } else {
           const details = work.details ? { ...work.details } : undefined;
           if (details?.segmentId) {
@@ -225,22 +246,44 @@ export async function beginResilientWriter(
         }
         failures = 0;
       } catch (error) {
-        warn(work.kind, error, failures);
-        // An append can fail after committing a prefix. Reconcile from committed
-        // archiveEndSample, and never replay the uncertain buffer as new audio.
-        if (work.kind === 'audio') {
+        warn(stage, error, failures);
+        // An append may have committed a prefix: discard that entire queued
+        // buffer, then mark only the unknown remainder as a gap, never replay it.
+        if (stage === 'pin' || stage === 'attempt' || stage === 'event') metadataIncomplete = true;
+        if (stage === 'audio' && work.kind === 'audio') {
           cursor = archive.session.archiveEndSample ?? archive.session.savedSamples;
           reconcile = true;
+        } else if (stage === 'gap') {
+          // The gap operation is idempotent. Keep its descriptor in order,
+          // including any not-yet-attempted audio following that gap.
+          cursor = archive.session.archiveEndSample ?? archive.session.savedSamples;
+          reconcile = true;
+          deferred = work;
+          if (work.kind === 'audio') queueSamples += work.data.length;
         }
-        if ((error as { retryable?: boolean })?.retryable === false || ++failures > MAX_RECOVERY_ATTEMPTS) { stopped = true; break; }
-        await delay(failures);
+        const failure = error as { code?: string; retryable?: boolean; recoverable?: boolean };
+        const code = failure?.code;
+        const permanent = failure?.retryable === false || failure?.recoverable === false ||
+          ['codec-unsupported', 'invalid-range', 'sealed', 'disposed', 'not-found'].includes(code ?? '');
+        if (permanent || finalRetry || aborted || signal?.aborted) { stopped = true; break; }
+        if (sealed) {
+          finalRetry = true;
+          continue;
+        }
+        if (!alive()) { stopped = true; break; }
+        failures = Math.min(failures + 1, MAX_RECOVERY_ATTEMPTS + 1);
+        await waitForRetry(failures <= MAX_RECOVERY_ATTEMPTS ? recoveryDelayMs(failures) : ARCHIVE_RETRY_PROBE_MS);
+        if (aborted || signal?.aborted) { stopped = true; break; }
+        if (sealed) finalRetry = true;
+        else if (!alive()) { stopped = true; break; }
       }
     }
     if ((sealed && !finalized) || stopped) {
+      if (aborted || signal?.aborted) stopped = true;
       const end = session.capturedSamples;
       let gapFailed = false;
       try {
-        if (reconcile || cursor < end) {
+        if (!aborted && !signal?.aborted && (reconcile || cursor < end)) {
           if (!archive.markArchiveGap) throw new Error('Sparse archive recovery unavailable.');
           await observed('gap', () => archive!.markArchiveGap!(cursor, end));
           hadGap = true;
@@ -252,7 +295,7 @@ export async function beginResilientWriter(
       // Even if gap metadata cannot be saved, release the writer's lock. Never
       // race a still-pending gap with finish: this runs only after rejection.
       try {
-        const incomplete = stopped || hadGap || gapFailed;
+        const incomplete = stopped || hadGap || gapFailed || metadataIncomplete || aborted || Boolean(signal?.aborted);
         await observed('finish', () => archive!.finish(incomplete ? 'failed' : finalState, incomplete ? 'archive-incomplete' : finalError));
       } catch (error) { warn('finish', error); }
       finalized = true;
@@ -270,7 +313,11 @@ export async function beginResilientWriter(
       if (!stopped && (queue.length || (sealed && archive && !finalized))) kick();
     });
   }
-  signal?.addEventListener('abort', () => { if (!sealed) void writer.finish('interrupted'); }, { once: true });
+  signal?.addEventListener('abort', () => {
+    aborted = true;
+    cancelRetryWait?.();
+    if (!sealed) void writer.finish('interrupted');
+  }, { once: true });
   const snapshot = (start: number, end: number): Float32Array | null => {
     if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start) return null;
     if (start < end && (!chunks.length || chunks[0].start > start || session.capturedSamples < end)) return null;
@@ -346,7 +393,7 @@ export async function beginResilientWriter(
     async finish(state = 'completed', error) {
       if (sealed) return;
       sealed = true;
-      cancelBeginWait?.();
+      cancelRetryWait?.();
       finalState = state;
       finalError = error;
       session.state = state;

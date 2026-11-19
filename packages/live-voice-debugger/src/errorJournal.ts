@@ -23,6 +23,8 @@ export function createVoiceErrorJournal(target: Window) {
   let evictedInFlight = new Set<string>();
   let db: IDBDatabase | null = null;
   let dbOpening: Promise<IDBDatabase> | null = null;
+  // A rejected blocked/timed-out open remains live until IndexedDB finishes it.
+  let openOutstanding = false;
   let retryAt = 0;
   let sequence = 0;
   let dropped = 0;
@@ -44,23 +46,77 @@ export function createVoiceErrorJournal(target: Window) {
     if (terminated) return Promise.reject(new Error('Journal disposed.'));
     if (db) return Promise.resolve(db);
     if (!dbOpening) {
+      if (openOutstanding) return Promise.reject(new Error('Error journal storage unavailable.'));
       dbOpening = new Promise<IDBDatabase>((resolve, reject) => {
-        const req = target.indexedDB.open(DATABASE, 1);
+        const req = target.indexedDB.open(DATABASE, 2);
+        openOutstanding = true;
         let abandoned = false;
         const timer = setTimeout(() => fail(), DEADLINE);
         const fail = () => {
+          if (abandoned) return;
           abandoned = true;
+          try { req.transaction?.abort(); } catch {}
           clearTimeout(timer);
           reject(new Error('Error journal storage unavailable.'));
         };
-        req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
-        req.onerror = fail;
+        req.onupgradeneeded = (event) => {
+          const tx = req.transaction!;
+          if (abandoned || terminated) {
+            tx.abort();
+            return;
+          }
+          if (event.oldVersion === 0) {
+            req.result.createObjectStore(STORE, { keyPath: 'id' });
+            return;
+          }
+          // A versionchange transaction excludes every other connection and commits the
+          // replacement as a unit. Never discard a row we cannot safely interpret.
+          const store = tx.objectStore(STORE);
+          const read = store.getAll();
+          read.onsuccess = () => {
+            try {
+              const rows = read.result.map((row: unknown) => {
+                const safe = sanitizeVoiceErrorEvent(row);
+                if (!safe) throw new Error('Unrecognized error journal row.');
+                return safe;
+              });
+              // An invalid row aborts the whole upgrade: it remains untouched and the
+              // journal reports storage unavailable rather than guessing its contents.
+              // getAll follows primary-key order; stable sorting preserves that order
+              // for equal timestamps without retaining potentially sensitive keys.
+              rows.sort((a, b) => a.at - b.at);
+              store.clear();
+              rows.forEach((row, index) => {
+                const id = String(row.at).padStart(16, '0') + ':!migration:' +
+                  String(index).padStart(16, '0');
+                store.add({ ...row, id });
+              });
+            } catch {
+              tx.abort();
+            }
+          };
+        };
+        req.onerror = () => {
+          openOutstanding = false;
+          const retryAbandoned = abandoned && !disposed;
+          fail();
+          // An abandoned blocked request cannot be cancelled until IndexedDB
+          // delivers its terminal event. Retry once after that request is gone.
+          if (retryAbandoned) queueMicrotask(() => {
+            if (!disposed) void open().then(notify, notify);
+          });
+        };
         req.onblocked = fail;
         req.onsuccess = () => {
+          openOutstanding = false;
           clearTimeout(timer);
           if (terminated || abandoned) {
             req.result.close();
-            return fail();
+            fail();
+            if (abandoned && !disposed) queueMicrotask(() => {
+              if (!disposed) void open().then(notify, notify);
+            });
+            return;
           }
           db = req.result;
           const connection = db;
@@ -177,6 +233,8 @@ export function createVoiceErrorJournal(target: Window) {
     notify();
     flush();
   });
+  // Start migration even if no event is reported and nobody opens the viewer.
+  void open().then(() => { if (!disposed) notify(); }, () => { if (!disposed) notify(); });
   return {
     subscribe(listener: () => void) {
       listeners.add(listener);

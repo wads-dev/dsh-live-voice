@@ -13,11 +13,15 @@ import {
 function storage() {
   const rows = new Map();
   let unavailable = false;
+  let version = 1;
   let closed = 0;
   let held = false;
+  let blocked = false;
+  let openCount = 0;
   const openings = [];
   const indexedDB = {
     open() {
+      openCount++;
       const request = {};
       const finish = () => {
         if (unavailable) {
@@ -46,6 +50,8 @@ function storage() {
             };
             const store = {
               put: (row) => work(() => rows.set(row.id, structuredClone(row))),
+              add: (row) => work(() => rows.set(row.id, structuredClone(row))),
+              clear: () => work(() => rows.clear()),
               delete: (key) => work(() => rows.delete(key)),
               getAllKeys: () => work(() => [...rows.keys()].sort()),
               getAll: () =>
@@ -57,17 +63,51 @@ function storage() {
           },
         };
         request.result = connection;
-        request.onupgradeneeded?.();
+        if (!rows.size) {
+          request.onupgradeneeded?.({ oldVersion: 0 });
+          version = 2;
+          request.onsuccess?.();
+          return;
+        }
+        if (version === 1) {
+          const original = structuredClone([...rows]);
+          let aborted = false;
+          const tx = connection.transaction();
+          request.transaction = tx;
+          const abort = tx.abort;
+          tx.abort = () => {
+            aborted = true;
+            rows.clear();
+            for (const [key, value] of original) rows.set(key, value);
+            abort();
+            request.onerror?.();
+          };
+          const complete = tx.oncomplete;
+          tx.oncomplete = () => {
+            if (aborted) return;
+            version = 2;
+            request.transaction = null;
+            request.onsuccess?.();
+            complete?.();
+          };
+          request.onupgradeneeded?.({ oldVersion: 1 });
+          return;
+        }
         request.onsuccess?.();
       };
-      if (held) openings.push(finish);
-      else queueMicrotask(finish);
+      if (held || blocked) {
+        openings.push(finish);
+        if (blocked) queueMicrotask(() => request.onblocked?.());
+      } else queueMicrotask(finish);
       return request;
     },
   };
   return {
     indexedDB,
     rows,
+    get openCount() { return openCount; },
+    block() { blocked = true; },
+    unblock() { blocked = false; for (const finish of openings.splice(0)) queueMicrotask(finish); },
     hold() {
       held = true;
     },
@@ -146,7 +186,6 @@ test('redacts untrusted legacy rows and direct sink events while preserving safe
     },
     extra: 'SECRET-extra',
   });
-  db.rows.set('invalid', { id: 'invalid', at: -1, exception: {} });
   const target = targetFor(db),
     journal = createVoiceErrorJournal(target);
   t.after(() => journal.dispose());
@@ -167,7 +206,8 @@ test('redacts untrusted legacy rows and direct sink events while preserving safe
     frames: ['12:34'],
     cause: { name: 'TypeError', code: 'http_503' },
   });
-  assert.equal(db.rows.get(id).exception.message, 'SECRET-message'); // no destructive migration
+  assert.equal(db.rows.has(id), false);
+  assert.equal(JSON.stringify([...db.rows]).includes('SECRET'), false);
   target[VOICE_ERROR_SINK]({
     at: 10,
     operation: 'SECRET-operation',
@@ -182,6 +222,69 @@ test('redacts untrusted legacy rows and direct sink events while preserving safe
     JSON.stringify([...db.rows.values()].find((item) => item.at === 10)).includes('SECRET'),
     false,
   );
+});
+
+test('migrates proactively without events or a viewer', async (t) => {
+  const db = storage();
+  db.rows.set('SECRET-key', { id: 'SECRET-key', at: 1, operation: 'capture.failure', context: {}, exception: { name: 'Error', message: 'SECRET' } });
+  const journal = createVoiceErrorJournal(targetFor(db));
+  t.after(() => journal.dispose());
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(db.rows.size, 1);
+  assert.equal(JSON.stringify([...db.rows]).includes('SECRET'), false);
+});
+
+test('concurrent requests do not queue opens while an upgrade is blocked', async (t) => {
+  const db = storage();
+  db.rows.set('SECRET-key', { id: 'SECRET-key', at: 1, operation: 'capture.failure', context: {}, exception: { name: 'Error', message: 'SECRET' } });
+  db.block();
+  const target = targetFor(db), journal = createVoiceErrorJournal(target);
+  t.after(() => journal.dispose());
+  event(target);
+  const pages = await Promise.all(Array.from({ length: 8 }, () => journal.list()));
+  assert.ok(pages.every((page) => !page.persistent));
+  assert.equal(db.openCount, 1);
+  for (let n = 0; n < 4; n++) await journal.list();
+  assert.equal(db.openCount, 1);
+  db.unblock();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(db.rows.has('SECRET-key'), false); // abandoned upgrade retried after termination
+  const originalNow = Date.now;
+  Date.now = () => originalNow() + 3000;
+  try {
+    const page = await journal.list();
+    assert.equal(page.persistent, true);
+    assert.equal(JSON.stringify([...db.rows]).includes('SECRET'), false);
+  } finally { Date.now = originalNow; }
+});
+
+test('migration rolls back unrecognized rows and exposes only safe pending events', async (t) => {
+  const db = storage();
+  const legacy = { id: 'SECRET-key', at: -1, exception: { message: 'SECRET' } };
+  db.rows.set(legacy.id, legacy);
+  const target = targetFor(db), journal = createVoiceErrorJournal(target);
+  t.after(() => journal.dispose());
+  event(target, 'first');
+  const result = await journal.list();
+  assert.equal(result.persistent, false);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].operation, 'capture.failure');
+  assert.deepEqual([...db.rows.values()], [legacy]);
+});
+
+test('migration preserves timestamp and equal timestamp key order', async (t) => {
+  const db = storage();
+  for (const [id, at, operation] of [
+    ['secret-a', 42, 'capture.failure'], ['secret-b', 42, 'speech.failure'],
+    ['secret-c', 41, 'meeting.start'],
+  ]) db.rows.set(id, { id, at, operation, context: {}, exception: { name: 'Error' } });
+  const journal = createVoiceErrorJournal(targetFor(db));
+  t.after(() => journal.dispose());
+  const result = await journal.list();
+  assert.equal(result.persistent, true);
+  assert.deepEqual(result.items.map((item) => item.operation), ['speech.failure', 'capture.failure', 'meeting.start']);
+  assert.equal(db.rows.size, 3);
+  assert.equal(JSON.stringify([...db.rows]).includes('secret'), false);
 });
 
 test('bounds persisted history at 500 and removes oldest keys', async (t) => {
