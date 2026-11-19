@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { reportVoiceError } from '../../core/diagnosticsErrors.js';
 import { ParticipantPcmMeter } from './ParticipantPcmMeter.js';
 const ROOT = '/api/dsh-live-voice/attendee';
 /** Explicit receiver lease. Audio is never fetched until the user starts it. */
@@ -290,7 +291,8 @@ export class AttendeeClient {
         leaving: false,
         controlError: 'control-released',
       });
-    } catch {
+    } catch (e) {
+      if (owner === this.owner) reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'release' });
       if (owner === this.owner) this.patch({ controlError: 'control-unavailable' });
     }
   }
@@ -439,6 +441,7 @@ export class AttendeeClient {
       if (owner !== this.owner || this.disposed) return;
       this.applyControl({ ...result, hasBotControl: true, joining: false });
     } catch (e) {
+      if (owner === this.owner && !this.disposed) reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'join' });
       if (owner === this.owner && !this.disposed)
         this.patch({
           joining: false,
@@ -469,7 +472,8 @@ export class AttendeeClient {
       await this.stop();
       if (owner === this.owner && !this.disposed)
         this.applyControl({ ...result, hasBotControl: true, leaving: false });
-    } catch {
+    } catch (e) {
+      if (owner === this.owner && !this.disposed) reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'leave' });
       if (owner === this.owner && !this.disposed)
         this.patch({ leaving: false, controlError: 'leave-failed' });
     }
@@ -530,6 +534,7 @@ export class AttendeeClient {
       });
       void this.poll(generation);
     } catch (e) {
+      if (generation === this.generation) reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'open' });
       if (generation === this.generation)
         this.patch({
           starting: false,
@@ -592,6 +597,7 @@ export class AttendeeClient {
         });
       } catch (e) {
         if (generation === this.generation) {
+          reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'poll' });
           await this.stop();
           this.patch({ error: this.t('failed') });
         }
@@ -601,16 +607,17 @@ export class AttendeeClient {
   }
   enqueue(event, generation) {
     const source = 'attendee:' + event.botId + ':' + event.participantId;
-    if (!this.queues.has(source) && this.queues.size >= 16) throw new Error('participants-limit');
+    if (!this.queues.has(source) && this.queues.size >= 16) throw Object.assign(new Error('participants-limit'), { code: 'participants-limit' });
     this.queuedBytes += event.chunk.length;
-    if (this.queuedBytes > 2000000) throw new Error('overloaded');
+    if (this.queuedBytes > 2000000) throw Object.assign(new Error('overloaded'), { code: 'overloaded' });
     const previous = this.queues.get(source) || Promise.resolve();
     const work = previous
       .then(async () => {
         if (generation === this.generation) await this.audio(event, generation);
       })
-      .catch(async () => {
+      .catch(async (e) => {
         if (generation === this.generation) {
+          reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'audio' });
           await this.stop();
           this.patch({ error: this.t('failed') });
         }
@@ -629,7 +636,7 @@ export class AttendeeClient {
     const source = 'attendee:' + event.botId + ':' + event.participantId;
     let row = this.rows.get(source);
     if (!row) {
-      if (this.rows.size >= 16) throw new Error('participants-limit');
+      if (this.rows.size >= 16) throw Object.assign(new Error('participants-limit'), { code: 'participants-limit' });
       const originalName =
         event.name ||
         this.discovered.get(source)?.originalName ||
@@ -667,7 +674,7 @@ export class AttendeeClient {
       const deadline = Date.now() + 10000;
       while (this.meeting.getSnapshot()[source]?.pending) {
         if (generation !== this.generation) return;
-        if (Date.now() > deadline) throw new Error('overloaded');
+        if (Date.now() > deadline) throw Object.assign(new Error('overloaded'), { code: 'overloaded' });
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
       if (generation !== this.generation) return;
@@ -733,7 +740,8 @@ export class AttendeeClient {
               clearInterval(this.controlTimer);
             }
           })
-          .catch(() => {
+          .catch((e) => {
+            if (this.owner === owner) reportVoiceError('attendee.failure', e, { source: 'attendee', stage: 'close' });
             if (this.owner === owner) this.patch({ controlError: 'control-unavailable' });
           }),
       );

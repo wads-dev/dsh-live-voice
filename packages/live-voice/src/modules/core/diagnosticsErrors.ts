@@ -22,9 +22,9 @@ export interface VoiceErrorEvent {
 }
 type Target = { [key: symbol]: unknown };
 type Sink = (event: VoiceErrorEvent) => void;
-const operations = new Set(['voice.unknown', 'capture.failure', 'meeting.start', 'recognition.failure', 'recognition.teardown', 'recognition.audio-gap', 'recognition.snapshot-limit', 'recording.storage', 'recording.timeline', 'speech.failure', 'browser-local.download', 'browser-local.load', 'browser-local.transcribe']);
-const sources = new Set(['microphone', 'shared', 'participant', 'speech', 'browser-local']);
-const stages = new Set(['start', 'recovery', 'teardown', 'gate', 'prepare', 'playback', 'download', 'load', 'transcription', 'event', 'backlog', 'backpressure', 'metadata', 'begin', 'read-flush', 'gap', 'finish', 'worker', 'audio', 'append', 'pin', 'attempt', 'read']);
+const operations = new Set(['voice.unknown', 'capture.failure', 'meeting.start', 'recognition.failure', 'recognition.teardown', 'recognition.audio-gap', 'recognition.snapshot-limit', 'recording.storage', 'recording.timeline', 'speech.failure', 'browser-local.download', 'browser-local.load', 'browser-local.transcribe', 'attendee.failure', 'conversation.action']);
+const sources = new Set(['microphone', 'shared', 'participant', 'speech', 'browser-local', 'attendee', 'conversation']);
+const stages = new Set(['start', 'recovery', 'teardown', 'gate', 'prepare', 'playback', 'download', 'load', 'transcription', 'event', 'backlog', 'backpressure', 'metadata', 'begin', 'read-flush', 'gap', 'finish', 'worker', 'audio', 'append', 'pin', 'attempt', 'read', 'join', 'leave', 'open', 'poll', 'close', 'release', 'sync', 'async']);
 const integer = (value: unknown) =>
   typeof value === 'number' && Number.isSafeInteger(value) ? value : undefined;
 // Names and codes can originate in providers or workers; token syntax alone is not redaction.
@@ -40,7 +40,7 @@ const errorCodes = new Set([
   'external-audio-unsupported', 'f16-unavailable', 'gpu-unavailable', 'inference-failed',
   'invalid-audio', 'invalid-audio-track', 'invalid-command', 'invalid-model', 'model-busy',
   'model-missing', 'restart-limit', 'runtime-outdated', 'runtime-unavailable', 'storage-failed',
-  'unavailable',
+  'unavailable', 'participants-limit', 'overloaded',
 ]);
 const safeCode = (value: unknown): string | number | undefined => {
   if (typeof value === 'number') return Number.isInteger(value) && value >= 0 && value <= 25 ? value : undefined;
