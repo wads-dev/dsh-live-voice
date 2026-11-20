@@ -136,6 +136,9 @@ export class WhisperHttpRecognitionEngine {
     onActivity,
     onError,
     onProcessingChange,
+    onRecordingWarning,
+    onTranscriptionGap,
+    onTranscriptionBufferWarning,
   } = {}) {
     await this.stop();
     const startGeneration = (this.startGeneration = (this.startGeneration || 0) + 1);
@@ -153,7 +156,7 @@ export class WhisperHttpRecognitionEngine {
         const error = Object.assign(new Error('Silero VAD assets are unavailable.'), {
           code: 'unavailable',
         });
-        throw new Error(this.vadErrorMessage(error));
+        throw new Error(this.vadErrorMessage(error), { cause: error });
       }
     }
     if (signal?.aborted || this.startGeneration !== startGeneration) throw abortError();
@@ -165,7 +168,7 @@ export class WhisperHttpRecognitionEngine {
       throw new Error('This browser cannot capture PCM audio for Whisper HTTP.');
     const recording = await startRecordingRecognition(
       this,
-      { lang, signal, onResult, onActivity, onError, onProcessingChange },
+      { lang, signal, onResult, onActivity, onError, onProcessingChange, onRecordingWarning, onTranscriptionGap, onTranscriptionBufferWarning },
       { silero, encode: encodeMonoPcm16Wav },
     );
     if (this.startGeneration !== startGeneration || signal?.aborted) throw abortError();

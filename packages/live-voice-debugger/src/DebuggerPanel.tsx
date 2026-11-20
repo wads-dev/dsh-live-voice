@@ -9,20 +9,24 @@ import type { DebuggerTranslation } from './i18n/index.js';
 import { StateTree } from './StateTree.js';
 import { RecordingPanel } from './RecordingPanel.js';
 import { RuntimePanel } from './RuntimePanel.js';
+import { ErrorPanel } from './ErrorPanel.js';
+import type { VoiceErrorJournal } from './errorJournal.js';
 export function DebuggerPanel({
   copy,
   locale = 'en',
   onClose,
   target = window,
   recordingRequest,
+  journal,
 }: {
+  journal?: VoiceErrorJournal;
   recordingRequest?: { id?: string; revision: number };
   copy: DebuggerTranslation;
   locale?: string;
   onClose(): void;
   target?: any;
 }) {
-  const [tab, setTab] = React.useState<'recordings' | 'states' | 'runtimes' | 'storage'>(
+  const [tab, setTab] = React.useState<'recordings' | 'states' | 'runtimes' | 'storage' | 'errors'>(
     'recordings',
   );
   React.useEffect(() => {
@@ -85,9 +89,9 @@ export function DebuggerPanel({
   const modules = [...new Set(view?.transitions.map((entry) => entry.module) ?? [])].sort();
   const runtimeData = (view?.state as any)?.runtimes;
   const hasRuntimes = !!runtimeData?.models?.length;
-  const tabs: ('recordings' | 'states' | 'runtimes' | 'storage')[] = hasRuntimes
-    ? ['recordings', 'states', 'storage', 'runtimes']
-    : ['recordings', 'states', 'storage'];
+  const tabs: ('recordings' | 'states' | 'runtimes' | 'storage' | 'errors')[] = hasRuntimes
+    ? ['recordings', 'states', 'storage', 'errors', 'runtimes']
+    : ['recordings', 'states', 'storage', 'errors'];
   React.useEffect(() => {
     if (tab === 'runtimes' && !hasRuntimes) setTab('states');
   }, [tab, hasRuntimes]);
@@ -129,7 +133,9 @@ export function DebuggerPanel({
                 ? copy.recordings.storageTab + ': ' + storageTotal
                 : name === 'recordings'
                   ? copy.recordings.title
-                  : name === 'runtimes'
+                  : name === 'errors'
+                    ? copy.commons.errorJournalTitle
+                    : name === 'runtimes'
                     ? copy.runtimes.title
                     : copy.commons.states}
             </button>
@@ -168,6 +174,9 @@ export function DebuggerPanel({
         hidden={tab !== 'storage'}
         ref={setStoragePanel}
       />
+      <div className="dlvd-tab-panel" role="tabpanel" id={tabsId + '-errors'} aria-labelledby={tabsId + '-errors-tab'} hidden={tab !== 'errors'}>
+        {tab === 'errors' && <ErrorPanel journal={journal} copy={copy} locale={locale} />}
+      </div>
       {hasRuntimes && (
         <div
           className="dlvd-tab-panel"

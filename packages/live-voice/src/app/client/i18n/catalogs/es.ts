@@ -403,6 +403,7 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.qwen.hostHelp':
     'Configuración para todo el host del servidor Qwen3 ASR + TTS. Introduce una URL base HTTP o HTTPS accesible desde el host de DSH. El navegador accede a ella mediante las rutas autenticadas de DSH.',
   'dsh-live-voice.recognition.qwen.label': 'Qwen3 ASR · API HTTP',
+  'dsh-live-voice.recognition.recordingWarning': "No se pudo guardar toda la grabación. La transcripción continúa; falta parte del audio en el archivo.",
   'dsh-live-voice.recognition.silenceDetection.chunkPause':
     'Antes de transcribir: {milliseconds} ms',
   'dsh-live-voice.recognition.silenceDetection.customHelp':
@@ -448,6 +449,8 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': 'Reconocimiento de voz no disponible',
   'dsh-live-voice.recognition.status.waiting': 'Esperando',
   'dsh-live-voice.recognition.status.waitingCommand': 'Esperando comando',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "El búfer de transcripción está lleno. El audio anterior dependerá del archivo de grabación y podría no estar disponible.",
+  'dsh-live-voice.recognition.transcriptionGap': "No se pudo transcribir parte de la voz porque el audio no estaba disponible. La escucha continúa.",
   'dsh-live-voice.recognition.voiceCommands.help':
     'Separa las frases con comas. La comparación ignora mayúsculas, acentos, puntuación y espacios adicionales. Debe coincidir todo el fragmento definitivo.',
   'dsh-live-voice.recognition.whisper.captureHelp':

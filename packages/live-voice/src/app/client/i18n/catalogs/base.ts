@@ -291,6 +291,7 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.recognition.qwen.endpointHelp': string;
   'dsh-live-voice.recognition.qwen.hostHelp': string;
   'dsh-live-voice.recognition.qwen.label': string;
+  'dsh-live-voice.recognition.recordingWarning': string;
   'dsh-live-voice.recognition.silenceDetection.chunkPause': string;
   'dsh-live-voice.recognition.silenceDetection.customHelp': string;
   'dsh-live-voice.recognition.silenceDetection.customLabel': string;
@@ -321,6 +322,8 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.recognition.status.unavailable': string;
   'dsh-live-voice.recognition.status.waiting': string;
   'dsh-live-voice.recognition.status.waitingCommand': string;
+  'dsh-live-voice.recognition.transcriptionBufferWarning': string;
+  'dsh-live-voice.recognition.transcriptionGap': string;
   'dsh-live-voice.recognition.voiceCommands.help': string;
   'dsh-live-voice.recognition.whisper.captureHelp': string;
   'dsh-live-voice.recognition.whisper.connectionSuccess': string;

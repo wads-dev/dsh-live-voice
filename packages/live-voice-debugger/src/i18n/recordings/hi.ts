@@ -3,6 +3,8 @@ const translation = {
   active: 'रिकॉर्डिंग जारी',
   aliasAtCapture: 'कैप्चर के समय उपनाम',
   allSources: 'सभी स्रोत',
+  archiveGap: "इस अंतराल में ऑडियो उपलब्ध नहीं है",
+  archiveGaps: "अनुपलब्ध ऑडियो अंतराल",
   assistantCancel: 'सहायक की वाणी रद्द',
   assistantEnd: 'सहायक का प्लेबैक समाप्त',
   assistantError: 'सहायक की वाणी विफल',

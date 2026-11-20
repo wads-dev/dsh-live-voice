@@ -124,19 +124,15 @@ export function readCoordinatorDiagnostics(
     recognition: {
       pendingTranscriptions: number(state.pendingTranscriptions),
       activeRequest: Boolean(recognition?.activeRequest),
-      queue: (recognition?.transcriptionQueue ?? []).map((chunk: any) => ({
-        samples:
-          chunk.endSample != null
-            ? chunk.endSample - chunk.startSample
-            : (chunk.samples ?? chunk).length,
-        durationMs: sampleRate
-          ? ((chunk.endSample != null
-              ? chunk.endSample - chunk.startSample
-              : (chunk.samples ?? chunk).length) /
-              sampleRate) *
-            1000
-          : null,
-      })),
+      queue: (recognition?.transcriptionQueue ?? []).map((chunk: any) => {
+        const range = chunk.attempt ?? chunk;
+        const samples = number(
+          range.endSample != null
+            ? range.endSample - range.startSample
+            : (range.samples ?? range).length,
+        );
+        return { samples, durationMs: sampleRate && samples !== null ? (samples / sampleRate) * 1000 : null };
+      }),
     },
     delivery: {
       autoSendAt: number(state.autoSendAt),

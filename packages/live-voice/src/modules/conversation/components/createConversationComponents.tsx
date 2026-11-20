@@ -5,6 +5,7 @@ import {
   withAppLanguage as withLiveVoiceLanguage,
 } from '../../../app/client/i18n/index.js';
 
+import { reportVoiceError } from '../../core/diagnosticsErrors.js';
 import { resolveConversationStatus } from './conversationStatus.js';
 import { RecordingProgress } from './RecordingProgress.js';
 
@@ -107,9 +108,11 @@ export function createConversationComponents(
       setError('');
       try {
         Promise.resolve(controller[name](...args)).catch((reason) => {
+          reportVoiceError('conversation.action', reason, { source: 'conversation', stage: 'async' });
           if (alive.current) setError(reason instanceof Error ? reason.message : String(reason));
         });
       } catch (reason) {
+        reportVoiceError('conversation.action', reason, { source: 'conversation', stage: 'sync' });
         setError(reason instanceof Error ? reason.message : String(reason));
       }
     };

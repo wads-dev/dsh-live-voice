@@ -2,6 +2,8 @@ export type RecordingsTranslation = {
   active: string;
   aliasAtCapture: string;
   allSources: string;
+  archiveGap: string;
+  archiveGaps: string;
   assistantCancel: string;
   assistantEnd: string;
   assistantError: string;

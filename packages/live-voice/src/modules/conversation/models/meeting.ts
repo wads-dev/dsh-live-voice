@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { MeetingTranscript } from './meetingTranscript.js';
+import { reportVoiceError } from '../../core/diagnosticsErrors.js';
 import { VoiceCoordinator } from '../../core/coordinator.ts';
 import {
   isRetryableVoiceError,
@@ -51,7 +52,7 @@ export class MeetingController {
         this.inputs.get(source) ||
         (next.listening || next.starting || next.error ? this.input(source) : null);
       const policy = {};
-      for (const key of ['starting', 'listening', 'error', 'inputRecovery', 'inputError'])
+      for (const key of ['starting', 'listening', 'error', 'inputRecovery', 'inputError', 'recordingWarning', 'transcriptionGap', 'transcriptionBufferWarning'])
         if (Object.hasOwn(next, key)) policy[key] = next[key];
       if (Object.hasOwn(next, 'pending')) policy.pendingTranscriptions = next.pending;
       if (Object.hasOwn(next, 'transcribing'))
@@ -254,6 +255,7 @@ export class MeetingController {
       await this.startRecognition(source, job, settings);
     } catch (error) {
       if (valid()) {
+        reportVoiceError('meeting.start', error, { source: source === 'microphone' ? 'microphone' : source === 'shared' ? 'shared' : 'participant', stage: 'start' });
         this.patch(source, {
           error:
             source !== 'microphone' && error.message === 'No shared audio track was returned.'
@@ -289,6 +291,7 @@ export class MeetingController {
       !recognitionAbort.signal.aborted;
     input.recognition.activityManaged = engine.activityManaged === true;
     try {
+      this.patch(source, { recordingWarning: false, transcriptionGap: false, transcriptionBufferWarning: false });
       await engine.start({
         lang: settings.recognitionLang,
         signal: recognitionAbort.signal,
@@ -343,6 +346,15 @@ export class MeetingController {
           if (delivery) input.cancelAutoSend({ preserveIntent: true });
           else if (!input.getSnapshot().muted) input.maybeScheduleAutoSend();
         },
+        onRecordingWarning: () => {
+          if (valid()) this.patch(source, { recordingWarning: true });
+        },
+        onTranscriptionGap: () => {
+          if (valid()) this.patch(source, { transcriptionGap: true });
+        },
+        onTranscriptionBufferWarning: () => {
+          if (valid()) this.patch(source, { transcriptionBufferWarning: true });
+        },
         onError: (error) => {
           if (valid()) this.recognitionFailed(source, job, error);
         },
@@ -363,6 +375,7 @@ export class MeetingController {
     }
   }
   recognitionFailed(source, job, error) {
+    reportVoiceError('recognition.failure', error, { source: source === 'microphone' ? 'microphone' : source === 'shared' ? 'shared' : 'participant', stage: 'recovery', attempt: job.retries || 0 });
     // Invalidate callbacks immediately, before teardown or a delayed restart.
     job.recognitionAbort?.abort();
     this.patch(source, {

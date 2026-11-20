@@ -45,7 +45,7 @@ export function mockRecordingRepository(): RecordingRepository {
         kind: input.kind,
         label: input.label,
         sampleRate: input.sampleRate,
-        startedAt: new Date(Date.now()).toISOString(),
+        startedAt: input.startedAt ?? new Date(Date.now()).toISOString(),
         state: 'recording',
         capturedSamples: 0,
         savedSamples: 0,

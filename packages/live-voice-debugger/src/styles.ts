@@ -1,4 +1,7 @@
 export const styles = `
+.dlvd-archive-gap{position:absolute;top:0;bottom:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(135deg,#ef7c7caa 0 4px,#381b1baa 4px 8px)}
+.dlvd-error-entry{border-top:1px solid var(--dsw-alias-border-l1,#ffffff0f);padding:8px 0;overflow-wrap:anywhere}.dlvd-error-entry dl{margin:0}
+
 .dlvd-recording-columns>[hidden]{display:none!important}.dlvd-recording-columns[data-layout=list],.dlvd-recording-columns[data-layout=session]{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}.dlvd-recording-columns[data-layout=session]>.dlvd-recording-detail{border:0;padding:0}.dlvd-layout-control{white-space:nowrap}
 .dlvd-navigation-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-left:auto;min-width:0}.dlvd-refresh-frequency{white-space:nowrap;font-size:12px;color:var(--dsw-alias-text-secondary,#b8bdc5)}
 .dlvd-timeline button[data-kind=speech]{background:#82d9bd!important}.dlvd-event-timeline [data-category=speech]{--event-color:#82d9bd}.dlvd-event-timeline [data-category=silence]{--event-color:#566578}.dlvd-timeline button[data-kind=command]{background:#ffba72!important}.dlvd-summary-interval{position:absolute;pointer-events:none;height:5px;z-index:1;min-width:1px}.dlvd-summary-interval[data-category=waiting]{top:1px;background:#d9beff}.dlvd-summary-interval[data-category=playback]{bottom:1px;background:#90c4ff}

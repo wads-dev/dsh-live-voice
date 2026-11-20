@@ -365,6 +365,7 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.qwen.hostHelp':
     'Qwen3 ASR + TTS 服务器的主机级设置。请输入 DSH 主机可访问的任意 HTTP 或 HTTPS 基础 URL。浏览器通过需要身份验证的 DSH 路由访问该服务器。',
   'dsh-live-voice.recognition.qwen.label': 'Qwen3 ASR · HTTP API',
+  'dsh-live-voice.recognition.recordingWarning': "无法完整保存录音。转写将继续，但存档中缺少部分音频。",
   'dsh-live-voice.recognition.silenceDetection.chunkPause': '转写前停顿：{milliseconds} 毫秒',
   'dsh-live-voice.recognition.silenceDetection.customHelp':
     '请输入 100 至 10,000 ms 的整数。离开输入框时保存。短停顿可能切分语音；识别还需要额外时间。',
@@ -406,6 +407,8 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.recognition.status.unavailable': '语音识别不可用',
   'dsh-live-voice.recognition.status.waiting': '等待中',
   'dsh-live-voice.recognition.status.waitingCommand': '等待命令',
+  'dsh-live-voice.recognition.transcriptionBufferWarning': "转写缓冲区已满。较早的语音将依赖录音存档，可能无法获取。",
+  'dsh-live-voice.recognition.transcriptionGap': "由于音频不可用，部分语音无法转写。聆听仍在继续。",
   'dsh-live-voice.recognition.voiceCommands.help':
     '用逗号分隔短语。匹配时忽略大小写、重音符号、标点和多余空格。整个最终片段必须完全匹配。',
   'dsh-live-voice.recognition.whisper.captureHelp':

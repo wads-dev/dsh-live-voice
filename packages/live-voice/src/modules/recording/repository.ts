@@ -155,7 +155,7 @@ export function createRecordingRepository(
                               state: 'interrupted' as const,
                               endedAt: now(),
                               pins: current.pins.filter(
-                                (pin) => pin.atSample <= current.savedSamples,
+                                (pin) => pin.atSample <= (current.archiveEndSample ?? current.savedSamples),
                               ),
                             }
                           : {}),
@@ -181,7 +181,13 @@ export function createRecordingRepository(
           throw error;
         }
       })();
-    return opening;
+    const currentOpening = opening;
+    try {
+      return await currentOpening;
+    } catch (error) {
+      if (opening === currentOpening) opening = undefined;
+      throw error;
+    }
   }
   async function locate(id: string): Promise<{ store: PageStore; session: StoredSession }> {
     check();
@@ -354,7 +360,9 @@ export function createRecordingRepository(
     start: number,
     end: number,
   ): Promise<Float32Array> {
-    range(start, end, session.savedSamples);
+    range(start, end, session.archiveEndSample ?? session.savedSamples);
+    if (start < end && session.archiveGaps?.some((gap) => start < gap.endSample && end > gap.startSample))
+      throw new RecordingRepositoryError('archive-gap', 'The requested range contains unavailable archived audio.');
     const result = new Float32Array(end - start);
     let position = start;
     while (position < end) {
@@ -425,8 +433,8 @@ export function createRecordingRepository(
     },
     async audio(id, startSample = 0, endSample) {
       const { store, session } = await settled(id);
-      const end = endSample ?? session.savedSamples;
-      range(startSample, end, session.savedSamples);
+      const end = endSample ?? session.archiveEndSample ?? session.savedSamples;
+      range(startSample, end, session.archiveEndSample ?? session.savedSamples);
       const count = end - startSample;
       if (count * 2 > 0xffffffff - 36)
         throw new RecordingRepositoryError(
@@ -507,7 +515,7 @@ export function createRecordingRepository(
                     segment.startSample - margin(current.configuration?.preRollMs),
                   ),
                   endSample: Math.min(
-                    current.savedSamples,
+                    current.archiveEndSample ?? current.savedSamples,
                     segment.endSample + margin(current.configuration?.postRollMs),
                   ),
                   speechStartSample: segment.startSample,
@@ -576,8 +584,14 @@ export function createRecordingRepository(
       ];
       let position = 0;
       let first = true;
-      while (position < session.savedSamples) {
-        const page = await store.nextPage(id, position, session.savedSamples);
+      const end = session.archiveEndSample ?? session.savedSamples;
+      while (position < end) {
+        const gap = session.archiveGaps?.find((item) => item.startSample === position && item.endSample > position);
+        if (gap) {
+          position = gap.endSample;
+          continue;
+        }
+        const page = await store.nextPage(id, position, end);
         if (!page || page.startSample !== position)
           throw new RecordingRepositoryError(
             'storage-failed',
@@ -780,7 +794,9 @@ export function createRecordingRepository(
           label: input.label,
           ...(participant ? { participant } : {}),
           sampleRate,
-          startedAt: now(),
+          startedAt: input.startedAt && Number.isFinite(Date.parse(input.startedAt))
+            ? new Date(input.startedAt).toISOString()
+            : now(),
           createdOrder: ++creationSequence,
           state: 'recording',
           capturedSamples: 0,
@@ -793,7 +809,7 @@ export function createRecordingRepository(
           pins: [],
           attempts: [],
           events: [
-            { id: crypto.randomUUID(), kind: 'capture-start', occurredAt: now(), atSample: 0 },
+            { id: crypto.randomUUID(), kind: 'capture-start', occurredAt: input.startedAt && Number.isFinite(Date.parse(input.startedAt)) ? new Date(input.startedAt).toISOString() : now(), atSample: 0 },
           ],
           keepPrevious: Math.max(1, Math.floor(policy.keepPrevious)),
         };
@@ -821,6 +837,7 @@ export function createRecordingRepository(
         let sealed = false;
         let finishPromise: Promise<void> | undefined;
         let fatal: RecordingRepositoryError | undefined;
+        let lastGapRequest: { start: number; end: number } | undefined;
         const publish = () => emit();
         const update = async (
           change: (current: StoredSession) => StoredSession,
@@ -829,10 +846,10 @@ export function createRecordingRepository(
           const captured = session.capturedSamples;
           session = await store.update(
             id,
-            (current) => ({
-              ...change(current),
-              capturedSamples: Math.max(current.capturedSamples, captured),
-            }),
+            (current) => {
+              const next = change(current);
+              return { ...next, capturedSamples: Math.max(next.capturedSamples, current.capturedSamples, captured) };
+            },
             page,
           );
           publish();
@@ -854,7 +871,7 @@ export function createRecordingRepository(
           const page: AudioPage = {
             recordingId: id,
             index,
-            startSample: session.savedSamples,
+            startSample: session.archiveEndSample ?? session.savedSamples,
             sampleCount: count,
             sampleRate,
             ...encoded,
@@ -862,7 +879,8 @@ export function createRecordingRepository(
           await update(
             (current) => ({
               ...current,
-              savedSamples: page.startSample + count,
+              savedSamples: current.savedSamples + count,
+              archiveEndSample: page.startSample + count,
               audioBytes: (current.audioBytes ?? 0) + audioPageBytes(page),
             }),
             page,
@@ -872,18 +890,7 @@ export function createRecordingRepository(
         };
         const fail = async (error: unknown) => {
           fatal = error instanceof RecordingRepositoryError ? error : storageError(error);
-          pendingCount = 0;
-          try {
-            await update((current) => ({
-              ...current,
-              state: 'failed',
-              error: fatal.code,
-              endedAt: now(),
-            }));
-          } catch {
-            session = { ...session, state: 'failed', error: fatal.code, endedAt: now() };
-            publish();
-          }
+          // Retain the failed partial page until its loss is recorded.
           throw fatal;
         };
         const writer: RecordingWriter = {
@@ -904,7 +911,7 @@ export function createRecordingRepository(
               return enqueue(async () => {
                 try {
                   if (fatal) throw fatal;
-                  session.capturedSamples += copy.length;
+                  session.capturedSamples = Math.max(session.capturedSamples, (session.archiveEndSample ?? session.savedSamples) + pendingCount + copy.length);
                   let offset = 0;
                   while (offset < copy.length) {
                     const count = Math.min(pending.length - pendingCount, copy.length - offset);
@@ -975,14 +982,85 @@ export function createRecordingRepository(
                 try {
                   await flush();
                 } catch (error) {
-                  return fail(error);
+                  try { return await fail(error); }
+                  catch (failure) {
+                    throw Object.assign(new Error('Recording flush failed during archive read.', { cause: failure }), {
+                      name: 'RecordingRepositoryError',
+                      code: (failure as RecordingRepositoryError).code,
+                      archiveWriteFailure: true,
+                    });
+                  }
                 }
               }
               return readRange(store, session, start, end);
             });
           },
-          finish(state = 'completed', error) {
+          markArchiveGap(startSample, endSample) {
+            return enqueue(async () => {
+              check();
+              if (sealed) throw new RecordingRepositoryError('sealed', 'The recording has been sealed.');
+              if (!Number.isSafeInteger(startSample) || !Number.isSafeInteger(endSample) ||
+                  startSample < 0 || endSample < startSample)
+                throw new RecordingRepositoryError('invalid-range', 'The archive gap is invalid.');
+              if (lastGapRequest?.start === startSample && lastGapRequest.end === endSample) return;
+              let boundary = session.archiveEndSample ?? session.savedSamples;
+              // A repeated confirmed gap must not discard a newer partial page.
+              if (endSample <= boundary && session.archiveGaps?.some(
+                (gap) => startSample >= gap.startSample && endSample <= gap.endSample,
+              )) return;
+              if (endSample < boundary)
+                throw new RecordingRepositoryError('invalid-range', 'The archive gap must start at the saved boundary.');
+              // Preserve a healthy partial page if it ends before the next retained PCM.
+              // A failed page is ambiguous and must not be retried here.
+              if (!fatal && pendingCount && boundary + pendingCount <= endSample) {
+                try {
+                  await flush();
+                  boundary = session.archiveEndSample ?? session.savedSamples;
+                } catch (error) {
+                  fatal = error instanceof RecordingRepositoryError ? error : storageError(error);
+                }
+              }
+              const end = Math.max(endSample, boundary + pendingCount);
+              await update((current) => {
+                const gaps = [...(current.archiveGaps ?? [])];
+                const last = gaps[gaps.length - 1];
+                if (end > boundary) {
+                  if (last && last.endSample === boundary) last.endSample = end;
+                  else gaps.push({ startSample: boundary, endSample: end });
+                }
+                return { ...current, capturedSamples: Math.max(current.capturedSamples, end),
+                  archiveEndSample: end, archiveGaps: gaps };
+              });
+              pendingCount = 0;
+              fatal = undefined;
+              lastGapRequest = { start: startSample, end: endSample };
+            });
+          },
+          recordEvent(value) {
+            const afterFinish = sealed;
+            try {
+              check();
+              if (!Number.isSafeInteger(value.atSample) || value.atSample < 0 ||
+                  !Number.isFinite(Date.parse(value.occurredAt)))
+                throw new RecordingRepositoryError('invalid-range', 'The recording event is invalid.');
+            } catch (error) { return Promise.reject(error); }
+            const copy = structuredClone(value);
+            return enqueue(async () => {
+              const releaseEvent = afterFinish && store !== memory ? await holdLock(id) : () => {};
+              try {
+                await update((current) => ({
+                  ...current,
+                  events: [...(current.events ?? []), copy],
+                }));
+              } finally { releaseEvent(); }
+            });
+          },
+          finish(state = 'completed', error, captureEnd) {
             if (finishPromise) return finishPromise;
+            const endedAt = captureEnd?.occurredAt ?? now();
+            const endSample = captureEnd?.atSample ?? session.capturedSamples;
+            if (!Number.isFinite(Date.parse(endedAt)) || !Number.isSafeInteger(endSample) || endSample < 0)
+              return Promise.reject(new RecordingRepositoryError('invalid-range', 'The capture end is invalid.'));
             sealed = true;
             finishPromise = enqueue(async () => {
               try {
@@ -995,16 +1073,24 @@ export function createRecordingRepository(
                 }
                 await update((current) => ({
                   ...current,
+                  capturedSamples: Math.max(current.capturedSamples, endSample),
+                  ...(captureEnd?.markMissingTail && endSample > (current.archiveEndSample ?? current.savedSamples)
+                    ? {
+                        archiveEndSample: endSample,
+                        archiveGaps: [...(current.archiveGaps ?? []), {
+                          startSample: current.archiveEndSample ?? current.savedSamples, endSample,
+                        }],
+                      } : {}),
                   state: fatal ? 'failed' : state,
                   error: fatal?.code ?? error,
-                  endedAt: now(),
+                  endedAt,
                   events: [
                     ...(current.events ?? []),
                     {
                       id: crypto.randomUUID(),
                       kind: 'capture-end',
-                      occurredAt: now(),
-                      atSample: current.capturedSamples,
+                      occurredAt: endedAt,
+                      atSample: endSample,
                     },
                   ],
                 }));

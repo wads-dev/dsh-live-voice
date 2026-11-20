@@ -5,6 +5,7 @@ import {
   RecordingRepositoryError,
 } from '../src/modules/recording/repository.js';
 import { createMemoryStore } from '../src/modules/recording/storage.js';
+import { beginResilientWriter } from '../src/modules/recording/resilientWriter.js';
 import type { AudioPage } from '../src/modules/recording/codec.js';
 import { recordingTranscriber } from '../src/modules/recognition/recordingTranscriber.js';
 
@@ -105,6 +106,102 @@ const input = (sourceId = 'microphone') => ({
   label: 'Test source',
   sampleRate: 16000,
   policy: { enabled: false, keepPrevious: 0, bitrate: 24000, preRollMs: 100, postRollMs: 100 },
+});
+
+test('writer event capability retains occurrence and cannot resurrect deleted recording', async () => {
+  const codecs = fakeCodecs(), repo = createRecordingRepository();
+  try {
+    const writer = await repo.begin(input());
+    await writer.append(new Float32Array(16000));
+    const end = { occurredAt: '2020-01-02T03:04:05.000Z', atSample: 16000 };
+    await writer.finish('completed', undefined, end);
+    const event = { id: crypto.randomUUID(), kind: 'voice-command-recognized' as const,
+      occurredAt: '2020-01-02T03:04:06.000Z', atSample: 1234,
+      details: { command: 'send' as const } };
+    await writer.recordEvent!(event);
+    const saved = (await repo.get(writer.session.id))!;
+    assert.equal(saved.endedAt, end.occurredAt);
+    assert.deepEqual(saved.events?.find((item) => item.kind === 'capture-end'),
+      { id: saved.events?.find((item) => item.kind === 'capture-end')?.id, kind: 'capture-end', occurredAt: end.occurredAt, atSample: 16000 });
+    assert.deepEqual(saved.events?.at(-1), event);
+    await repo.remove(writer.session.id);
+    await assert.rejects(writer.recordEvent!(event), { code: 'not-found' });
+    assert.equal(await repo.get(writer.session.id), null);
+  } finally { await repo.dispose(); codecs.restore(); }
+});
+
+test('aborted capture end records unsaved tail as explicit gap', async () => {
+  const codecs = fakeCodecs(), repo = createRecordingRepository();
+  try {
+    const writer = await repo.begin(input());
+    await writer.append(new Float32Array(1000));
+    await writer.finish('failed', 'archive-incomplete', {
+      occurredAt: '2020-01-02T03:04:05.000Z', atSample: 1500, markMissingTail: true,
+    });
+    const session = (await repo.get(writer.session.id))!;
+    assert.equal(session.savedSamples, 1000);
+    assert.equal(session.capturedSamples, 1500);
+    assert.equal(session.archiveEndSample, 1500);
+    assert.deepEqual(session.archiveGaps, [{ startSample: 1000, endSample: 1500 }]);
+    assert.equal(session.events?.find((event) => event.kind === 'capture-end')?.atSample, 1500);
+    await assert.rejects(repo.audio(writer.session.id, 1000, 1500), { code: 'archive-gap' });
+  } finally { await repo.dispose(); codecs.restore(); }
+});
+
+test('repository accepts original capture time and preserves legacy begin behavior', async () => {
+  const codecs = fakeCodecs(), repo = createRecordingRepository();
+  try {
+    const original = '2020-01-02T03:04:05.000Z';
+    const delayed = await repo.begin({ ...input(), startedAt: original });
+    assert.equal(delayed.session.startedAt, original);
+    assert.equal(delayed.session.events?.[0].occurredAt, original);
+    await delayed.finish();
+    const before = Date.now();
+    const legacy = await repo.begin(input());
+    assert.ok(Date.parse(legacy.session.startedAt) >= before);
+    assert.ok(Number.isFinite(Date.parse(legacy.session.startedAt)));
+    await legacy.finish();
+  } finally { await repo.dispose(); codecs.restore(); }
+});
+
+test('real repository read-flush failure warns and reconciles before later writes', { timeout: 10000 }, async () => {
+  const codecs = fakeCodecs();
+  const Encoder = globalThis.AudioEncoder;
+  let failNext = false;
+  class FaultEncoder extends Encoder {
+    configure(config: AudioEncoderConfig) {
+      if (failNext) { failNext = false; throw new Error('injected flush failure'); }
+      return super.configure(config);
+    }
+  }
+  Object.defineProperty(globalThis, 'AudioEncoder', { value: FaultEncoder, configurable: true });
+  const repo = createRecordingRepository();
+  let warnings = 0;
+  try {
+    const writer = await beginResilientWriter(repo, input(), undefined, () => true, () => warnings++);
+    await writer.append(new Float32Array(16000).fill(0.5));
+    for (let i = 0; i < 80; i++) {
+      await writer.append(new Float32Array(16000));
+      for (let j = 0; j < 2; j++) await new Promise((resolve) => setImmediate(resolve));
+    }
+    await writer.append(new Float32Array(4000).fill(0.25));
+    for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+    failNext = true;
+    await assert.rejects(writer.read(0, 1), { code: 'audio-gap' });
+    assert.equal(warnings, 1);
+    await writer.append(new Float32Array(16000));
+    await writer.finish();
+    let saved = (await repo.list())[0];
+    while (saved.state === 'recording') {
+      await new Promise((resolve) => setImmediate(resolve));
+      saved = (await repo.list())[0];
+    }
+    assert.deepEqual(saved.archiveGaps, [{ startSample: 81 * 16000, endSample: 81 * 16000 + 4000 }]);
+    assert.equal(saved.archiveEndSample, 82 * 16000 + 4000);
+    assert.equal(saved.savedSamples, 82 * 16000);
+    assert.equal(saved.state, 'failed');
+    assert.equal((await repo.audio(saved.id, 81 * 16000 + 4000, 82 * 16000 + 4000)).size > 44, true);
+  } finally { await repo.dispose(); codecs.restore(); }
 });
 
 test('starred names survive audio writes and timeline events survive capture gating', async () => {

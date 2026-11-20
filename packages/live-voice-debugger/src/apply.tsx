@@ -2,6 +2,7 @@ import React from 'react';
 import { Hint, Icon } from '../../live-voice/src/shared/design-system/index.js';
 import { createRoot, type Root } from 'react-dom/client';
 import { DebuggerPanel } from './DebuggerPanel.js';
+import { createVoiceErrorJournal } from './errorJournal.js';
 import {
   namespace,
   registerDshLocales,
@@ -13,6 +14,7 @@ import { syncDebuggerTheme } from './theme.js';
 import { publishDeveloperExtension } from '../../live-voice/src/modules/core/developerExtension.js';
 export const inject = ['locale'];
 export function apply(ctx: any) {
+  let journal: ReturnType<typeof createVoiceErrorJournal> | undefined;
   let enabled = false;
   let blocked = false;
   let requestedRecording: { id?: string; revision: number } = { revision: 0 };
@@ -54,6 +56,7 @@ export function apply(ctx: any) {
         locale={current.locale}
         target={window}
         recordingRequest={request}
+        journal={journal}
         onClose={() => queueMicrotask(close)}
       />
     );
@@ -135,6 +138,14 @@ export function apply(ctx: any) {
       }),
     namespace + ': Developer tab',
   );
+  ctx.effect(() => {
+    journal = createVoiceErrorJournal(window);
+    const current = journal;
+    return () => {
+      current.dispose();
+      if (journal === current) journal = undefined;
+    };
+  }, namespace + ': error journal');
   ctx.effect(() => {
     window.addEventListener('pagehide', close);
     return () => {
