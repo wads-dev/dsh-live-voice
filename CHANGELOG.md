@@ -17,10 +17,23 @@ Roadmap only — not implemented or released. Scope and delivery timing may chan
 
 ## [NEXT] - Unreleased
 
+Upcoming changes will be recorded here.
+
+## [0.8.2] - 2026-11-20
+
+### Features
+
+- Pause automatic inactivity ending while an assistant response is being generated, enabled by default and configurable in Automatic ending settings.
+
 ### Improvements
 
+- Confirm compatibility with DeepSeek Harness v0.2.2-rc.5.
 - Arrange timestamp format switches side by side with wrapping on narrow screens, keeping the preview and source-name settings below.
 - Identify Live Voice in the DSH settings menu with a microphone-and-audio-waves icon instead of the generic settings gear, using the official section-icon slot and theme colors.
+
+### Fixes
+
+- Fix Update now on current DSH versions by using the official bundle-update API instead of trying to install an already installed bundle. Check the requested version in the host registry first, preserve host update eligibility and security policies, and report failed updates separately from restoration of the previous version.
 
 ## [0.8.1] - 2026-11-15
 
@@ -586,6 +599,3 @@ This release expands conversation control, audio routing, speech filtering, and 
 [0.1.0]: https://github.com/victorwads/dsh-live-voice/compare/v0.0.2...v0.1.0
 [0.0.2]: https://github.com/victorwads/dsh-live-voice/compare/v0.0.1-alpha.1...v0.0.2
 [0.0.1-alpha.1]: https://github.com/victorwads/dsh-live-voice/tree/v0.0.1-alpha.1
-### Fixes
-
-- Fix Update now on current DSH versions by using the official bundle-update API instead of trying to install an already installed bundle. Check the requested version in the host registry first, preserve host update eligibility and security policies, and report failed updates separately from restoration of the previous version.
