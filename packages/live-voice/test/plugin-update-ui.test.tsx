@@ -32,12 +32,21 @@ test('every locale offers an explicit confirmation and retains install state acr
               version: '0.4.1',
               installed: true,
               availability: 'profile',
+              update: 'registry',
               enabled: true,
               source: 'dsh-live-voice@^0.4.1',
             },
           ],
         }),
-        installBundle: () => {
+        listVersions: async () => ({
+          ok: true,
+          value: {
+            status: 'listed',
+            registry: 'https://registry.npmjs.org/',
+            versions: [{ version: '9.0.0', bundle: true }],
+          },
+        }),
+        updateBundle: () => {
           calls++;
           return new Promise((resolve) => {
             settle = resolve;
@@ -71,7 +80,12 @@ test('every locale offers an explicit confirmation and retains install state acr
       await act(async () =>
         settle({
           ok: true,
-          value: { application: 'restart-required', bundle: 'dsh-live-voice', version: '9.0.0' },
+          value: {
+            from: '0.4.1',
+            to: '9.0.0',
+            step: 'install',
+            result: { application: 'restart-required', bundle: 'dsh-live-voice', version: '9.0.0' },
+          },
         }),
       );
       assert.ok(document.querySelector('[role="status"]').textContent.includes('9.0.0'));

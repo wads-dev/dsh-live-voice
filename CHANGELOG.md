@@ -586,3 +586,6 @@ This release expands conversation control, audio routing, speech filtering, and 
 [0.1.0]: https://github.com/victorwads/dsh-live-voice/compare/v0.0.2...v0.1.0
 [0.0.2]: https://github.com/victorwads/dsh-live-voice/compare/v0.0.1-alpha.1...v0.0.2
 [0.0.1-alpha.1]: https://github.com/victorwads/dsh-live-voice/tree/v0.0.1-alpha.1
+### Fixes
+
+- Fix Update now on current DSH versions by using the official bundle-update API instead of trying to install an already installed bundle. Check the requested version in the host registry first, preserve host update eligibility and security policies, and report failed updates separately from restoration of the previous version.

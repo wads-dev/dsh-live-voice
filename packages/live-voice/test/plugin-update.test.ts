@@ -7,6 +7,7 @@ const bundle = {
   installed: true,
   availability: 'profile',
   enabled: true,
+  update: 'registry',
   source: 'dsh-live-voice@^0.4.1',
   version: '0.4.1',
 };
@@ -17,9 +18,17 @@ function fixture(
   const calls = [];
   const api = {
     listBundles: async () => ({ ok: true, value: [{ ...bundle, ...overrides }] }),
-    installBundle: async (...args) => {
+    listVersions: async () => ({
+      ok: true,
+      value: {
+        status: 'listed',
+        registry: 'https://registry.npmjs.org/',
+        versions: [{ version: '9.0.0', bundle: true, tags: ['latest'], prerelease: false }],
+      },
+    }),
+    updateBundle: async (...args) => {
       calls.push(args);
-      return { ok: true, value: reply };
+      return { ok: true, value: { from: '0.4.1', to: '9.0.0', step: 'install', result: reply } };
     },
   };
   return { api, calls, updater: createPluginUpdate({ manager: () => api }) };
@@ -32,11 +41,65 @@ test('requires explicit confirmation, installs exact release and preserves enabl
   assert.equal(f.updater.getSnapshot().phase, 'confirm');
   assert.equal(f.calls.length, 0);
   await Promise.all([f.updater.confirm(), f.updater.confirm()]);
-  assert.deepEqual(f.calls, [['dsh-live-voice@9.0.0', { enabled: false, saveExact: true }]]);
+  assert.equal(f.calls[0][0], 'dsh-live-voice');
+  assert.equal(f.calls[0][1], '9.0.0');
+  assert.equal(f.calls[0][2].registry, 'https://registry.npmjs.org/');
+  assert.match(f.calls[0][2].requestId, /^[0-9a-f-]{36}$/);
   assert.equal(f.updater.getSnapshot().phase, 'restart');
   await f.updater.prepare('v9.1.0');
   assert.equal(f.calls.length, 1);
 });
+test('registry preflight blocks unavailable and incompatible releases before mutation', async () => {
+  for (const [versions, problem] of [
+    [[], 'delayed'],
+    [[{ version: '9.0.0', bundle: true, incompatible: {} }], 'incompatible'],
+    [[{ version: '9.0.0', bundle: false }], 'unavailable'],
+  ]) {
+    const f = fixture();
+    f.api.listVersions = async () => ({
+      ok: true,
+      value: { status: 'listed', registry: null, versions },
+    });
+    await f.updater.prepare('v9.0.0');
+    assert.equal(f.updater.getSnapshot().problem, problem);
+    assert.equal(f.calls.length, 0);
+  }
+});
+
+test('restoration outcomes remain distinct and lock automatic retries', async () => {
+  for (const application of ['applied', 'restart-required', 'failed']) {
+    const f = fixture();
+    f.api.updateBundle = async () => ({
+      ok: true,
+      value: {
+        from: '0.4.1',
+        to: '9.0.0',
+        step: 'install',
+        result: { application: 'failed' },
+        restore: { application },
+      },
+    });
+    await f.updater.prepare('v9.0.0');
+    await f.updater.confirm();
+    assert.equal(f.updater.getSnapshot().phase, 'uncertain');
+    assert.equal(
+      f.updater.getSnapshot().problem,
+      application === 'failed' ? 'restoreFailed' : 'restored',
+    );
+  }
+});
+
+test('registry-tag sources use host eligibility and older managers fail safely', async () => {
+  const f = fixture({ source: 'latest' });
+  await f.updater.prepare('v9.0.0');
+  await f.updater.confirm();
+  assert.equal(f.calls.length, 1);
+  const legacy = fixture();
+  legacy.api.updateBundle = undefined;
+  await legacy.updater.prepare('v9.0.0');
+  assert.equal(legacy.updater.getSnapshot().problem, 'unavailable');
+});
+
 test('cancel and invalid or old releases never install', async () => {
   const f = fixture();
   for (const tag of ['--help', '9.0.0;echo bad', 'https://example.com', 'v0.0.1'])
@@ -55,7 +118,7 @@ test('refuses local/custom dependencies and unavailable profiles', async () => {
     'latest',
     'https://example.com/archive.tgz',
   ]) {
-    const f = fixture({ source });
+    const f = fixture({ source, update: undefined });
     await f.updater.prepare('v9.0.0');
     await f.updater.confirm();
     assert.equal(f.updater.getSnapshot().problem, 'local');
@@ -76,7 +139,10 @@ test('rechecks source and voice activity at confirmation', async () => {
   assert.equal(f.calls.length, 0);
   busy = false;
   await u.prepare('v9.0.0');
-  f.api.listBundles = async () => ({ ok: true, value: [{ ...bundle, source: 'link:/tmp/dev' }] });
+  f.api.listBundles = async () => ({
+    ok: true,
+    value: [{ ...bundle, source: 'link:/tmp/dev', update: undefined }],
+  });
   await u.confirm();
   assert.equal(u.getSnapshot().problem, 'local');
   assert.equal(f.calls.length, 0);
@@ -86,7 +152,7 @@ test('failed installs never approve scripts or report success', async () => {
   await f.updater.prepare('v9.0.0');
   await f.updater.confirm();
   assert.equal(f.updater.getSnapshot().problem, 'scripts');
-  assert.equal(f.calls[0][1].approvedBuilds, undefined);
+  assert.equal(f.calls[0][2].approvedBuilds, undefined);
 });
 test('lost replies and mismatched results stay uncertain without retry', async () => {
   for (const reply of [
@@ -99,7 +165,7 @@ test('lost replies and mismatched results stay uncertain without retry', async (
     assert.equal(f.updater.getSnapshot().phase, 'uncertain');
   }
   const f = fixture();
-  f.api.installBundle = async () => {
+  f.api.updateBundle = async () => {
     f.calls.push('attempt');
     throw new Error('connection lost');
   };
@@ -126,6 +192,6 @@ test('alpha3 installer failure kinds produce actionable blockers without approva
     assert.equal(f.updater.getSnapshot().problem, problem);
     assert.equal(f.updater.getSnapshot().phase, 'failed');
     assert.equal(f.calls.length, 1);
-    assert.deepEqual(f.calls[0][1], { enabled: true, saveExact: true });
+    assert.deepEqual(Object.keys(f.calls[0][2]).sort(), ['registry', 'requestId']);
   }
 });

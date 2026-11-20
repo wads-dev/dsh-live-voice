@@ -72,6 +72,10 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.commons.update.now': 'Update now',
   'dsh-live-voice.commons.update.restart':
     'Live Voice {version} installed. Restart DSH when ready, then reload this page.',
+  'dsh-live-voice.commons.update.restoreFailed':
+    'The update failed and DSH could not restore the previous version. Open the plugin manager to recover this installation.',
+  'dsh-live-voice.commons.update.restored':
+    'The update failed, but DSH restored the previous version. Check the plugin manager before retrying.',
   'dsh-live-voice.commons.update.scripts':
     'Package scripts need approval. Review them in the DSH plugin manager; no scripts were approved here.',
   'dsh-live-voice.commons.update.unavailable':
