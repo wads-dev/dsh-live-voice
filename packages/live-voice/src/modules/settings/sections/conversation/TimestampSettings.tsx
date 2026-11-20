@@ -8,17 +8,19 @@ export function TimestampSettings({ settings, updateSettings }: any) {
   const copy = (scoped as any).timestamp;
   return (
     <SettingsSection title={copy.title()} icon="clock" hint={copy.help()}>
-      {['Day', 'Month', 'Year', 'Seconds', 'Punctuation'].map((part) => {
-        const key = 'timestamp' + part;
-        return (
-          <CheckboxField
-            key={key}
-            label={copy[part.toLowerCase()]()}
-            checked={settings[key] !== false}
-            onChange={(event) => updateSettings({ [key]: event.target.checked })}
-          />
-        );
-      })}
+      <div className="dlv-timestamp-parts">
+        {['Day', 'Month', 'Year', 'Seconds', 'Punctuation'].map((part) => {
+          const key = 'timestamp' + part;
+          return (
+            <CheckboxField
+              key={key}
+              label={copy[part.toLowerCase()]()}
+              checked={settings[key] !== false}
+              onChange={(event) => updateSettings({ [key]: event.target.checked })}
+            />
+          );
+        })}
+      </div>
       <output aria-label={copy.preview()}>
         {formatTimestamp(new Date(2026, 10, 9, 14, 25, 36), settings)}
       </output>

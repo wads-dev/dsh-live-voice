@@ -162,6 +162,19 @@ test('mounted voice UI exposes controls, distinct states, and capability failure
     );
     const conversation = panels.find((panel) => panel.id.endsWith('-panel-conversation'));
     assert.equal(conversation.hidden, false);
+    const timestampParts = conversation.querySelector('.dlv-timestamp-parts');
+    assert.ok(timestampParts);
+    assert.deepEqual(
+      [...timestampParts.querySelectorAll('label')].map((node) => node.textContent.trim()),
+      ['Day', 'Month', 'Year', 'Seconds', 'Punctuation'],
+    );
+    assert.equal(timestampParts.nextElementSibling.tagName, 'OUTPUT');
+    assert.equal(timestampParts.querySelectorAll('input[type=checkbox]').length, 5);
+    const callsBeforeTimestampToggle = calls.length;
+    await act(async () => timestampParts.querySelector('input').click());
+    assert.deepEqual(calls.at(-1), ['settings', { timestampDay: false }]);
+    await act(async () => timestampParts.querySelector('input').click());
+    calls.splice(callsBeforeTimestampToggle);
     assert.match(conversation.textContent, /Automatic assistant speech/);
     assert.match(conversation.textContent, /Stop assistant speech when I send a message/);
     assert.match(conversation.textContent, /does not stop the assistant audio/);

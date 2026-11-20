@@ -19,6 +19,7 @@ Roadmap only — not implemented or released. Scope and delivery timing may chan
 
 ### Improvements
 
+- Arrange timestamp format switches side by side with wrapping on narrow screens, keeping the preview and source-name settings below.
 - Identify Live Voice in the DSH settings menu with a microphone-and-audio-waves icon instead of the generic settings gear, using the official section-icon slot and theme colors.
 
 ## [0.8.1] - 2026-11-15
