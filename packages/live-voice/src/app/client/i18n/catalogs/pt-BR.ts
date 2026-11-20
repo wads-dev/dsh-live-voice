@@ -73,6 +73,10 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.commons.update.now': 'Atualizar agora',
   'dsh-live-voice.commons.update.restart':
     'Voz ao Vivo {version} instalado. Reinicie o DSH quando quiser e depois recarregue esta página.',
+  'dsh-live-voice.commons.update.restoreFailed':
+    'A atualização falhou e o DSH não conseguiu restaurar a versão anterior. Abra o gerenciador de plugins para recuperar a instalação.',
+  'dsh-live-voice.commons.update.restored':
+    'A atualização falhou, mas o DSH restaurou a versão anterior. Confira o gerenciador de plugins antes de tentar novamente.',
   'dsh-live-voice.commons.update.scripts':
     'Scripts de pacotes precisam de aprovação. Revise no gerenciador de plugins do DSH; nenhum script foi aprovado aqui.',
   'dsh-live-voice.commons.update.unavailable':
@@ -489,8 +493,9 @@ const ptBR: LiveVoiceTranslation = {
   'dsh-live-voice.settings.autoEnd.enabled': 'Encerrar captura de voz automaticamente',
   'dsh-live-voice.settings.autoEnd.ended': 'Sessão de voz encerrada por inatividade.',
   'dsh-live-voice.settings.autoEnd.help':
-    'Encerra todas as fontes de entrada após um período sem texto reconhecido. Novo texto ou Continuar ouvindo reinicia a contagem. Os tempos são em minutos; a antecedência deve ser positiva e no máximo 50% do total. Não há mute automático. Um reconhecimento travado pode adiar o encerramento em até 30 segundos.',
+    'Encerra todas as fontes de entrada após um período sem texto reconhecido. Novo texto ou Continuar ouvindo reinicia a contagem. Com a opção de pausar durante a resposta ativada, o encerramento automático fica pausado enquanto o assistente gera uma resposta, e a contagem regressiva continua depois. Os tempos são em minutos; a antecedência deve ser positiva e no máximo 50% do total. Não há mute automático. Um reconhecimento travado pode adiar o encerramento em até 30 segundos.',
   'dsh-live-voice.settings.autoEnd.minutes': 'Encerrar após inatividade (minutos)',
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': 'Pausar o encerramento automático enquanto o assistente gera uma resposta',
   'dsh-live-voice.settings.autoEnd.restart': 'Iniciar novamente',
   'dsh-live-voice.settings.autoEnd.stopFailed':
     'Não foi possível encerrar alguns recursos de voz. Verifique os controles de entrada.',

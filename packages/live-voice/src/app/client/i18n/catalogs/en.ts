@@ -481,8 +481,9 @@ const en: LiveVoiceTranslation = {
   'dsh-live-voice.settings.autoEnd.enabled': 'End voice capture automatically',
   'dsh-live-voice.settings.autoEnd.ended': 'Voice session ended due to inactivity.',
   'dsh-live-voice.settings.autoEnd.help':
-    'End all input sources after no recognized text. New text or Continue listening resets the clock. Both times are in minutes; warning lead time must be positive and at most 50% of the total. No automatic mute. A stalled recognition can delay ending by up to 30 seconds.',
+    'End all input sources after no recognized text. New text or Continue listening resets the clock. Both times are in minutes; warning lead time must be positive and at most 50% of the total. No automatic mute. A stalled recognition can delay ending by up to 30 seconds. When enabled, the inactivity clock pauses while an assistant response is being generated and resumes afterward.',
   'dsh-live-voice.settings.autoEnd.minutes': 'End after inactivity (minutes)',
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': 'Pause automatic ending while the assistant responds',
   'dsh-live-voice.settings.autoEnd.restart': 'Start again',
   'dsh-live-voice.settings.autoEnd.stopFailed':
     'Some voice resources could not be stopped. Check the input controls.',

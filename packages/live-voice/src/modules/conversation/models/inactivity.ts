@@ -9,6 +9,7 @@ export class VoiceInactivity {
   busySince = 0;
   warningText = '';
   echoUntil = 0;
+  pausedAt = 0;
   constructor(
     private options: {
       now?: () => number;
@@ -55,18 +56,32 @@ export class VoiceInactivity {
     this.keepAlive();
     return true;
   }
-  tick(active: boolean, busy: boolean, settings: any) {
+  tick(active: boolean, busy: boolean, settings: any, generating = false) {
     const now = this.now();
     const gap = this.lastTick && now - this.lastTick > 10000;
     this.lastTick = now;
     if (!settings.autoEndEnabled || !active) {
       this.active = false;
+      this.pausedAt = 0;
       if (this.snapshot.phase !== 'ended' || active) this.patch('idle');
       return;
     }
     if (!this.active) {
       this.active = true;
       this.keepAlive();
+    }
+    if (settings.autoEndPauseWhileResponding && generating) {
+      if (!this.pausedAt) this.pausedAt = now;
+      this.lastTick = now;
+      return;
+    }
+    if (this.pausedAt) {
+      const pausedFor = now - this.pausedAt;
+      this.lastText = this.lastText >= this.pausedAt ? now : this.lastText + pausedFor;
+      if (this.deadline) this.deadline += pausedFor;
+      if (this.busySince) this.busySince += pausedFor;
+      this.pausedAt = 0;
+      this.lastTick = now;
     }
     const total = settings.autoEndMinutes * 60000;
     const warning = settings.autoEndWarningMinutes * 60000;

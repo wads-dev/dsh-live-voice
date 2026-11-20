@@ -87,6 +87,7 @@ export const defaultSettings = Object.freeze({
   sendingMode: 'manual',
   dshBusyEnterBehavior: 'queue',
   autoEndEnabled: true,
+  autoEndPauseWhileResponding: true,
   autoEndMinutes: 5,
   autoEndWarningMinutes: 1,
   autoSendDelaySeconds: 4,
@@ -330,6 +331,10 @@ export function normalizeSettings(value) {
           ? source.sendingMode
           : defaultSettings.sendingMode,
     autoEndEnabled: typeof source.autoEndEnabled === 'boolean' ? source.autoEndEnabled : true,
+    autoEndPauseWhileResponding:
+      typeof source.autoEndPauseWhileResponding === 'boolean'
+        ? source.autoEndPauseWhileResponding
+        : true,
     autoEndMinutes: positiveMinutes(source.autoEndMinutes, 5),
     autoEndWarningMinutes: Math.min(
       positiveMinutes(source.autoEndWarningMinutes, 1),

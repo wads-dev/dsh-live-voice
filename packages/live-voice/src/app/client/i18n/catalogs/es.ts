@@ -74,6 +74,10 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.commons.update.now': 'Actualizar ahora',
   'dsh-live-voice.commons.update.restart':
     'Voz en vivo {version} instalado. Reinicia DSH cuando quieras y luego recarga esta página.',
+  'dsh-live-voice.commons.update.restoreFailed':
+    'La actualización falló y DSH no pudo restaurar la versión anterior. Abre el gestor de plugins para recuperar la instalación.',
+  'dsh-live-voice.commons.update.restored':
+    'La actualización falló, pero DSH restauró la versión anterior. Revisa el gestor de plugins antes de reintentar.',
   'dsh-live-voice.commons.update.scripts':
     'Los scripts necesitan aprobación. Revísalos en el gestor de plugins de DSH; aquí no se aprobó ninguno.',
   'dsh-live-voice.commons.update.unavailable':
@@ -496,8 +500,9 @@ const es: LiveVoiceTranslation = {
   'dsh-live-voice.settings.autoEnd.enabled': 'Finalizar la captura de voz automáticamente',
   'dsh-live-voice.settings.autoEnd.ended': 'Sesión de voz finalizada por inactividad.',
   'dsh-live-voice.settings.autoEnd.help':
-    'Finaliza todas las fuentes sin texto reconocido. El texto nuevo o Seguir escuchando reinicia el plazo. Los tiempos están en minutos; el aviso debe ser positivo y como máximo el 50% del total. Sin silencio automático. Un reconocimiento bloqueado puede retrasar el cierre hasta 30 segundos.',
+    'Finaliza todas las fuentes sin texto reconocido. El texto nuevo o Seguir escuchando reinicia el plazo. Si activas la pausa durante la respuesta, el cierre automático se pausa mientras el asistente genera una respuesta y la cuenta atrás continúa después. Los tiempos están en minutos; el aviso debe ser positivo y como máximo el 50% del total. Sin silencio automático. Un reconocimiento bloqueado puede retrasar el cierre hasta 30 segundos.',
   'dsh-live-voice.settings.autoEnd.minutes': 'Finalizar tras inactividad (minutos)',
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': 'Pausar el cierre automático mientras el asistente genera una respuesta',
   'dsh-live-voice.settings.autoEnd.restart': 'Iniciar de nuevo',
   'dsh-live-voice.settings.autoEnd.stopFailed':
     'No se pudieron detener algunos recursos de voz. Revisa los controles de entrada.',

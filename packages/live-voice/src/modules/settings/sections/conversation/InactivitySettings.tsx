@@ -15,6 +15,13 @@ export function InactivitySettings({ settings, updateSettings }: any) {
         checked={settings.autoEndEnabled !== false}
         onChange={(event) => updateSettings({ autoEndEnabled: event.target.checked })}
       />
+      <CheckboxField
+        label={copy.pauseWhileResponding()}
+        checked={settings.autoEndPauseWhileResponding !== false}
+        onChange={(event) =>
+          updateSettings({ autoEndPauseWhileResponding: event.target.checked })
+        }
+      />
       <NumberField
         label={copy.minutes()}
         value={settings.autoEndMinutes}

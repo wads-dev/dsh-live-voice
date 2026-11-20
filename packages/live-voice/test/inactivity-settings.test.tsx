@@ -49,6 +49,9 @@ test('inactivity fields persist on blur, reject invalid lead times and allow fra
   assert.equal(inputs[0].value, '5');
   assert.equal(inputs[1].value, '1');
   assert.equal(inputs[1].max, '2.5');
+  const checkboxes = [...document.querySelectorAll('input[type=checkbox]')];
+  assert.equal(checkboxes.length, 2);
+  assert.equal(checkboxes[1].checked, true);
   assert.equal(document.querySelectorAll('.dlv-hint-trigger').length, 1);
   assert.equal(document.querySelectorAll('p').length, 0);
   const commit = async (input, raw) => {
@@ -80,6 +83,8 @@ test('inactivity fields persist on blur, reject invalid lead times and allow fra
   assert.equal(await commit(inputs[1], '25'), 1);
   await render();
   assert.equal(settings.autoEndWarningMinutes, 25);
-  await act(async () => document.querySelector('input[type=checkbox]').click());
+  await act(async () => checkboxes[0].click());
   assert.equal(settings.autoEndEnabled, false);
+  await act(async () => checkboxes[1].click());
+  assert.equal(settings.autoEndPauseWhileResponding, false);
 });

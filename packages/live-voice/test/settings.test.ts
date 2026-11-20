@@ -264,6 +264,7 @@ test('valid local options survive normalization', () => {
     sendingMode: 'steer',
     dshBusyEnterBehavior: 'steer',
     autoEndEnabled: true,
+    autoEndPauseWhileResponding: true,
     autoEndMinutes: 5,
     autoEndWarningMinutes: 1,
     autoSendDelaySeconds: 5,

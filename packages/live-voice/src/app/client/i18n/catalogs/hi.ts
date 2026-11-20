@@ -72,6 +72,10 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.commons.update.now': 'अभी अपडेट करें',
   'dsh-live-voice.commons.update.restart':
     'लाइव वॉइस {version} इंस्टॉल हो गया। तैयार होने पर DSH पुनः शुरू करें, फिर यह पेज रीलोड करें।',
+  'dsh-live-voice.commons.update.restoreFailed':
+    'अपडेट विफल हुआ और DSH पिछला संस्करण बहाल नहीं कर सका। इंस्टॉलेशन ठीक करने के लिए प्लगइन मैनेजर खोलें।',
+  'dsh-live-voice.commons.update.restored':
+    'अपडेट विफल हुआ, लेकिन DSH ने पिछला संस्करण बहाल कर दिया। दोबारा प्रयास से पहले प्लगइन मैनेजर जाँचें।',
   'dsh-live-voice.commons.update.scripts':
     'पैकेज स्क्रिप्ट को स्वीकृति चाहिए। DSH प्लगइन प्रबंधक में समीक्षा करें; यहाँ कोई स्क्रिप्ट स्वीकृत नहीं हुई।',
   'dsh-live-voice.commons.update.unavailable':
@@ -481,8 +485,9 @@ const hi: LiveVoiceTranslation = {
   'dsh-live-voice.settings.autoEnd.enabled': 'वॉइस कैप्चर अपने आप बंद करें',
   'dsh-live-voice.settings.autoEnd.ended': 'निष्क्रियता के कारण वॉइस सत्र समाप्त हुआ।',
   'dsh-live-voice.settings.autoEnd.help':
-    'पाठ न मिलने पर सभी इनपुट बंद होते हैं। नया पाठ या सुनना जारी रखें समय फिर शुरू करता है। समय मिनटों में है; चेतावनी शून्य से अधिक और कुल का अधिकतम 50% होनी चाहिए। अपने आप म्यूट नहीं होता। अटका पहचान कार्य अधिकतम 30 सेकंड की देरी कर सकता है।',
+    'पाठ न मिलने पर सभी इनपुट बंद होते हैं। नया पाठ या सुनना जारी रखें समय फिर शुरू करता है। जवाब के दौरान रोकें विकल्प चालू करने पर, सहायक के जवाब तैयार करते समय अपने-आप बंद होना रुकेगा और बाद में उलटी गिनती फिर जारी होगी। समय मिनटों में है; चेतावनी शून्य से अधिक और कुल का अधिकतम 50% होनी चाहिए। अपने आप म्यूट नहीं होता। अटका पहचान कार्य अधिकतम 30 सेकंड की देरी कर सकता है।',
   'dsh-live-voice.settings.autoEnd.minutes': 'निष्क्रियता के बाद बंद करें (मिनट)',
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': 'सहायक के जवाब तैयार करते समय अपने-आप बंद होना रोकें',
   'dsh-live-voice.settings.autoEnd.restart': 'फिर शुरू करें',
   'dsh-live-voice.settings.autoEnd.stopFailed':
     'कुछ वॉइस संसाधन बंद नहीं हुए। इनपुट नियंत्रण जाँचें।',

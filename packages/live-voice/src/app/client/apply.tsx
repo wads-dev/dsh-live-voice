@@ -139,7 +139,10 @@ export function apply(ctx) {
     const busy = inputs.some(
       (s) => s.recognizing || (s.pendingTranscriptionRequests ?? s.pendingTranscriptions) > 0,
     );
-    inactivity.tick(active, busy, preferences.getSnapshot());
+    const generating = [...controllers.values()].some((entry) =>
+      assistantMessages(entry.readChat()).some((message) => !message.complete),
+    );
+    inactivity.tick(active, busy, preferences.getSnapshot(), generating);
   };
   let meetingEntry = null;
   let sharedSpeechActive = false;

@@ -75,6 +75,10 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.commons.update.now': 'Mettre à jour',
   'dsh-live-voice.commons.update.restart':
     'Voix en direct {version} installé. Redémarrez DSH quand vous le souhaitez, puis rechargez cette page.',
+  'dsh-live-voice.commons.update.restoreFailed':
+    'La mise à jour a échoué et DSH n’a pas pu restaurer la version précédente. Ouvrez le gestionnaire de plugins pour réparer l’installation.',
+  'dsh-live-voice.commons.update.restored':
+    'La mise à jour a échoué, mais DSH a restauré la version précédente. Vérifiez le gestionnaire de plugins avant de réessayer.',
   'dsh-live-voice.commons.update.scripts':
     'Les scripts nécessitent une autorisation. Vérifiez-les dans le gestionnaire DSH ; aucun script n’a été autorisé ici.',
   'dsh-live-voice.commons.update.unavailable':
@@ -504,8 +508,9 @@ const fr: LiveVoiceTranslation = {
   'dsh-live-voice.settings.autoEnd.enabled': 'Terminer automatiquement la capture vocale',
   'dsh-live-voice.settings.autoEnd.ended': 'Session vocale terminée pour inactivité.',
   'dsh-live-voice.settings.autoEnd.help':
-    'Arrête toutes les sources sans texte reconnu. Un nouveau texte ou Continuer à écouter réinitialise le délai. Les durées sont en minutes ; le préavis doit être positif et ne pas dépasser 50 % du total. Pas de sourdine automatique. Une reconnaissance bloquée peut retarder la fermeture de 30 secondes au maximum.',
+    'Arrête toutes les sources sans texte reconnu. Un nouveau texte ou Continuer à écouter réinitialise le délai. Si l’option de pause pendant la réponse est activée, l’arrêt automatique est suspendu pendant la génération d’une réponse par l’assistant, puis le compte à rebours reprend. Les durées sont en minutes ; le préavis doit être positif et ne pas dépasser 50 % du total. Pas de sourdine automatique. Une reconnaissance bloquée peut retarder la fermeture de 30 secondes au maximum.',
   'dsh-live-voice.settings.autoEnd.minutes': 'Arrêter après inactivité (minutes)',
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': 'Suspendre l’arrêt automatique pendant que l’assistant génère une réponse',
   'dsh-live-voice.settings.autoEnd.restart': 'Redémarrer',
   'dsh-live-voice.settings.autoEnd.stopFailed':
     'Certaines ressources vocales n’ont pas pu être arrêtées. Vérifiez les commandes d’entrée.',

@@ -17,13 +17,13 @@ function fixture() {
     },
   });
   const settings = normalizeSettings({});
-  const tick = (seconds = 0, busy = false, active = true) => {
+  const tick = (seconds = 0, busy = false, active = true, generating = false) => {
     // Simulate an awake event loop rather than suspension.
     for (let i = 0; i < seconds; i++) {
       now += 1000;
-      clock.tick(active, busy, settings);
+      clock.tick(active, busy, settings, generating);
     }
-    if (!seconds) clock.tick(active, busy, settings);
+    if (!seconds) clock.tick(active, busy, settings, generating);
   };
   tick();
   return {
@@ -39,6 +39,8 @@ function fixture() {
 }
 test('defaults, fractional minutes, 50% maximum and no absolute warning cap', () => {
   assert.equal(normalizeSettings({}).autoEndEnabled, true);
+  assert.equal(normalizeSettings({}).autoEndPauseWhileResponding, true);
+  assert.equal(normalizeSettings({ autoEndPauseWhileResponding: false }).autoEndPauseWhileResponding, false);
   assert.equal(normalizeSettings({}).autoEndMinutes, 5);
   assert.equal(normalizeSettings({}).autoEndWarningMinutes, 1);
   assert.equal(
@@ -82,6 +84,53 @@ test('empty results and matching warning echo do not keep capture alive', () => 
   f.clock.recognized('  ');
   f.tick(60);
   assert.equal(f.ended(), 1);
+});
+test('assistant generation pauses and resumes the whole inactivity countdown', () => {
+  const f = fixture();
+  f.tick(239);
+  f.tick(30, false, true, true);
+  // The assistant is still generating; no warning is shown and elapsed time is frozen.
+  for (let i = 0; i < 180; i++) {
+    f.jump(1000);
+    f.clock.tick(true, false, f.settings, true);
+  }
+  assert.equal(f.warnings.length, 0);
+  f.tick(1);
+  assert.deepEqual(f.warnings, [60]);
+  f.tick(59);
+  assert.equal(f.ended(), 0);
+  f.tick(1);
+  assert.equal(f.ended(), 1);
+});
+test('recognized text during generation resets inactivity from response completion', () => {
+  const f = fixture();
+  f.tick(239);
+  for (let i = 0; i < 180; i++) {
+    f.jump(1000);
+    f.clock.tick(true, false, f.settings, true);
+  }
+  f.clock.recognized('I heard you');
+  f.tick(180, false, true);
+  assert.equal(f.ended(), 0);
+  assert.equal(f.warnings.length, 0);
+});
+test('disabling generation pause leaves automatic ending unchanged', () => {
+  const f = fixture();
+  f.settings.autoEndPauseWhileResponding = false;
+  f.tick(300, false, true);
+  assert.equal(f.ended(), 1);
+});
+test('generation beginning during a warning preserves its remaining countdown', () => {
+  const f = fixture();
+  f.tick(240);
+  assert.deepEqual(f.warnings, [60]);
+  for (let i = 0; i < 120; i++) {
+    f.jump(1000);
+    f.clock.tick(true, false, f.settings, true);
+  }
+  f.tick(30);
+  assert.equal(f.ended(), 0);
+  assert.equal(f.clock.getSnapshot().remaining, 30);
 });
 test('recognition at the deadline gets bounded grace', () => {
   const f = fixture();

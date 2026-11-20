@@ -69,6 +69,10 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.commons.update.now': '立即更新',
   'dsh-live-voice.commons.update.restart':
     '实时语音 {version} 已安装。准备好后请重启 DSH，然后刷新此页面。',
+  'dsh-live-voice.commons.update.restoreFailed':
+    '更新失败，DSH 无法恢复先前版本。请打开插件管理器修复安装。',
+  'dsh-live-voice.commons.update.restored':
+    '更新失败，但 DSH 已恢复先前版本。重试前请检查插件管理器。',
   'dsh-live-voice.commons.update.scripts':
     '包脚本需要批准。请在 DSH 插件管理器中审核；此处未批准任何脚本。',
   'dsh-live-voice.commons.update.unavailable':
@@ -447,8 +451,9 @@ const zh: LiveVoiceTranslation = {
   'dsh-live-voice.settings.autoEnd.enabled': '自动结束语音采集',
   'dsh-live-voice.settings.autoEnd.ended': '语音会话因无活动而结束。',
   'dsh-live-voice.settings.autoEnd.help':
-    '未识别到文字时结束所有输入源。新文字或“继续聆听”会重置计时。时间以分钟计；提前提醒时间必须大于零，且不超过总时间的 50%。不会自动静音。识别任务卡住时，结束最多延后 30 秒。',
+    '未识别到文字时结束所有输入源。新文字或“继续聆听”会重置计时。启用“回复时暂停”后，助手生成回复期间会暂时暂停自动结束，之后倒计时继续。时间以分钟计；提前提醒时间必须大于零，且不超过总时间的 50%。不会自动静音。识别任务卡住时，结束最多延后 30 秒。',
   'dsh-live-voice.settings.autoEnd.minutes': '无活动后结束（分钟）',
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': '助手生成回复时暂停自动结束',
   'dsh-live-voice.settings.autoEnd.restart': '重新开始',
   'dsh-live-voice.settings.autoEnd.stopFailed': '部分语音资源未能停止。请检查输入控件。',
   'dsh-live-voice.settings.autoEnd.title': '自动结束',

@@ -353,6 +353,7 @@ export interface LiveVoiceTranslation extends Translation {
   'dsh-live-voice.settings.autoEnd.ended': string;
   'dsh-live-voice.settings.autoEnd.help': string;
   'dsh-live-voice.settings.autoEnd.minutes': string;
+  'dsh-live-voice.settings.autoEnd.pauseWhileResponding': string;
   'dsh-live-voice.settings.autoEnd.restart': string;
   'dsh-live-voice.settings.autoEnd.stopFailed': string;
   'dsh-live-voice.settings.autoEnd.title': string;
